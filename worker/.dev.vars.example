@@ -1,0 +1,4 @@
+# Copier en .dev.vars pour le développement local (fichier gitignoré, jamais committé).
+# Rien de secret n'est requis pour l'instant : DB et PHOTOS sont des bindings (D1/R2),
+# pas des identifiants. Ce fichier existe pour documenter la présence de secrets à venir
+# (ex: clé API Brevo pour l'email de notification au couple, cf. CLAUDE.md §2).
