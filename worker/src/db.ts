@@ -13,6 +13,7 @@ export interface Mariage {
   cocktail_nom: string | null;
   cocktail_adresse: string | null;
   cocktail_photo_key: string | null;
+  photo_couple_key: string | null;
   reponse_generique_oui: string;
   reponse_generique_non: string;
 }
@@ -30,6 +31,7 @@ export interface Convive {
   photo_key: string | null;
   presence: Presence | null;
   regime_alimentaire: string | null;
+  message_invite: string | null;
   repondu_le: string | null;
 }
 
