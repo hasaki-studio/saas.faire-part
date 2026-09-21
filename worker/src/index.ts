@@ -35,6 +35,7 @@ function contenuPublic(env: Env, mariage: Mariage) {
     cocktail_nom: mariage.cocktail_nom,
     cocktail_adresse: mariage.cocktail_adresse,
     cocktail_photo_url: photoUrl(env, mariage.cocktail_photo_key),
+    photo_couple_url: photoUrl(env, mariage.photo_couple_key),
   };
 }
 
@@ -78,7 +79,12 @@ interface AccompagnantPayload {
 interface RsvpPayload {
   presence: "oui" | "non";
   regime_alimentaire?: string | null;
+  message?: string | null;
   accompagnants?: AccompagnantPayload[];
+  // Uniquement utilisés quand le token n'est pas reconnu (cf. plus bas) : on ne
+  // connaît pas déjà cette personne, il faut qu'elle se présente elle-même.
+  prenom?: string;
+  nom?: string;
 }
 
 function validerPayload(payload: unknown): payload is RsvpPayload {
@@ -86,6 +92,9 @@ function validerPayload(payload: unknown): payload is RsvpPayload {
   const p = payload as Record<string, unknown>;
   if (p.presence !== "oui" && p.presence !== "non") return false;
   if (p.regime_alimentaire != null && !REGIMES_VALIDES.has(String(p.regime_alimentaire))) return false;
+  if (p.message != null && typeof p.message !== "string") return false;
+  if (p.prenom != null && typeof p.prenom !== "string") return false;
+  if (p.nom != null && typeof p.nom !== "string") return false;
   if (p.accompagnants != null) {
     if (!Array.isArray(p.accompagnants)) return false;
     for (const a of p.accompagnants) {
@@ -101,10 +110,6 @@ async function handleRsvp(request: Request, env: Env, mariageToken: string): Pro
   if (!mariage) return new Response("Domaine non configuré", { status: 404 });
 
   const convive = await getConviveByToken(env.DB, mariage.id, mariageToken);
-  if (!convive) {
-    // Un token inconnu ne peut pas être mis à jour : on ne sait pas qui c'est.
-    return json({ reconnu: false }, 200);
-  }
 
   let payload: unknown;
   try {
@@ -118,10 +123,32 @@ async function handleRsvp(request: Request, env: Env, mariageToken: string): Pro
 
   const now = new Date().toISOString();
 
+  if (!convive) {
+    // Lien mal recopié ou personne non prévue sur la liste : on la laisse quand même
+    // répondre, sous un token fraîchement généré (jamais le token saisi, qui pourrait
+    // être un doublon devinable par un autre visiteur). Règle absolue : jamais de 404
+    // face à un token inconnu (cf. CLAUDE.md §3, règle #4).
+    const prenom = payload.prenom?.trim();
+    const nom = payload.nom?.trim();
+    if (!prenom || !nom) {
+      return json({ erreur: "Merci d'indiquer votre prénom et votre nom." }, 400);
+    }
+
+    await env.DB.prepare(
+      "INSERT INTO convives (id, mariage_id, token, prenom, nom, presence, regime_alimentaire, message_invite, repondu_le) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+    )
+      .bind(crypto.randomUUID(), mariage.id, genToken(), prenom, nom, payload.presence, payload.regime_alimentaire ?? null, payload.message ?? null, now)
+      .run();
+
+    const retourInconnu =
+      payload.presence === "oui" ? mariage.reponse_generique_oui : mariage.reponse_generique_non;
+    return json({ reconnu: false, enregistre: true, retour: { message: retourInconnu, photo_url: null } });
+  }
+
   await env.DB.prepare(
-    "UPDATE convives SET presence = ?1, regime_alimentaire = ?2, repondu_le = ?3 WHERE id = ?4",
+    "UPDATE convives SET presence = ?1, regime_alimentaire = ?2, message_invite = ?3, repondu_le = ?4 WHERE id = ?5",
   )
-    .bind(payload.presence, payload.regime_alimentaire ?? null, now, convive.id)
+    .bind(payload.presence, payload.regime_alimentaire ?? null, payload.message ?? null, now, convive.id)
     .run();
 
   // La liste d'accompagnants remplace la précédente à chaque envoi (un RSVP est modifiable,

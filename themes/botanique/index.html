@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="https://img.icons8.com/?size=100&id=msKBxCHYuZH0&format=png&color=000000" />
-<title>Mariage — Justine & Raphael</title>
+<title id="page-title">Mariage</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@200;300;400&display=swap" rel="stylesheet">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -165,7 +165,7 @@ nav {
     overflow: hidden;
   }
 
-  .name-Justine {
+  .name-1 {
     display: block;
     font-style: italic;
     color: var(--sage-dark);
@@ -183,7 +183,7 @@ nav {
     animation: fadeIn 1s ease 1.4s forwards;
   }
 
-  .name-Raphael {
+  .name-2 {
     display: block;
     color: var(--sage-dark);
     opacity: 0;
@@ -471,6 +471,50 @@ nav {
   .form-group select option { background: var(--sage-dark); color: var(--cream); }
   .form-group textarea { resize: vertical; min-height: 90px; }
 
+  .accompagnant-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .accompagnant-row input {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(168,196,162,0.3);
+    padding: 12px 14px;
+    color: var(--cream);
+    font-family: 'Jost', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 300;
+    outline: none;
+    border-radius: 1px;
+  }
+
+  .retirer-accompagnant {
+    background: transparent;
+    border: 1px solid rgba(168,196,162,0.3);
+    color: var(--cream);
+    width: 40px;
+    border-radius: 1px;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+  .retirer-accompagnant:hover { border-color: var(--sage-light); }
+
+  .ajouter-accompagnant {
+    align-self: flex-start;
+    background: transparent;
+    border: none;
+    color: var(--sage-light);
+    font-family: 'Jost', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 6px 0;
+  }
+  .ajouter-accompagnant:hover { opacity: 0.7; }
+
   .rsvp-submit {
     margin-top: 10px;
     padding: 16px 40px;
@@ -749,9 +793,9 @@ nav {
   <div class="deco-line top"></div>
   <p class="label">Vous êtes cordialement invités au mariage de</p>
   <div class="names">
-    <span class="name-Justine">Justine</span>
+    <span class="name-1" id="prenom-1"></span>
     <span class="name-amp">&amp;</span>
-    <span class="name-Raphael">Raphael</span>
+    <span class="name-2" id="prenom-2"></span>
   </div>
   <div class="hero-ornament">
     <span></span>
@@ -761,12 +805,12 @@ nav {
     </svg>
     <span></span>
   </div>
-  <p class="hero-date">Le samedi 17 juillet 2027</p>
+  <p class="hero-date" id="hero-date"></p>
   <div class="deco-line bottom"></div>
 </div>
 
   <!-- PHOTO COUPLE -->
-  <div style="
+  <div id="bloc-photo-couple" style="
     text-align: center;
     padding: 0 20px 60px;
     position: relative;
@@ -785,8 +829,8 @@ nav {
         z-index: 2;
       "></div>
       <img
-        src="photo-du-couple.png"
-        alt="Justine et Raphael"
+        id="photo-couple"
+        alt=""
         style="
           width: 100%;
           max-width: 320px;
@@ -821,10 +865,10 @@ nav {
     <div class="timeline-item">
       <div class="timeline-left"><p class="timeline-time">15h00</p></div>
       <div class="timeline-dot"></div>
-      <div class="timeline-right"><p class="timeline-event">Cérémonie civile<br><small style="opacity:.6">Mairie de Pau, Place Royale, 64000 Pau</small></p></div>
+      <div class="timeline-right"><p class="timeline-event">Cérémonie civile<br><small style="opacity:.6" id="lieu-ceremonie"></small></p></div>
     </div>
     <div class="timeline-item">
-      <div class="timeline-left"><p class="timeline-event">Cocktail de bienvenue<br><small style="opacity:.6">Domaine des Vergers</small></p></div>
+      <div class="timeline-left"><p class="timeline-event">Cocktail de bienvenue<br><small style="opacity:.6" id="lieu-cocktail"></small></p></div>
       <div class="timeline-dot"></div>
       <div class="timeline-right"><p class="timeline-time">17h30</p></div>
     </div>
@@ -847,8 +891,9 @@ nav {
   <h2 class="section-title fade-in-up">Où nous retrouver</h2>
   <div class="divider"><span class="divider-icon">✦</span></div>
   <div class="venue-card fade-in-up">
-    <p class="venue-name">Domaine des Vergers</p>
-    <img src="lieumariage.png" alt="Domaine des Vergers" style="width:100%;max-width:560px;height:260px;object-fit:cover;object-position:center 40%;display:block;margin:28px auto 0;border-radius:1px;opacity:0.92;">
+    <p class="venue-name" id="venue-nom"></p>
+    <p class="venue-address" id="venue-adresse" style="display:none"></p>
+    <img id="venue-photo" alt="" style="width:100%;max-width:560px;height:260px;object-fit:cover;object-position:center 40%;display:none;margin:28px auto 0;border-radius:1px;opacity:0.92;">
   </div>
 </section>
 
@@ -857,53 +902,48 @@ nav {
   <div class="rsvp-inner" id="rsvp">
     <p class="section-label">Votre réponse</p>
     <h2 class="section-title">RSVP</h2>
-    <p class="rsvp-deadline">Merci de répondre avant le mercredi 20 janvier 2027</p>
+    <p class="rsvp-deadline" id="rsvp-deadline"></p>
+
+    <p id="lien-non-reconnu" style="display:none; opacity:0.75; font-size:0.85rem; margin-bottom: 20px;"></p>
 
     <div class="rsvp-form" id="rsvp-form">
       <div class="form-row">
         <div class="form-group">
           <label>Prénom</label>
-          <input type="text" placeholder="Marie">
+          <input type="text" id="rsvp-prenom" placeholder="Marie">
         </div>
         <div class="form-group">
           <label>Nom</label>
-          <input type="text" placeholder="Dupont">
+          <input type="text" id="rsvp-nom" placeholder="Dupont">
         </div>
       </div>
       <div class="form-group">
-        <label>Email</label>
-        <input type="email" placeholder="marie@exemple.fr">
-      </div>
-      <div class="form-group">
         <label>Présence</label>
-        <select>
+        <select id="rsvp-presence">
           <option value="">Votre réponse...</option>
           <option value="oui">Oui, je serai là avec joie ✓</option>
           <option value="non">Je ne pourrai malheureusement pas venir</option>
         </select>
       </div>
       <div class="form-group">
-        <label>Nombre d'invités</label>
-        <select>
-          <option value="1">1 personne</option>
-          <option value="2">2 personnes</option>
-          <option value="3">3 personnes</option>
-          <option value="4">4 personnes et plus</option>
-        </select>
+        <label>Accompagnants</label>
+        <div id="accompagnants-liste"></div>
+        <button type="button" class="ajouter-accompagnant" onclick="ajouterAccompagnant()">+ Ajouter un accompagnant</button>
       </div>
       <div class="form-group">
         <label>Régime alimentaire</label>
-        <select>
+        <select id="rsvp-regime">
           <option value="">Aucune contrainte particulière</option>
           <option value="vegetarien">Végétarien</option>
           <option value="vegan">Vegan</option>
           <option value="halal">Halal</option>
+          <option value="casher">Casher</option>
           <option value="sans_gluten">Sans gluten</option>
         </select>
       </div>
       <div class="form-group">
         <label>Message aux mariés (optionnel)</label>
-        <textarea placeholder="Un mot doux pour Justine & Raphael, allergie alimentaire, une musique à suggérer pour la playlist..."></textarea>
+        <textarea id="rsvp-message" placeholder="Un mot doux, une musique à suggérer pour la playlist..."></textarea>
       </div>
       <button class="rsvp-submit" onclick="submitRSVP()">Envoyer ma réponse</button>
     </div>
@@ -1225,7 +1265,9 @@ const msgObserver = new IntersectionObserver((entries) => {
     }, 35);
   }
 }, { threshold: 0.5 });
-msgObserver.observe(el);
+// La section MESSAGE est commentée dans le HTML (cf. plus haut) : #message-text
+// n'existe pas tant qu'elle n'est pas réactivée.
+if (el) msgObserver.observe(el);
 
 /* ── FAQ ── */
 function toggleFaq(btn) {
@@ -1246,11 +1288,112 @@ function toggleFaq(btn) {
   }
 }
 
-/* ── RSVP ── */
-function validateEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+/* ── FAIRE-PART DYNAMIQUE ── */
+// Défini ici pour les tests en local (wrangler dev sur un autre port que la page
+// statique). En production, la page et l'API partagent le même nom d'hôte via
+// une route Worker sur /api/*, donc API_BASE reste vide (chemins relatifs).
+const API_BASE = window.API_BASE || '';
+
+let RECONNU = false;
+
+function tokenDepuisURL() {
+  const segments = window.location.pathname.split('/').filter(Boolean);
+  const dernier = segments[segments.length - 1] || '';
+  const morceaux = dernier.split('-');
+  return morceaux[morceaux.length - 1] || '';
 }
 
+const TOKEN = tokenDepuisURL();
+
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function ajouterAccompagnant(prenom = '', nom = '') {
+  const liste = document.getElementById('accompagnants-liste');
+  const row = document.createElement('div');
+  row.className = 'accompagnant-row';
+  row.innerHTML = `
+    <input type="text" class="accompagnant-prenom" placeholder="Prénom" value="${prenom}">
+    <input type="text" class="accompagnant-nom" placeholder="Nom" value="${nom}">
+    <button type="button" class="retirer-accompagnant" onclick="this.closest('.accompagnant-row').remove()">×</button>
+  `;
+  liste.appendChild(row);
+}
+
+function accompagnantsDuFormulaire() {
+  return Array.from(document.querySelectorAll('.accompagnant-row')).map(row => ({
+    prenom: row.querySelector('.accompagnant-prenom').value.trim(),
+    nom: row.querySelector('.accompagnant-nom').value.trim(),
+  })).filter(a => a.prenom && a.nom);
+}
+
+async function chargerFaireArt() {
+  if (!TOKEN) return;
+
+  let data;
+  try {
+    const res = await fetch(`${API_BASE}/api/faire-part/${encodeURIComponent(TOKEN)}`);
+    data = await res.json();
+  } catch (e) {
+    return; // pas de réseau : la page reste utilisable avec son contenu par défaut
+  }
+
+  RECONNU = data.reconnu;
+  const m = data.mariage;
+
+  document.getElementById('page-title').textContent = `Mariage — ${m.prenom_1} & ${m.prenom_2}`;
+  document.getElementById('prenom-1').textContent = m.prenom_1;
+  document.getElementById('prenom-2').textContent = m.prenom_2;
+  document.getElementById('hero-date').textContent = `Le ${formatDate(m.date_mariage)}`;
+  document.getElementById('rsvp-deadline').textContent = `Merci de répondre avant le ${formatDate(m.date_limite_rsvp)}`;
+
+  const photoCouple = document.getElementById('photo-couple');
+  if (m.photo_couple_url) {
+    photoCouple.src = m.photo_couple_url;
+  } else {
+    document.getElementById('bloc-photo-couple').style.display = 'none';
+  }
+
+  const lieuCeremonie = document.getElementById('lieu-ceremonie');
+  lieuCeremonie.textContent = [m.ceremonie_nom, m.ceremonie_adresse].filter(Boolean).join(', ');
+
+  const lieuCocktail = document.getElementById('lieu-cocktail');
+  lieuCocktail.textContent = m.cocktail_nom || '';
+
+  document.getElementById('venue-nom').textContent = m.cocktail_nom || '';
+  if (m.cocktail_adresse) {
+    const adresse = document.getElementById('venue-adresse');
+    adresse.textContent = m.cocktail_adresse;
+    adresse.style.display = '';
+  }
+  if (m.cocktail_photo_url) {
+    const photoVenue = document.getElementById('venue-photo');
+    photoVenue.src = m.cocktail_photo_url;
+    photoVenue.alt = m.cocktail_nom || '';
+    photoVenue.style.display = '';
+  }
+
+  if (!data.reconnu) {
+    const note = document.getElementById('lien-non-reconnu');
+    note.textContent = data.message;
+    note.style.display = '';
+    return;
+  }
+
+  const invite = data.invite;
+  document.getElementById('rsvp-prenom').value = invite.prenom;
+  document.getElementById('rsvp-nom').value = invite.nom;
+  document.getElementById('rsvp-prenom').readOnly = true;
+  document.getElementById('rsvp-nom').readOnly = true;
+  if (invite.presence) document.getElementById('rsvp-presence').value = invite.presence;
+  if (invite.regime_alimentaire) document.getElementById('rsvp-regime').value = invite.regime_alimentaire;
+  (invite.accompagnants || []).forEach(a => ajouterAccompagnant(a.prenom, a.nom));
+}
+
+/* ── RSVP ── */
 function showError(inputEl, message) {
   clearError(inputEl);
   const err = document.createElement('span');
@@ -1267,67 +1410,52 @@ function clearError(inputEl) {
 }
 
 async function submitRSVP() {
-  const prenom = document.querySelector('input[placeholder="Marie"]');
-  const nom = document.querySelector('input[placeholder="Dupont"]');
-  const email = document.querySelector('input[type="email"]');
-  const presence = document.querySelector('select');
+  const prenom = document.getElementById('rsvp-prenom');
+  const nom = document.getElementById('rsvp-nom');
+  const presence = document.getElementById('rsvp-presence');
 
   let valid = true;
-  [prenom, nom, email, presence].forEach(el => clearError(el));
+  [prenom, nom, presence].forEach(el => clearError(el));
 
   if (!prenom.value.trim()) { showError(prenom, 'Veuillez entrer votre prénom.'); valid = false; }
   if (!nom.value.trim()) { showError(nom, 'Veuillez entrer votre nom.'); valid = false; }
-  if (!email.value.trim()) { showError(email, 'Veuillez entrer votre email.'); valid = false; }
-  else if (!validateEmail(email.value.trim())) { showError(email, 'Format email invalide.'); valid = false; }
   if (!presence.value) { showError(presence, 'Veuillez indiquer votre présence.'); valid = false; }
 
   if (!valid) return;
 
-  const selects = document.querySelectorAll('select');
-  const nb_personnes = selects[1] ? selects[1].value : '1';
-  const regime = selects[2] ? selects[2].value : '';
-  const message = document.querySelector('textarea') ? document.querySelector('textarea').value : '';
-
   const payload = {
-    prenom: prenom.value.trim(),
-    nom: nom.value.trim(),
-    email: email.value.trim(),
     presence: presence.value,
-    nb_personnes,
-    regime,
-    message
+    regime_alimentaire: document.getElementById('rsvp-regime').value || null,
+    message: document.getElementById('rsvp-message').value.trim() || null,
+    accompagnants: accompagnantsDuFormulaire(),
   };
+  if (!RECONNU) {
+    payload.prenom = prenom.value.trim();
+    payload.nom = nom.value.trim();
+  }
 
   try {
-    const res = await fetch('https://rsvp.hasakistudio.fr/webhook/rsvp-submit', {
+    const res = await fetch(`${API_BASE}/api/rsvp/${encodeURIComponent(TOKEN)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
     const data = await res.json();
-
-    let successHTML;
-    if (payload.presence === 'oui') {
-      const msg = data.message_perso || 'Quelle joie de vous compter parmi nous !';
-      const photoHTML = data.photo
-        ? `<img src="${data.photo}" alt="" class="rsvp-photo" onerror="this.remove()">`
-        : '';
-      successHTML = `
-        ${photoHTML}
-        <p>${msg}</p>
-        <p class="rsvp-mail-note">Un email de confirmation vous a été envoyé — pensez à vérifier vos spams s'il n'apparaît pas dans votre boîte de réception.</p>
-        <p><small style="font-style:normal;font-size:0.7rem;letter-spacing:0.2em;opacity:0.7">À très bientôt ✦</small></p>
-      `;
-    } else {
-      successHTML = `
-        <p>Merci pour votre réponse.<br>Nous sommes tristes de ne pas pouvoir vous compter parmi nous,<br>mais nous pensons à vous ce jour-là.</p>
-        <p class="rsvp-mail-note">Un email de confirmation vous a été envoyé — pensez à vérifier vos spams s'il n'apparaît pas dans votre boîte de réception.</p>
-        <p><small style="font-style:normal;font-size:0.7rem;letter-spacing:0.2em;opacity:0.7">Avec toute notre affection ✦</small></p>
-      `;
+    if (!res.ok) {
+      alert(data.erreur || 'Une erreur est survenue, veuillez réessayer.');
+      return;
     }
 
+    const photoHTML = data.retour.photo_url
+      ? `<img src="${data.retour.photo_url}" alt="" class="rsvp-photo" onerror="this.remove()">`
+      : '';
+    const successHTML = `
+      ${photoHTML}
+      <p>${data.retour.message}</p>
+      <p><small style="font-style:normal;font-size:0.7rem;letter-spacing:0.2em;opacity:0.7">À très bientôt ✦</small></p>
+    `;
+
     document.getElementById('rsvp-form').style.display = 'none';
-    document.querySelector('.rsvp-submit').style.display = 'none';
     const succes = document.getElementById('rsvp-success');
     succes.innerHTML = successHTML;
     succes.style.display = 'block';
@@ -1341,6 +1469,8 @@ async function submitRSVP() {
     alert('Une erreur est survenue, veuillez réessayer.');
   }
 }
+
+chargerFaireArt();
 </script>
 </body>
 </html>
