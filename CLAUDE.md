@@ -229,7 +229,10 @@ Repris du projet `Mon-Mariage`. Ils ont tous coûté du temps une première fois
 
 ## 8. Où en est le projet
 
-Phase actuelle : **fondations**. Rien n'est encore construit sur cette pile.
+Phase actuelle : **fondations**. Construit : schéma D1, Worker (lookup token +
+RSVP), premier thème (`botanique`) branché dessus, deux messagers (`montgolfiere`,
+`voiture`). Pas encore construit : upload photos vers R2, tableau de bord couple,
+déploiement réel, cron de suppression RGPD.
 
 | Phase | Période | État |
 |---|---|---|
@@ -243,7 +246,11 @@ complète en décembre, avant qu'un client payant n'y touche.
 
 ### Questions non tranchées
 
-- Nom de marque et domaine d'envoi — à fixer avant la première vidéo TikTok.
+- ~~Nom de marque et domaine d'envoi — à fixer avant la première vidéo TikTok.~~
+  **Tranché** : marque publique **Un Oui, Une Histoire**. Domaine technique
+  provisoire sur `hasakistudio.fr` (`dev.faire-part.hasakistudio.fr` /
+  `faire-part.hasakistudio.fr`, déjà possédé, coût 0) ; migration vers un
+  domaine dédié à la marque prévue au 1er ou 2e client sur-mesure.
 - La phase 3 peut ne jamais avoir lieu : 6 clients à 300 € et 36 à 50 € font le même
   chiffre, mais le second multiplie par six le support, les litiges et les données de
   tiers hébergées. Arbitrage prévu en février.

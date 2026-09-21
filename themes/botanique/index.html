@@ -778,6 +778,12 @@ nav {
 </head>
 <body>
 
+<!-- Voile d'attente : masque le contenu tant que les données du mariage et le
+     messager ne sont pas prêts, pour éviter tout flash de contenu vide. Retiré
+     par demarrerMessager() une fois le vrai messager en place (ou en cas
+     d'échec réseau, directement par chargerFaireArt()). -->
+<div id="messager-attente" style="position:fixed;inset:0;z-index:1000;background:linear-gradient(to bottom, #cfe8f0 0%, #e8f2e4 55%, #f7f3ec 100%);"></div>
+
 <canvas id="petals-canvas"></canvas>
 
 <nav>
@@ -1330,14 +1336,41 @@ function accompagnantsDuFormulaire() {
   })).filter(a => a.prenom && a.nom);
 }
 
+// Charge le messager (SVG + CSS + JS, cf. messagers/<nom>/) sans que ce thème
+// ne connaisse son contenu — un seul contrat : window.jouerMessager(container, cb)
+// une fois le script chargé (cf. CLAUDE.md §6, thèmes et messagers indépendants).
+function demarrerMessager(nom) {
+  const attente = document.getElementById('messager-attente');
+  const css = document.createElement('link');
+  css.rel = 'stylesheet';
+  css.href = `messagers/${nom}/${nom}.css`;
+  document.head.appendChild(css);
+
+  const script = document.createElement('script');
+  script.src = `messagers/${nom}/${nom}.js`;
+  script.onload = () => {
+    if (window.jouerMessager) window.jouerMessager(document.body, () => {});
+    if (attente) attente.remove();
+  };
+  script.onerror = () => {
+    // Le messager demandé n'existe pas (encore) : le faire-part reste utilisable.
+    if (attente) attente.remove();
+  };
+  document.head.appendChild(script);
+}
+
 async function chargerFaireArt() {
-  if (!TOKEN) return;
+  if (!TOKEN) {
+    document.getElementById('messager-attente')?.remove();
+    return;
+  }
 
   let data;
   try {
     const res = await fetch(`${API_BASE}/api/faire-part/${encodeURIComponent(TOKEN)}`);
     data = await res.json();
   } catch (e) {
+    document.getElementById('messager-attente')?.remove();
     return; // pas de réseau : la page reste utilisable avec son contenu par défaut
   }
 
@@ -1374,6 +1407,13 @@ async function chargerFaireArt() {
     photoVenue.src = m.cocktail_photo_url;
     photoVenue.alt = m.cocktail_nom || '';
     photoVenue.style.display = '';
+  }
+
+  if (m.messager) {
+    demarrerMessager(m.messager);
+  } else {
+    // Pas de messager choisi pour ce mariage : le faire-part s'affiche directement.
+    document.getElementById('messager-attente')?.remove();
   }
 
   if (!data.reconnu) {
