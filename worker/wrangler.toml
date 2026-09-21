@@ -6,7 +6,7 @@ compatibility_date = "2025-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "faire-part-dev"
-database_id = "REMPLACER_APRES_wrangler_d1_create"
+database_id = "e4fd5d58-53aa-408c-9b07-7a07974df238"
 
 [[r2_buckets]]
 binding = "PHOTOS"
