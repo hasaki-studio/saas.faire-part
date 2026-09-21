@@ -1409,7 +1409,12 @@ async function chargerFaireArt() {
     photoVenue.style.display = '';
   }
 
-  demarrerMessager(m.messager || 'montgolfiere');
+  if (m.messager) {
+    demarrerMessager(m.messager);
+  } else {
+    // Pas de messager choisi pour ce mariage : le faire-part s'affiche directement.
+    document.getElementById('messager-attente')?.remove();
+  }
 
   if (!data.reconnu) {
     const note = document.getElementById('lien-non-reconnu');
