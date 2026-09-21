@@ -33,6 +33,10 @@
   filter: drop-shadow(0 12px 18px rgba(0,0,0,0.12));
 }
 
+/* TODO perf : animer `bottom` n'est pas accéléré matériellement (peut saccader
+   vers le milieu/fin sur certains appareils) — même remarque que sur
+   voiture-avancer dans messagers/voiture/. Repasser en transform: translateY()
+   réglerait ça, à traiter ensemble sur les deux messagers. */
 @keyframes montgolfiere-monter {
   0%   { bottom: -40%; transform: translateX(-10px) rotate(-2deg); }
   50%  { bottom: 45%;  transform: translateX(15px) rotate(2deg); }

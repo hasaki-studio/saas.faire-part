@@ -72,6 +72,11 @@
   filter: drop-shadow(0 13px 12px rgba(54,92,112,.18));
 }
 
+/* TODO perf : animer `left` (en %) n'est pas accéléré matériellement et peut
+   saccader vers le milieu/fin sur certains appareils. Repasser en
+   transform: translateX() (calculé en px selon la largeur de l'écran au
+   démarrage) réglerait ça — vu sur voiture ET montgolfiere, à traiter
+   ensemble quand on repassera sur les messagers. */
 @keyframes voiture-avancer {
   0%   { left: -350px; }
   12%  { left: 4%; }
