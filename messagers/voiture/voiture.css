@@ -1,0 +1,230 @@
+/* Messager "voiture" — indépendant de tout thème (cf. CLAUDE.md §6).
+   Repris et nettoyé à partir d'un exemple fourni (voiture rouge décorée qui
+   traverse l'écran sur une route stylisée), même contrat que les autres
+   messagers : window.jouerMessager(container, onTermine). */
+
+.messager-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  overflow: hidden;
+  background: linear-gradient(to bottom, #eef6f9 0%, #f7faf9 62%, #dce9e7 62%, #dce9e7 100%);
+  transition: opacity 1s ease;
+  cursor: pointer;
+}
+
+.messager-overlay.messager-sortie {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.voiture-route {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 23%;
+  height: 2px;
+  background: rgba(54,92,112,.18);
+}
+
+.voiture-route::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 15px;
+  border-top: 1px dashed rgba(54,92,112,.13);
+}
+
+.voiture-fleur {
+  position: absolute;
+  bottom: 23.5%;
+  width: 8px;
+  height: 22px;
+  background: #719984;
+  border-radius: 100% 0;
+  opacity: .65;
+}
+
+.voiture-fleur::before,
+.voiture-fleur::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #efb0c1;
+}
+
+.voiture-fleur::before { left: -4px; top: -4px; }
+.voiture-fleur::after { left: 4px; top: 0; }
+.voiture-fleur.gauche { left: 14%; transform: rotate(-12deg); }
+.voiture-fleur.droite { left: 82%; transform: rotate(12deg); }
+
+.voiture {
+  position: absolute;
+  width: 300px;
+  height: 145px;
+  left: -350px;
+  bottom: 20%;
+  transform-origin: left bottom;
+  animation: voiture-avancer 3.6s cubic-bezier(.2,.75,.2,1) forwards;
+  filter: drop-shadow(0 13px 12px rgba(54,92,112,.18));
+}
+
+@keyframes voiture-avancer {
+  0%   { left: -350px; }
+  12%  { left: 4%; }
+  68%  { left: 46%; }
+  100% { left: calc(100% + 40px); }
+}
+
+.voiture-carrosserie {
+  position: absolute;
+  left: 12px;
+  bottom: 28px;
+  width: 275px;
+  height: 72px;
+  background: linear-gradient(180deg, #d7353f 0%, #b91f2c 100%);
+  border-radius: 72px 95px 18px 18px;
+  border: 2px solid #951b26;
+}
+
+.voiture-toit {
+  position: absolute;
+  left: 72px;
+  bottom: 91px;
+  width: 145px;
+  height: 65px;
+  background: #c52a36;
+  border-radius: 90px 90px 0 0;
+  border: 2px solid #951b26;
+  border-bottom: none;
+}
+
+.voiture-vitre {
+  position: absolute;
+  left: 88px;
+  bottom: 101px;
+  width: 50px;
+  height: 40px;
+  background: linear-gradient(145deg,#dcecf1,#91b5c4);
+  clip-path: polygon(0 100%, 12% 10%, 100% 10%, 100% 100%);
+  border: 1px solid rgba(54,92,112,.5);
+}
+
+.voiture-vitre.arriere {
+  left: 138px;
+  width: 64px;
+  clip-path: polygon(0 10%, 88% 10%, 100% 100%, 0 100%);
+}
+
+.voiture-chrome {
+  position: absolute;
+  left: 38px;
+  right: 34px;
+  bottom: 48px;
+  height: 3px;
+  background: #e7c67f;
+  border-radius: 5px;
+}
+
+.voiture-roue {
+  position: absolute;
+  bottom: 8px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #273239;
+  border: 6px solid #eef0ef;
+  box-shadow: inset 0 0 0 7px #46545a;
+}
+
+.voiture-roue::after {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  border-radius: 50%;
+  background: #c7a96b;
+}
+
+.voiture-roue.avant { right: 40px; }
+.voiture-roue.arriere { left: 40px; }
+
+.voiture-phare {
+  position: absolute;
+  right: 7px;
+  bottom: 58px;
+  width: 22px;
+  height: 16px;
+  border-radius: 4px 12px 12px 4px;
+  background: #fff5cf;
+  box-shadow: 0 0 22px rgba(255,232,159,.9);
+}
+
+.voiture-pare-choc {
+  position: absolute;
+  right: -4px;
+  bottom: 31px;
+  width: 23px;
+  height: 9px;
+  border-radius: 4px;
+  background: #d8d8d2;
+}
+
+.voiture-coeur {
+  position: absolute;
+  left: 118px;
+  bottom: 116px;
+  color: #fff3f3;
+  font-size: 17px;
+  text-shadow: 0 2px 3px rgba(0,0,0,.12);
+}
+
+.voiture-fleur-deco {
+  position: absolute;
+  right: 72px;
+  bottom: 108px;
+  color: #efb0c1;
+  font-size: 20px;
+  text-shadow: 0 1px 2px rgba(0,0,0,.1);
+}
+
+.voiture-poussiere {
+  position: absolute;
+  left: 0;
+  bottom: 27px;
+  width: 105px;
+  height: 22px;
+}
+
+.voiture-poussiere::before,
+.voiture-poussiere::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,.7);
+}
+
+.voiture-poussiere::before { width: 33px; height: 12px; left: 24px; top: 7px; }
+.voiture-poussiere::after { width: 19px; height: 8px; left: 2px; top: 13px; }
+
+.messager-passer {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Jost', sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(54,92,112,.55);
+}
+
+@media (max-width: 480px) {
+  .voiture { transform: scale(0.72); transform-origin: left bottom; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voiture { animation: none; left: 40%; }
+}
