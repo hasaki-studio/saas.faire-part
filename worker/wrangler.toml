@@ -13,10 +13,12 @@ binding = "PHOTOS"
 bucket_name = "faire-part-photos-dev"
 
 [vars]
-# Domaine partagé pour l'offre catalogue : <slug>.SHARED_DOMAIN (cf. CLAUDE.md §8, nom pas encore choisi)
-SHARED_DOMAIN = "faire-part.exemple"
+# Domaine partagé pour l'offre catalogue : <slug>.SHARED_DOMAIN. Provisoire sur
+# hasakistudio.fr (déjà possédé, coût 0) ; migration vers une marque dédiée
+# prévue au 1er ou 2e client sur-mesure (cf. CLAUDE.md §8).
+SHARED_DOMAIN = "dev.faire-part.hasakistudio.fr"
 # Domaine (ou sous-domaine) public du bucket R2 des photos, sans protocole ni slash final
-PHOTOS_PUBLIC_URL = "https://photos-dev.faire-part.exemple"
+PHOTOS_PUBLIC_URL = "https://photos-dev.hasakistudio.fr"
 
 # ── prod ──────────────────────────────────────────────────────────
 [env.prod]
@@ -31,5 +33,5 @@ binding = "PHOTOS"
 bucket_name = "faire-part-photos-prod"
 
 [env.prod.vars]
-SHARED_DOMAIN = "faire-part.exemple"
-PHOTOS_PUBLIC_URL = "https://photos.faire-part.exemple"
+SHARED_DOMAIN = "faire-part.hasakistudio.fr"
+PHOTOS_PUBLIC_URL = "https://photos.hasakistudio.fr"
