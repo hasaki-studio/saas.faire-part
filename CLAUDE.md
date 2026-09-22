@@ -127,6 +127,12 @@ Elles viennent d'arbitrages déjà faits. Les changer change le produit.
   relancer tout le monde en avril.
 - **Les photos vivent dans R2**, jamais en base64 dans la page. Nom de fichier dérivé
   du token, jamais séquentiel (`1.jpg`, `2.jpg` s'énumèrent).
+- **`mariages.messager` est toujours renseigné explicitement à la création**, et
+  `''` signifie « pas d'animation » (choix valide, pas un oubli). La valeur par
+  défaut `'pigeon'` du schéma est historique et pointe vers un messager qui
+  n'existe pas : elle ne doit jamais s'appliquer. Un messager introuvable ne
+  casse pas la page — le thème retire le voile et affiche le faire-part — mais
+  ça reste un piège silencieux, rencontré deux fois.
 - **Le tableau de bord sauvegarde au fil de l'eau** et affiche l'avancement
   (« 12 invités sur 30 ont leur message »). Sans cet indicateur, le couple abandonne
   en cours de saisie.
