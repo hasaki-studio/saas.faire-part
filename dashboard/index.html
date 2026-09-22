@@ -15,6 +15,7 @@
 <style>
   :root {
     --sage: #7d9b76;
+    --sage-light: #a8c4a2;
     --sage-dark: #4f6b4a;
     --cream: #f7f3ec;
     --cream-dark: #ede6d8;
@@ -127,22 +128,20 @@
   .empty { font-size: 0.8rem; color: var(--sage); font-style: italic; padding: 18px 0; }
   .muted { color: #9a938a; font-style: italic; }
 
+  .donut-row { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
+  .donut-mid { font-family: 'Cormorant Garamond', serif; font-size: 1.7rem; fill: #4f6b4a; }
+  .donut-sub { font-size: 0.42rem; letter-spacing: 0.18em; fill: #7d9b76; }
+
+  .legend { list-style: none; font-size: 0.78rem; }
+  .legend li { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+  .legend .n { color: var(--sage); margin-left: auto; padding-left: 16px; }
+
   .bars { display: flex; flex-direction: column; gap: 14px; }
   .bar-line .top { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 5px; }
   .bar-line .top span:last-child { color: var(--sage); }
   .track { height: 7px; background: var(--cream-dark); overflow: hidden; }
   .fill { height: 100%; background: var(--sage); transition: width 0.7s ease; }
-  /* Trois états, trois couleurs, et chaque barre porte son libellé : l'identité
-     ne repose jamais sur la couleur seule. Écart validé à ΔE 24 en vision
-     normale et 17 en protanopie entre le vert et le rose. */
-  .fill.oui { background: var(--sage-dark); }
-  .fill.non { background: var(--rose); }
-  .bar-line .sous { font-size: 0.7rem; color: #9a938a; margin-top: 5px; }
-  .bar-note {
-    margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--cream-dark);
-    font-size: 0.75rem; color: #8a837a;
-  }
-  .bar-note b { font-weight: 400; color: var(--sage-dark); }
   /* Hachures : ce n'est pas une donnée, c'est un trou dans la donnée. */
   .fill.unknown {
     background: repeating-linear-gradient(45deg,
@@ -172,6 +171,33 @@
     background: #fff; color: var(--ink); flex: 1 1 180px; min-width: 140px;
   }
   .filtres input[type="search"]:focus { outline: none; border-color: var(--gold); }
+  /* Les trois niveaux sont ordonnés (du plus personnel au moins personnel), pas
+     trois catégories sans rapport : un dégradé d'une seule teinte, du foncé au
+     clair, dit cet ordre. Clartés 0,47 / 0,63 / 0,79 — monotones et régulières.
+     Chaque colonne porte son effectif et son libellé : l'identité ne repose
+     jamais sur la couleur seule. */
+  /* gap nul et bordures jointives : les trois socles forment une seule ligne de
+     base, sinon on lit trois vignettes séparées au lieu d'un graphique. */
+  .colonnes { display: flex; gap: 0; margin: 20px 0 2px; max-width: 520px; }
+  .colonne { flex: 1 1 0; text-align: center; min-width: 0; }
+  .colonne .v {
+    font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; font-weight: 300;
+    line-height: 1; color: var(--sage-dark); margin-bottom: 7px;
+  }
+  .colonne .v small { display: block; font-family: 'Jost', sans-serif; font-size: 0.62rem;
+    letter-spacing: 0.1em; color: var(--sage); margin-top: 4px; }
+  .colonne .zone {
+    height: 118px; display: flex; align-items: flex-end; justify-content: center;
+    border-bottom: 1px solid var(--cream-dark);
+  }
+  .colonne .barre { width: 100%; max-width: 68px; border-radius: 4px 4px 0 0; transition: height 0.7s ease; }
+  .barre.perso { background: var(--sage-dark); }
+  .barre.groupe { background: var(--sage); }
+  .barre.generique { background: var(--sage-light); }
+  .colonne .l { font-size: 0.72rem; color: var(--ink); margin-top: 10px; padding: 0 6px; line-height: 1.35; }
+  .colonne .l small { display: block; font-size: 0.68rem; color: #9a938a; margin-top: 2px; }
+  .msg-titre { font-size: 0.86rem; }
+
   .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
   .chips .chip {
     font-size: 0.72rem; padding: 5px 12px; background: var(--cream);
@@ -259,7 +285,10 @@
     <div class="grid">
       <div class="card">
         <h2>Répartition des réponses</h2>
-        <div class="bars" id="reponses"></div>
+        <div class="donut-row">
+          <svg id="donut" viewBox="0 0 160 160" width="160" height="160"></svg>
+          <ul class="legend" id="donut-legend"></ul>
+        </div>
       </div>
 
       <div class="card">
@@ -270,10 +299,8 @@
 
     <div class="card" style="margin-bottom:20px">
       <h2>Messages personnalisés</h2>
-      <div class="bar-line">
-        <div class="top"><span id="msg-texte"></span><span id="msg-part"></span></div>
-        <div class="track"><div class="fill" id="msg-fill" style="width:0"></div></div>
-      </div>
+      <p class="msg-titre" id="msg-texte"></p>
+      <div class="colonnes" id="msg-colonnes"></div>
       <p class="reg-warn" id="msg-note"></p>
       <div class="chips" id="msg-groupes"></div>
     </div>
@@ -427,40 +454,44 @@ function kpis() {
     new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
 
-/* ---------- Répartition des réponses ----------
-   Des barres plutôt qu'un anneau : trois parts se comparent à l'œil sur une
-   base commune, alors qu'un anneau demande de comparer des angles. Les barres
-   sont mises à l'échelle du nombre d'invités, pas du plus grand des trois —
-   c'est une répartition, la longueur doit se lire comme une part du total. */
-function reponses() {
+/* ---------- Donut ---------- */
+function donut() {
   const n = chiffres();
-  const total = n.invites.length;
-  const box = $('reponses');
+  const parts = [
+    { label: 'Réponses oui', v: n.oui, c: '#4f6b4a', sub: n.personnes + ' personnes' },
+    { label: 'Réponses non', v: n.non, c: '#c98f8f', sub: '' },
+    { label: 'Sans réponse', v: n.attente, c: '#ede6d8', sub: 'invités restants' },
+  ].filter((p) => p.v > 0);
+
+  const total = parts.reduce((s, p) => s + p.v, 0);
+  const svg = $('donut');
+  const R = 62, C = 2 * Math.PI * R;
 
   if (!total) {
-    box.innerHTML = '<p class="empty">Aucun invité pour le moment.</p>';
+    svg.innerHTML = '<circle cx="80" cy="80" r="62" fill="none" stroke="#ede6d8" stroke-width="16"/>';
+    $('donut-legend').innerHTML = '<li class="muted">Aucun invité pour le moment</li>';
     return;
   }
 
-  const parts = [
-    { label: 'Réponses oui', v: n.oui, cls: 'oui',
-      sous: n.personnes ? `${n.personnes} personnes à table` : '' },
-    { label: 'Réponses non', v: n.non, cls: 'non', sous: '' },
-    { label: 'Sans réponse', v: n.attente, cls: 'unknown', sous: 'invités restants' },
-  ];
+  let off = 0, arcs = '';
+  for (const p of parts) {
+    const len = (p.v / total) * C;
+    arcs += `<circle cx="80" cy="80" r="${R}" fill="none" stroke="${p.c}" stroke-width="16"
+             stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}"
+             transform="rotate(-90 80 80)"></circle>`;
+    off += len;
+  }
 
-  box.innerHTML = parts.map((p) => `
-    <div class="bar-line">
-      <div class="top">
-        <span>${esc(p.label)}</span>
-        <span>${p.v} · ${Math.round((p.v / total) * 100)} %</span>
-      </div>
-      <div class="track"><div class="fill ${p.cls}" style="width:${(p.v / total) * 100}%"></div></div>
-      ${p.sous && p.v ? `<div class="sous">${esc(p.sous)}</div>` : ''}
-    </div>`).join('')
-    + `<div class="bar-note"><b>${n.oui + n.non}</b> réponses sur ${total} invités.
-       Les barres comptent les réponses, pas les personnes : un invité qui vient
-       accompagné, c'est une réponse et plusieurs couverts.</div>`;
+  svg.innerHTML = arcs +
+    `<text x="80" y="76" text-anchor="middle" class="donut-mid">${n.oui + n.non}</text>` +
+    `<text x="80" y="94" text-anchor="middle" class="donut-sub">REPONSES</text>`;
+
+  $('donut-legend').innerHTML = parts.map((p) =>
+    `<li><span class="dot" style="background:${p.c}"></span>
+       <span>${esc(p.label)}${p.sub ? `<br><span class="muted" style="font-size:0.7rem">${esc(p.sub)}</span>` : ''}</span>
+       <span class="n">${p.v}</span></li>`).join('') +
+    `<li style="margin-top:6px;padding-top:10px;border-top:1px solid var(--cream-dark)">
+       <span class="muted" style="font-size:0.72rem">Le cercle compte les réponses, pas les personnes.</span></li>`;
 }
 
 /* ---------- Régimes ----------
@@ -512,35 +543,44 @@ function regimes() {
 }
 
 /* ---------- Avancement de la saisie des messages ----------
-   Sans cet indicateur, le couple abandonne en cours de saisie. */
+   Sans cet indicateur, le couple abandonne en cours de saisie. Des colonnes
+   plutôt qu'une jauge : la jauge ne disait qu'un total, les colonnes disent
+   aussi ce qui reste à écrire et par quel chemin chacun est couvert. */
 function messages() {
   const invites = CONVIVES.filter((c) => !c.accompagnant_de);
-  const avec = invites.filter((c) => c.a_message).length;
-  // Un invité sans message à lui mais dans un groupe qui en a un n'est pas
-  // « à faire » : il reçoit déjà autre chose que la réponse générique.
-  const parGroupe = invites.filter((c) => retourPrevu(c) === 'groupe').length;
-  const couverts = avec + parGroupe;
-  const part = invites.length ? (couverts / invites.length) * 100 : 0;
+  const compte = { perso: 0, groupe: 0, generique: 0 };
+  for (const c of invites) {
+    const r = retourPrevu(c);
+    if (r) compte[r] += 1;
+  }
+  const couverts = compte.perso + compte.groupe;
 
-  // La phrase, la jauge et le pourcentage disent tous la même chose : combien
-  // d'invités reçoivent un mot écrit pour eux, individuel ou de groupe. Deux
-  // mesures différentes dans la même carte, et le couple ne sait plus où il en est.
   $('msg-texte').textContent =
     invites.length === 0 ? 'Aucun invité pour le moment.'
     : couverts === 0 ? `Aucun de vos ${invites.length} invités n'a encore de mot qui lui soit adressé.`
     : couverts === 1 ? `1 invité sur ${invites.length} reçoit un mot écrit pour lui.`
     : `${couverts} invités sur ${invites.length} reçoivent un mot écrit pour eux.`;
-  $('msg-part').textContent = invites.length ? Math.round(part) + '%' : '';
-  $('msg-fill').style.width = part + '%';
+
+  const colonnes = [
+    { cls: 'perso', v: compte.perso, l: 'Message dédié', sous: 'écrit pour cette personne' },
+    { cls: 'groupe', v: compte.groupe, l: 'Son groupe', sous: 'un texte pour plusieurs' },
+    { cls: 'generique', v: compte.generique, l: 'Réponse générique', sous: 'le mot du mariage' },
+  ];
+  // Échelle sur la plus haute colonne : ce qu'on compare ici, ce sont les trois
+  // niveaux entre eux, pas leur part d'un total déjà donné par la phrase.
+  const max = Math.max(1, ...colonnes.map((c) => c.v));
+
+  $('msg-colonnes').innerHTML = invites.length ? colonnes.map((c) => `
+    <div class="colonne">
+      <div class="v">${c.v}<small>${Math.round((c.v / invites.length) * 100)} %</small></div>
+      <div class="zone"><div class="barre ${c.cls}" style="height:${(c.v / max) * 100}%"></div></div>
+      <div class="l">${esc(c.l)}<small>${esc(c.sous)}</small></div>
+    </div>`).join('') : '';
+
   $('msg-note').textContent =
     !invites.length ? ''
-    : parGroupe
-      ? `Dont ${avec} message${avec > 1 ? 's' : ''} individuel${avec > 1 ? 's' : ''} et ${parGroupe} par un groupe.`
-        + (couverts < invites.length
-          ? ` Les ${invites.length - couverts} autres reçoivent la réponse générique du mariage — c'est un choix valide, pas un oubli.`
-          : '')
-    : couverts < invites.length ? "Les invités sans message reçoivent la réponse générique du mariage — c'est un choix valide, pas un oubli."
-    : '';
+    : compte.generique === 0 ? 'Tous vos invités reçoivent un mot écrit pour eux.'
+    : "La réponse générique est un choix valide, pas un oubli — le filtre « Réponse générique » ci-dessous liste ces invités si vous voulez leur écrire.";
 
   $('msg-groupes').innerHTML = GROUPES.map((g) =>
     `<span class="chip${g.a_message ? '' : ' manque'}">${esc(g.nom)}
@@ -690,7 +730,7 @@ async function charger() {
       `${MARIAGE.prenom_1} & ${MARIAGE.prenom_2} · ${dateFr(MARIAGE.date_mariage)} · réponses attendues avant le ${dateFr(MARIAGE.date_limite_rsvp)}`;
 
     kpis();
-    reponses();
+    donut();
     regimes();
     messages();
     chipsGroupes();
