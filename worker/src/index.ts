@@ -3,7 +3,9 @@ import {
   getAccompagnants,
   getConviveByToken,
   getMariageByEmail,
+  getReponseGroupe,
   listerConvives,
+  listerGroupes,
   resolveMariageByHost,
   type Mariage,
 } from "./db";
@@ -182,16 +184,24 @@ async function handleRsvp(request: Request, env: Env, mariageToken: string): Pro
 
   const oui = payload.presence === "oui";
 
+  // Résolution en cascade : message_perso → réponse du groupe → générique.
+  // Le groupe est un filet SOUS l'individuel (cf. schema/005_groupes.sql), il ne
+  // le remplace jamais. Rien de tout ça sur un « non » : toujours la réponse
+  // générique, un mot écrit pour quelqu'un devient cruel quand il décline (§4).
+  const groupe =
+    oui && !convive.message_perso && convive.groupe
+      ? await getReponseGroupe(env.DB, mariage.id, convive.groupe)
+      : null;
+
   // message_perso et photo_key sont deux champs indépendants (cf. CLAUDE.md §1) :
   // une photo sans texte accompagne la réponse générique plutôt que de disparaître.
   // Les coupler, c'est perdre sans erreur une photo que le couple a pris la peine
-  // de choisir. Sur un « non », ni l'un ni l'autre — même raison que pour le
-  // message : ce qui est personnel devient cruel quand on décline (§4).
+  // de choisir.
   const retour = {
     message: oui
-      ? convive.message_perso || mariage.reponse_generique_oui
+      ? convive.message_perso || groupe?.message || mariage.reponse_generique_oui
       : mariage.reponse_generique_non,
-    photo_url: oui ? photoUrl(env, convive.photo_key) : null,
+    photo_url: oui ? photoUrl(env, convive.photo_key ?? groupe?.photo_key ?? null) : null,
   };
 
   return json({ reconnu: true, retour });
@@ -254,10 +264,27 @@ async function handleTableauConvives(request: Request, env: Env): Promise<Respon
   const mariage = await mariageDuCouple(request, env);
   if (mariage instanceof Response) return mariage;
 
-  const convives = await listerConvives(env.DB, mariage.id);
+  const [convives, groupes] = await Promise.all([
+    listerConvives(env.DB, mariage.id),
+    listerGroupes(env.DB, mariage.id),
+  ]);
   const domaine = mariage.domaine_personnalise ?? `${mariage.slug}.${env.SHARED_DOMAIN}`;
 
+  // Un groupe existe dès qu'un invité y est rattaché, même sans réponse écrite :
+  // c'est précisément ce que le couple doit voir pour savoir ce qui lui reste
+  // à faire.
+  const nomsGroupes = [...new Set(convives.map((c) => c.groupe).filter((g): g is string => !!g))];
+
   return json({
+    groupes: nomsGroupes.sort((a, b) => a.localeCompare(b, "fr")).map((nom) => {
+      const reponse = groupes.find((g) => g.groupe === nom);
+      return {
+        nom,
+        a_message: Boolean(reponse),
+        a_photo: Boolean(reponse?.photo_key),
+        invites: convives.filter((c) => c.groupe === nom && !c.accompagnant_de).length,
+      };
+    }),
     convives: convives.map((c) => ({
       id: c.id,
       prenom: c.prenom,
@@ -270,6 +297,7 @@ async function handleTableauConvives(request: Request, env: Env): Promise<Respon
       a_message: Boolean(c.message_perso),
       a_photo: Boolean(c.photo_key),
       hors_liste: c.origine === "hors_liste",
+      groupe: c.groupe,
       presence: c.presence,
       regime_alimentaire: c.regime_alimentaire,
       message_invite: c.message_invite,

@@ -93,6 +93,13 @@ contrainte », il est **à déterminer** (barre hachurée), parce que le formula
 ne pose la question qu'à la personne qui répond. Donner au traiteur ces deux-là
 dans la même barre, c'est lui donner un chiffre faux.
 
+La carte « Messages personnalisés » compte les invités qui reçoivent **un mot
+écrit pour eux**, individuel ou de groupe — phrase, jauge et pourcentage disent
+tous les trois la même chose, sans quoi le couple ne sait plus où il en est. Le
+filtre « Réponse générique » est sa contrepartie : la liste de ce qu'il reste à
+écrire. Les pastilles sous la jauge disent quel groupe attend encore son
+message.
+
 Repris du tableau de bord `Mon-Mariage`, mais **pas portable en l'état** : le
 suivi des relances et la courbe cumulée. Les deux reposaient sur l'email de
 chaque invité (`invites.csv`, `relances.csv`) ; ici les liens partent par

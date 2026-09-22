@@ -170,6 +170,14 @@
     background: #fff; color: var(--ink); flex: 1 1 180px; min-width: 140px;
   }
   .filtres input[type="search"]:focus { outline: none; border-color: var(--gold); }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+  .chips .chip {
+    font-size: 0.72rem; padding: 5px 12px; background: var(--cream);
+    border: 1px solid var(--cream-dark);
+  }
+  .chips .chip b { font-weight: 400; color: var(--sage-dark); margin-left: 6px; }
+  .chips .chip.manque { border-color: rgba(201, 169, 110, 0.6); color: #9a7b3f; }
+
   .filtres .count { font-size: 0.75rem; color: var(--sage-dark); margin-left: auto; }
 
   .table-wrap { overflow-x: auto; }
@@ -200,6 +208,7 @@
   .tag.oui { background: rgba(125, 155, 118, 0.16); color: var(--sage-dark); }
   .tag.non { background: rgba(201, 143, 143, 0.16); color: #a86a6a; }
   .tag.warn { background: rgba(201, 169, 110, 0.22); color: #9a7b3f; }
+  .tag.groupe { background: rgba(125, 155, 118, 0.10); color: var(--sage); }
 
   #err { display: none; padding: 18px 22px; font-size: 0.82rem; margin-bottom: 24px;
     background: rgba(201, 143, 143, 0.12); border-left: 2px solid var(--rose); }
@@ -267,6 +276,7 @@
         <div class="track"><div class="fill" id="msg-fill" style="width:0"></div></div>
       </div>
       <p class="reg-warn" id="msg-note"></p>
+      <div class="chips" id="msg-groupes"></div>
     </div>
 
     <div class="card">
@@ -277,13 +287,14 @@
           <button class="small" type="button" data-f="oui">Présents</button>
           <button class="small" type="button" data-f="non">Absents</button>
           <button class="small" type="button" data-f="attente">Sans réponse</button>
-          <button class="small" type="button" data-f="sans-message">Sans message perso</button>
+          <button class="small" type="button" data-f="generique">Réponse générique</button>
           <button class="small" type="button" data-f="hors-liste">Hors liste</button>
         </div>
       </div>
 
       <div class="filtres">
         <input type="search" id="recherche" placeholder="Rechercher un invité" aria-label="Rechercher un invité">
+        <span id="chips-groupes" style="display:flex;gap:8px;flex-wrap:wrap"></span>
         <span class="count" id="filtre-count"></span>
       </div>
 
@@ -293,10 +304,11 @@
             <tr>
               <th class="sortable" data-k="nom">Invité <span class="arrow"></span></th>
               <th class="sortable" data-k="hors_liste">Liste <span class="arrow"></span></th>
+              <th class="sortable" data-k="groupe">Groupe <span class="arrow"></span></th>
               <th class="sortable" data-k="presence">Présence <span class="arrow"></span></th>
               <th class="sortable" data-k="regime">Régime <span class="arrow"></span></th>
               <th class="sortable" data-k="message_invite">Message reçu <span class="arrow"></span></th>
-              <th class="sortable" data-k="a_message">Message perso <span class="arrow"></span></th>
+              <th class="sortable" data-k="a_message">Retour prévu <span class="arrow"></span></th>
               <th class="sortable" data-k="repondu_le">Répondu le <span class="arrow"></span></th>
               <th>Lien</th>
             </tr>
@@ -326,6 +338,7 @@ const REGIMES = {
 
 let MARIAGE = null;
 let CONVIVES = [];
+let GROUPES = [];
 let filtre = 'tous';
 let recherche = '';
 let triCle = 'nom', triAsc = true;
@@ -335,6 +348,16 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const nomComplet = (c) => `${c.prenom || ''} ${c.nom || ''}`.trim();
+
+// Ce que cette personne recevra après un « oui » : son message, celui de son
+// groupe, ou la réponse générique du mariage. Un accompagnant n'a pas de retour
+// à lui — il n'a pas de lien, c'est son hôte qui répond.
+function retourPrevu(c) {
+  if (c.accompagnant_de) return null;
+  if (c.a_message) return 'perso';
+  const ecrits = new Set(GROUPES.filter((g) => g.a_message).map((g) => g.nom));
+  return c.groupe && ecrits.has(c.groupe) ? 'groupe' : 'generique';
+}
 
 function dateFr(iso) {
   if (!iso) return '';
@@ -498,18 +521,36 @@ function regimes() {
 function messages() {
   const invites = CONVIVES.filter((c) => !c.accompagnant_de);
   const avec = invites.filter((c) => c.a_message).length;
-  const part = invites.length ? (avec / invites.length) * 100 : 0;
+  // Un invité sans message à lui mais dans un groupe qui en a un n'est pas
+  // « à faire » : il reçoit déjà autre chose que la réponse générique.
+  const parGroupe = invites.filter((c) => retourPrevu(c) === 'groupe').length;
+  const couverts = avec + parGroupe;
+  const part = invites.length ? (couverts / invites.length) * 100 : 0;
 
+  // La phrase, la jauge et le pourcentage disent tous la même chose : combien
+  // d'invités reçoivent un mot écrit pour eux, individuel ou de groupe. Deux
+  // mesures différentes dans la même carte, et le couple ne sait plus où il en est.
   $('msg-texte').textContent =
     invites.length === 0 ? 'Aucun invité pour le moment.'
-    : avec === 0 ? `Aucun de vos ${invites.length} invités n'a encore son message personnalisé.`
-    : avec === 1 ? `1 invité sur ${invites.length} a son message personnalisé.`
-    : `${avec} invités sur ${invites.length} ont leur message personnalisé.`;
+    : couverts === 0 ? `Aucun de vos ${invites.length} invités n'a encore de mot qui lui soit adressé.`
+    : couverts === 1 ? `1 invité sur ${invites.length} reçoit un mot écrit pour lui.`
+    : `${couverts} invités sur ${invites.length} reçoivent un mot écrit pour eux.`;
   $('msg-part').textContent = invites.length ? Math.round(part) + '%' : '';
   $('msg-fill').style.width = part + '%';
-  $('msg-note').textContent = invites.length && avec < invites.length
-    ? "Les invités sans message reçoivent la réponse générique du mariage — c'est un choix valide, pas un oubli."
+  $('msg-note').textContent =
+    !invites.length ? ''
+    : parGroupe
+      ? `Dont ${avec} message${avec > 1 ? 's' : ''} individuel${avec > 1 ? 's' : ''} et ${parGroupe} par un groupe.`
+        + (couverts < invites.length
+          ? ` Les ${invites.length - couverts} autres reçoivent la réponse générique du mariage — c'est un choix valide, pas un oubli.`
+          : '')
+    : couverts < invites.length ? "Les invités sans message reçoivent la réponse générique du mariage — c'est un choix valide, pas un oubli."
     : '';
+
+  $('msg-groupes').innerHTML = GROUPES.map((g) =>
+    `<span class="chip${g.a_message ? '' : ' manque'}">${esc(g.nom)}
+       <b>${g.invites} invité${g.invites > 1 ? 's' : ''}</b>
+       · ${g.a_message ? 'message écrit' : 'message à écrire'}${g.a_photo ? ' · photo' : ''}</span>`).join('');
 }
 
 /* ---------- Liste de récap ---------- */
@@ -519,8 +560,11 @@ function correspond(c) {
   if (filtre === 'attente' && c.presence) return false;
   // Un accompagnant n'a jamais de message personnalisé : l'inclure ici gonflerait
   // une liste de travail que le couple doit pouvoir vider.
-  if (filtre === 'sans-message' && (c.a_message || c.accompagnant_de)) return false;
+  // « Réponse générique » = ce qu'il reste à écrire : ni message à soi, ni
+  // groupe couvert. C'est la liste de travail du couple.
+  if (filtre === 'generique' && retourPrevu(c) !== 'generique') return false;
   if (filtre === 'hors-liste' && !c.hors_liste) return false;
+  if (filtre.startsWith('groupe:') && c.groupe !== filtre.slice(7)) return false;
   if (recherche && !nomComplet(c).toLowerCase().includes(recherche)) return false;
   return true;
 }
@@ -529,8 +573,9 @@ function valeurTri(c, cle) {
   if (cle === 'nom') return nomComplet(c).toLowerCase();
   if (cle === 'presence') return c.presence || 'zzz';   // les sans-réponse en dernier
   if (cle === 'regime') return REGIMES[c.regime_alimentaire] || '';
-  if (cle === 'a_message') return c.a_message ? 1 : 0;
+  if (cle === 'a_message') return ({ perso: 0, groupe: 1, generique: 2 })[retourPrevu(c)] ?? 3;
   if (cle === 'hors_liste') return c.hors_liste ? 0 : 1;   // les inattendus en tête
+  if (cle === 'groupe') return (c.groupe || 'zzz').toLowerCase();   // les sans-groupe en dernier
   return c[cle] || '';
 }
 
@@ -556,22 +601,32 @@ function tableau() {
     return `<tr>
       <td><span class="${c.accompagnant_de ? 'accomp' : ''}">${esc(nomComplet(c)) || '<span class="muted">—</span>'}</span></td>
       <td>${c.hors_liste ? '<span class="tag warn">Hors liste</span>' : '<span class="muted">Invité</span>'}</td>
+      <td>${esc(c.groupe) || '<span class="muted">—</span>'}</td>
       <td>${tag}</td>
       <td>${esc(REGIMES[c.regime_alimentaire] || '') || '<span class="muted">—</span>'}</td>
       <td class="note">${esc(c.message_invite) || '<span class="muted">—</span>'}</td>
-      <td>${c.accompagnant_de ? '<span class="muted">—</span>'
-        : c.a_message ? '<span class="tag oui">Écrit</span>'
-        : '<span class="tag warn">Générique</span>'}</td>
+      <td>${{ perso: '<span class="tag oui">Message dédié</span>',
+              groupe: '<span class="tag groupe">Son groupe</span>',
+              generique: '<span class="tag warn">Générique</span>' }[retourPrevu(c)]
+            || '<span class="muted">—</span>'}</td>
       <td style="white-space:nowrap">${c.repondu_le ? dateHeure(c.repondu_le) : '<span class="muted">—</span>'}</td>
       <td>${lien}</td>
     </tr>`;
-  }).join('') : '<tr><td colspan="8" class="empty">Aucun invité ne correspond à ce filtre.</td></tr>';
+  }).join('') : '<tr><td colspan="9" class="empty">Aucun invité ne correspond à ce filtre.</td></tr>';
 
   document.querySelectorAll('th[data-k] .arrow').forEach((a) => {
     a.textContent = a.parentElement.dataset.k === triCle ? (triAsc ? '▲' : '▼') : '';
   });
-  document.querySelectorAll('.card-actions button[data-f]').forEach((b) =>
+  document.querySelectorAll('button[data-f]').forEach((b) =>
     b.classList.toggle('on', b.dataset.f === filtre));
+}
+
+function chipsGroupes() {
+  const box = $('chips-groupes');
+  box.innerHTML = GROUPES.map((g) =>
+    `<button class="small" type="button" data-f="groupe:${esc(g.nom)}">${esc(g.nom)}</button>`).join('');
+  box.querySelectorAll('button[data-f]').forEach((b) =>
+    b.addEventListener('click', () => { filtre = b.dataset.f; tableau(); }));
 }
 
 /* ---------- Export traiteur ----------
@@ -631,6 +686,7 @@ async function charger() {
     const [m, liste] = await Promise.all([lire('/api/tableau/mariage'), lire('/api/tableau/convives')]);
     MARIAGE = m.mariage;
     CONVIVES = liste.convives;
+    GROUPES = liste.groupes || [];
 
     document.title = `${MARIAGE.prenom_1} & ${MARIAGE.prenom_2} — Tableau de bord`;
     $('titre').textContent = `${MARIAGE.prenom_1} & ${MARIAGE.prenom_2}`;
@@ -642,6 +698,7 @@ async function charger() {
     donut();
     regimes();
     messages();
+    chipsGroupes();
     tableau();
 
     $('loader').style.display = 'none';

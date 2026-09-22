@@ -38,6 +38,14 @@ export interface Convive {
   message_invite: string | null;
   repondu_le: string | null;
   origine: Origine;
+  groupe: string | null;
+}
+
+export interface ReponseGroupe {
+  mariage_id: string;
+  groupe: string;
+  message: string;
+  photo_key: string | null;
 }
 
 /**
@@ -123,5 +131,29 @@ export async function listerConvives(db: D1Database, mariageId: string): Promise
     )
     .bind(mariageId)
     .all<Convive>();
+  return results;
+}
+
+/**
+ * Réponse écrite pour un groupe, ou null. Appelée seulement quand l'invité n'a
+ * pas de message à lui : le groupe est un filet sous l'individuel, cf.
+ * schema/005_groupes.sql.
+ */
+export async function getReponseGroupe(
+  db: D1Database,
+  mariageId: string,
+  groupe: string,
+): Promise<ReponseGroupe | null> {
+  return db
+    .prepare("SELECT * FROM reponses_groupe WHERE mariage_id = ?1 AND groupe = ?2")
+    .bind(mariageId, groupe)
+    .first<ReponseGroupe>();
+}
+
+export async function listerGroupes(db: D1Database, mariageId: string): Promise<ReponseGroupe[]> {
+  const { results } = await db
+    .prepare("SELECT * FROM reponses_groupe WHERE mariage_id = ?1 ORDER BY groupe")
+    .bind(mariageId)
+    .all<ReponseGroupe>();
   return results;
 }

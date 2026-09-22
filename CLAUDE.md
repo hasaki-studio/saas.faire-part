@@ -127,6 +127,18 @@ Elles viennent d'arbitrages déjà faits. Les changer change le produit.
   compte sur toi pour le discours » affiché à quelqu'un qui décline est cruel.
   Sur un « non », toujours la réponse générique.
 - **Deux réponses génériques obligatoires** par mariage : une « oui », une « non ».
+- **Trois niveaux de retour, dans cet ordre : message individuel → réponse du
+  groupe → réponse générique du mariage.** Le groupe (`convives.groupe`, libre :
+  « témoins », « collègues ») est un filet *sous* l'individuel, jamais un
+  remplacement — six groupes couvrent trente invités pour une fraction des 3–5 h,
+  mais si le groupe devient le mode par défaut, on revend du Canva avec plus
+  d'étapes. Pas de variante « non » pour un groupe : sur un refus, toujours la
+  générique. Étiquettes voisines (`Témoins` / `temoins`) = deux groupes, donc
+  deux messages à écrire et un invité qui reçoit le mauvais ; l'import alerte.
+- **Le quota de 30 messages n'existe nulle part dans le code**, et ne doit pas y
+  entrer. C'est une promesse commerciale adossée au temps passé, pas une
+  contrainte technique. Refuser le 31ᵉ message à un client qui a payé 350 € se
+  paie en litige, pas en temps gagné : un compteur dans le tableau de bord suffit.
 - **`photo_key` et `message_perso` sont indépendants.** Une photo sans message
   accompagne la réponse générique. Les coupler faisait disparaître sans erreur
   une photo que le couple avait pris la peine de choisir — corrigé, mais l'erreur
