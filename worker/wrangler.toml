@@ -19,6 +19,18 @@ bucket_name = "faire-part-photos-dev"
 SHARED_DOMAIN = "dev.faire-part.hasakistudio.fr"
 # Domaine (ou sous-domaine) public du bucket R2 des photos, sans protocole ni slash final
 PHOTOS_PUBLIC_URL = "https://photos-dev.hasakistudio.fr"
+# Hôte du tableau de bord du couple. Séparé de celui des invités : l'API des
+# invités doit rester ouverte, le tableau de bord doit être derrière Cloudflare
+# Access. Un seul hôte ne peut pas être les deux.
+DASHBOARD_HOSTNAME = "tableau.dev.faire-part.hasakistudio.fr"
+# Identifiants de l'application Access qui protège cet hôte. AUD se lit dans
+# Zero Trust > Access > Applications > (l'application) > Overview.
+ACCESS_TEAM_DOMAIN = "hasakistudio.cloudflareaccess.com"
+ACCESS_AUD = "REMPLACER_PAR_L_AUD_DE_L_APPLICATION_ACCESS"
+# Connexion simulée pour `wrangler dev` : sans Access devant le Worker en local,
+# il n'y a pas de jeton à vérifier. N'a d'effet que sur localhost, et n'existe
+# pas dans [env.prod.vars] — deux verrous plutôt qu'un.
+DEV_EMAIL = "couple@exemple.fr"
 
 # ── prod ──────────────────────────────────────────────────────────
 [env.prod]
@@ -35,3 +47,7 @@ bucket_name = "faire-part-photos-prod"
 [env.prod.vars]
 SHARED_DOMAIN = "faire-part.hasakistudio.fr"
 PHOTOS_PUBLIC_URL = "https://photos.hasakistudio.fr"
+DASHBOARD_HOSTNAME = "tableau.faire-part.hasakistudio.fr"
+ACCESS_TEAM_DOMAIN = "hasakistudio.cloudflareaccess.com"
+ACCESS_AUD = "REMPLACER_PAR_L_AUD_DE_L_APPLICATION_ACCESS_PROD"
+# Pas de DEV_EMAIL ici : volontaire.

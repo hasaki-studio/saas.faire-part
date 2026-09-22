@@ -82,3 +82,41 @@ export async function getAccompagnants(db: D1Database, conviveId: string): Promi
     .all<Convive>();
   return results;
 }
+
+// ── Tableau de bord du couple ─────────────────────────────────────
+//
+// La règle « aucun point d'entrée ne liste les invités » (CLAUDE.md §2) vise la
+// surface publique : celle que n'importe qui atteint avec un token deviné. Le
+// tableau de bord est l'autre surface — authentifiée par Cloudflare Access — et
+// le couple a évidemment le droit de voir sa propre liste (§1 : liste d'invités,
+// messages, réponses, export traiteur).
+//
+// Ce qui rend les deux compatibles tient en une phrase : le mariage est déduit
+// de l'email authentifié, jamais d'un paramètre de requête. Une route qui
+// accepterait ?mariage_id=… laisserait un couple lire la liste d'un autre.
+
+export async function getMariageByEmail(db: D1Database, email: string): Promise<Mariage | null> {
+  return db
+    .prepare("SELECT * FROM mariages WHERE email_proprietaire = ?1")
+    .bind(email.toLowerCase())
+    .first<Mariage>();
+}
+
+/**
+ * Tous les convives d'un mariage, invités principaux et accompagnants mêlés.
+ * `mariageId` vient toujours de getMariageByEmail() : c'est le seul endroit où
+ * la portée est décidée, et elle n'est jamais élargie ensuite.
+ */
+export async function listerConvives(db: D1Database, mariageId: string): Promise<Convive[]> {
+  const { results } = await db
+    .prepare(
+      // Les accompagnants suivent immédiatement la personne qui les a annoncés :
+      // c'est comme ça qu'on lit une liste pour un plan de table.
+      `SELECT * FROM convives
+       WHERE mariage_id = ?1
+       ORDER BY COALESCE(accompagnant_de, id), accompagnant_de IS NOT NULL, nom, prenom`,
+    )
+    .bind(mariageId)
+    .all<Convive>();
+  return results;
+}

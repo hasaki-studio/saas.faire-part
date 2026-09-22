@@ -1,4 +1,12 @@
-import { getAccompagnants, getConviveByToken, resolveMariageByHost, type Mariage } from "./db";
+import { emailAuthentifie } from "./acces";
+import {
+  getAccompagnants,
+  getConviveByToken,
+  getMariageByEmail,
+  listerConvives,
+  resolveMariageByHost,
+  type Mariage,
+} from "./db";
 import { token as genToken } from "./token";
 
 export interface Env {
@@ -6,6 +14,15 @@ export interface Env {
   PHOTOS: R2Bucket;
   SHARED_DOMAIN: string;
   PHOTOS_PUBLIC_URL: string;
+  // Hôte du tableau de bord. Les routes /api/tableau/* n'existent que là :
+  // sur le domaine des invités, elles répondent 404 comme n'importe quelle
+  // autre URL inconnue. Une route authentifiée qui n'est pas joignable est
+  // une route qu'on ne peut pas mal protéger.
+  DASHBOARD_HOSTNAME: string;
+  ACCESS_TEAM_DOMAIN: string;
+  ACCESS_AUD: string;
+  // Confort de développement local uniquement (cf. emailTableau).
+  DEV_EMAIL?: string;
 }
 
 const REGIMES_VALIDES = new Set(["vegetarien", "vegan", "halal", "casher", "sans_gluten"]);
@@ -173,6 +190,107 @@ async function handleRsvp(request: Request, env: Env, mariageToken: string): Pro
   return json({ reconnu: true, retour });
 }
 
+
+// ── Tableau de bord ───────────────────────────────────────────────
+
+/**
+ * Email du couple connecté, ou null. En local (`wrangler dev`) il n'y a pas
+ * d'Access devant le Worker, donc DEV_EMAIL sert de connexion simulée — mais
+ * uniquement sur localhost, et la variable est absente de [env.prod.vars].
+ * Deux verrous plutôt qu'un : une variable oubliée en prod ne suffirait pas à
+ * ouvrir le tableau de bord.
+ */
+async function emailTableau(request: Request, env: Env): Promise<string | null> {
+  const hostname = new URL(request.url).hostname;
+  if (env.DEV_EMAIL && (hostname === "localhost" || hostname === "127.0.0.1")) {
+    return env.DEV_EMAIL.toLowerCase();
+  }
+  return emailAuthentifie(request, env.ACCESS_TEAM_DOMAIN, env.ACCESS_AUD);
+}
+
+/**
+ * Résout le mariage du couple connecté. Le `mariage_id` est déduit de
+ * l'identité authentifiée, jamais d'un paramètre envoyé par le navigateur :
+ * c'est tout ce qui sépare le tableau de bord d'un point d'entrée qui listerait
+ * les invités de n'importe qui (D1 n'a pas de RLS, cf. CLAUDE.md §2).
+ */
+async function mariageDuCouple(request: Request, env: Env): Promise<Mariage | Response> {
+  const email = await emailTableau(request, env);
+  if (!email) return json({ erreur: "Non authentifié" }, 403);
+
+  const mariage = await getMariageByEmail(env.DB, email);
+  // Compte valide chez Access mais rattaché à aucun mariage : même réponse
+  // qu'une absence d'authentification, pour ne pas confirmer quels emails
+  // existent en base.
+  if (!mariage) return json({ erreur: "Non authentifié" }, 403);
+
+  return mariage;
+}
+
+async function handleTableauMariage(request: Request, env: Env): Promise<Response> {
+  const mariage = await mariageDuCouple(request, env);
+  if (mariage instanceof Response) return mariage;
+
+  return json({
+    mariage: {
+      prenom_1: mariage.prenom_1,
+      prenom_2: mariage.prenom_2,
+      date_mariage: mariage.date_mariage,
+      date_limite_rsvp: mariage.date_limite_rsvp,
+      slug: mariage.slug,
+      domaine: mariage.domaine_personnalise ?? `${mariage.slug}.${env.SHARED_DOMAIN}`,
+    },
+  });
+}
+
+async function handleTableauConvives(request: Request, env: Env): Promise<Response> {
+  const mariage = await mariageDuCouple(request, env);
+  if (mariage instanceof Response) return mariage;
+
+  const convives = await listerConvives(env.DB, mariage.id);
+  const domaine = mariage.domaine_personnalise ?? `${mariage.slug}.${env.SHARED_DOMAIN}`;
+
+  return json({
+    convives: convives.map((c) => ({
+      id: c.id,
+      prenom: c.prenom,
+      nom: c.nom,
+      accompagnant_de: c.accompagnant_de,
+      // Le lien personnel : le couple en a besoin pour l'envoyer lui-même.
+      // Un accompagnant est annoncé par quelqu'un d'autre, il ne reçoit pas de
+      // lien — sa ligne existe pour le plan de table (cf. CLAUDE.md §4).
+      lien: c.accompagnant_de ? null : `https://${domaine}/${slugPrenom(c.prenom)}-${c.token}`,
+      a_message: Boolean(c.message_perso),
+      a_photo: Boolean(c.photo_key),
+      presence: c.presence,
+      regime_alimentaire: c.regime_alimentaire,
+      message_invite: c.message_invite,
+      repondu_le: c.repondu_le,
+    })),
+  });
+}
+
+/**
+ * Le tableau de bord n'est servi que sur son propre hôte. `wrangler dev` sert
+ * tout sur localhost, d'où la seconde branche — conditionnée à DEV_EMAIL, qui
+ * n'existe pas en production.
+ */
+function estHoteTableau(url: URL, env: Env): boolean {
+  if (url.hostname === env.DASHBOARD_HOSTNAME) return true;
+  return Boolean(env.DEV_EMAIL) && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+}
+
+// Partie décorative du lien (cf. import-invites.js) : toute la sécurité est
+// dans le token qui suit.
+function slugPrenom(prenom: string): string {
+  return prenom
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -185,6 +303,16 @@ export default {
     const rsvp = url.pathname.match(/^\/api\/rsvp\/([^/]+)$/);
     if (rsvp && request.method === "POST") {
       return handleRsvp(request, env, rsvp[1]!);
+    }
+
+    // Les routes du tableau de bord ne sont servies que sur son propre hôte.
+    if (url.pathname.startsWith("/api/tableau/") && estHoteTableau(url, env)) {
+      if (url.pathname === "/api/tableau/mariage" && request.method === "GET") {
+        return handleTableauMariage(request, env);
+      }
+      if (url.pathname === "/api/tableau/convives" && request.method === "GET") {
+        return handleTableauConvives(request, env);
+      }
     }
 
     return new Response("Not found", { status: 404 });

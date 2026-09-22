@@ -259,8 +259,11 @@ Repris du projet `Mon-Mariage`. Ils ont tous coûté du temps une première fois
 
 Phase actuelle : **fondations**. Construit : schéma D1, Worker (lookup token +
 RSVP), premier thème (`botanique`) branché dessus, deux messagers (`montgolfiere`,
-`voiture`). Pas encore construit : upload photos vers R2, tableau de bord couple,
-déploiement réel, cron de suppression RGPD.
+`voiture`), import d'une liste d'invités, déploiement dev réel sur
+`dev.faire-part.hasakistudio.fr`, tableau de bord couple **en lecture seule**
+(liste, réponses, avancement des messages, export traiteur). Pas encore
+construit : upload photos vers R2, saisie des messages depuis le tableau de
+bord, balises Open Graph pour l'aperçu WhatsApp, cron de suppression RGPD.
 
 | Phase | Période | État |
 |---|---|---|
