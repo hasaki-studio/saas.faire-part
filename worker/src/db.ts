@@ -20,6 +20,10 @@ export interface Mariage {
 
 export type Presence = "oui" | "non";
 
+// 'hors_liste' : arrivé avec un token inconnu, ou annoncé par quelqu'un qui
+// l'était. Renseigné à l'insertion — après, l'information n'existe plus.
+export type Origine = "liste" | "hors_liste";
+
 export interface Convive {
   id: string;
   mariage_id: string;
@@ -33,6 +37,7 @@ export interface Convive {
   regime_alimentaire: string | null;
   message_invite: string | null;
   repondu_le: string | null;
+  origine: Origine;
 }
 
 /**

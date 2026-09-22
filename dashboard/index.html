@@ -242,6 +242,7 @@
       <div class="kpi"><div class="num" id="k-non">0</div><div class="lbl">Réponses non</div></div>
       <div class="kpi"><div class="num" id="k-taux">0%</div><div class="lbl">Taux de réponse</div></div>
       <div class="kpi alert"><div class="num" id="k-attente">0</div><div class="lbl">Sans réponse</div></div>
+      <div class="kpi"><div class="num" id="k-hl">0</div><div class="lbl">Hors liste<span class="sub" id="k-hl-sub"></span></div></div>
     </section>
 
     <div class="grid">
@@ -277,6 +278,7 @@
           <button class="small" type="button" data-f="non">Absents</button>
           <button class="small" type="button" data-f="attente">Sans réponse</button>
           <button class="small" type="button" data-f="sans-message">Sans message perso</button>
+          <button class="small" type="button" data-f="hors-liste">Hors liste</button>
         </div>
       </div>
 
@@ -290,6 +292,7 @@
           <thead>
             <tr>
               <th class="sortable" data-k="nom">Invité <span class="arrow"></span></th>
+              <th class="sortable" data-k="hors_liste">Liste <span class="arrow"></span></th>
               <th class="sortable" data-k="presence">Présence <span class="arrow"></span></th>
               <th class="sortable" data-k="regime">Régime <span class="arrow"></span></th>
               <th class="sortable" data-k="message_invite">Message reçu <span class="arrow"></span></th>
@@ -372,6 +375,8 @@ function chiffres() {
     attente: invites.filter((c) => !c.presence).length,
     personnes: CONVIVES.filter((c) => c.presence === 'oui').length,
     accompagnants: CONVIVES.filter((c) => c.accompagnant_de && c.presence === 'oui').length,
+    horsListe: invites.filter((c) => c.hors_liste).length,
+    horsListePersonnes: CONVIVES.filter((c) => c.hors_liste && c.presence === 'oui').length,
   };
 }
 
@@ -385,9 +390,17 @@ function kpis() {
     ? `dont ${n.accompagnants} accompagnant${n.accompagnants > 1 ? 's' : ''}`
     : '';
   $('k-attente').textContent = n.attente;
-  $('k-taux').textContent = n.invites.length
-    ? Math.round((repondu / n.invites.length) * 100) + '%'
+  // Les réponses hors liste sortent du taux : le dénominateur, c'est la liste
+  // que le couple a déposée, pas ce qui lui est arrivé en plus.
+  const attendus = n.invites.length - n.horsListe;
+  const repondusAttendus = repondu - n.invites.filter((c) => c.hors_liste).length;
+  $('k-taux').textContent = attendus > 0
+    ? Math.round((repondusAttendus / attendus) * 100) + '%'
     : '0%';
+  $('k-hl').textContent = n.horsListe;
+  $('k-hl-sub').textContent = n.horsListePersonnes
+    ? `${n.horsListePersonnes} pers. à table`
+    : 'personne d\'inattendu';
   $('stamp').textContent = 'Mis à jour à ' +
     new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
@@ -507,6 +520,7 @@ function correspond(c) {
   // Un accompagnant n'a jamais de message personnalisé : l'inclure ici gonflerait
   // une liste de travail que le couple doit pouvoir vider.
   if (filtre === 'sans-message' && (c.a_message || c.accompagnant_de)) return false;
+  if (filtre === 'hors-liste' && !c.hors_liste) return false;
   if (recherche && !nomComplet(c).toLowerCase().includes(recherche)) return false;
   return true;
 }
@@ -516,6 +530,7 @@ function valeurTri(c, cle) {
   if (cle === 'presence') return c.presence || 'zzz';   // les sans-réponse en dernier
   if (cle === 'regime') return REGIMES[c.regime_alimentaire] || '';
   if (cle === 'a_message') return c.a_message ? 1 : 0;
+  if (cle === 'hors_liste') return c.hors_liste ? 0 : 1;   // les inattendus en tête
   return c[cle] || '';
 }
 
@@ -540,6 +555,7 @@ function tableau() {
       : '<span class="muted">—</span>';
     return `<tr>
       <td><span class="${c.accompagnant_de ? 'accomp' : ''}">${esc(nomComplet(c)) || '<span class="muted">—</span>'}</span></td>
+      <td>${c.hors_liste ? '<span class="tag warn">Hors liste</span>' : '<span class="muted">Invité</span>'}</td>
       <td>${tag}</td>
       <td>${esc(REGIMES[c.regime_alimentaire] || '') || '<span class="muted">—</span>'}</td>
       <td class="note">${esc(c.message_invite) || '<span class="muted">—</span>'}</td>
@@ -549,7 +565,7 @@ function tableau() {
       <td style="white-space:nowrap">${c.repondu_le ? dateHeure(c.repondu_le) : '<span class="muted">—</span>'}</td>
       <td>${lien}</td>
     </tr>`;
-  }).join('') : '<tr><td colspan="7" class="empty">Aucun invité ne correspond à ce filtre.</td></tr>';
+  }).join('') : '<tr><td colspan="8" class="empty">Aucun invité ne correspond à ce filtre.</td></tr>';
 
   document.querySelectorAll('th[data-k] .arrow').forEach((a) => {
     a.textContent = a.parentElement.dataset.k === triCle ? (triAsc ? '▲' : '▼') : '';
@@ -563,12 +579,13 @@ function tableau() {
    route de plus à protéger côté Worker. */
 function exportCsv() {
   const q = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
-  const entete = ['Prénom', 'Nom', 'Présence', 'Régime', 'Annoncé par'];
+  const entete = ['Prénom', 'Nom', 'Présence', 'Régime', 'Annoncé par', 'Sur la liste'];
   const corps = CONVIVES.filter((c) => c.presence === 'oui').map((c) => {
     const parent = c.accompagnant_de ? CONVIVES.find((p) => p.id === c.accompagnant_de) : null;
     return [c.prenom, c.nom, 'oui',
       REGIMES[c.regime_alimentaire] || (c.accompagnant_de ? 'à déterminer' : ''),
-      parent ? nomComplet(parent) : ''].map(q).join(',');
+      parent ? nomComplet(parent) : '',
+      c.hors_liste ? 'non' : 'oui'].map(q).join(',');
   });
 
   // ﻿ : sans ce BOM, Excel lit le CSV en latin-1 et abîme les accents.

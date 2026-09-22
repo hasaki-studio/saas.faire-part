@@ -77,7 +77,10 @@ node proxy-local.js --tableau          # tableau de bord sur :8081
 Fait : cinq indicateurs en tête (réponses oui, personnes à table, réponses non,
 taux de réponse, sans réponse), répartition des réponses en anneau, régimes &
 allergies, avancement de la saisie des messages, et la liste de récap avec
-filtres, recherche et tri par colonne. Copie du lien personnel invité par
+filtres, recherche et tri par colonne — dont un filtre « hors liste », qui
+isole les réponses arrivées avec un token inconnu (`convives.origine`) et les
+sort du taux de réponse : le dénominateur, c'est la liste déposée par le
+couple, pas ce qui lui est arrivé en plus. Copie du lien personnel invité par
 invité, export CSV pour le traiteur — construit dans le navigateur à partir des
 données déjà chargées, donc sans route supplémentaire à protéger.
 

@@ -152,7 +152,7 @@ async function handleRsvp(request: Request, env: Env, mariageToken: string): Pro
     }
 
     await env.DB.prepare(
-      "INSERT INTO convives (id, mariage_id, token, prenom, nom, presence, regime_alimentaire, message_invite, repondu_le) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+      "INSERT INTO convives (id, mariage_id, token, prenom, nom, presence, regime_alimentaire, message_invite, repondu_le, origine) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 'hors_liste')",
     )
       .bind(crypto.randomUUID(), mariage.id, genToken(), prenom, nom, payload.presence, payload.regime_alimentaire ?? null, payload.message ?? null, now)
       .run();
@@ -173,19 +173,26 @@ async function handleRsvp(request: Request, env: Env, mariageToken: string): Pro
   await env.DB.prepare("DELETE FROM convives WHERE accompagnant_de = ?1").bind(convive.id).run();
   for (const a of payload.accompagnants ?? []) {
     await env.DB.prepare(
-      "INSERT INTO convives (id, mariage_id, token, accompagnant_de, prenom, nom, presence, repondu_le) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+      // Le +1 d'un inconnu n'est pas davantage sur la liste que lui.
+      "INSERT INTO convives (id, mariage_id, token, accompagnant_de, prenom, nom, presence, repondu_le, origine) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
     )
-      .bind(crypto.randomUUID(), mariage.id, genToken(), convive.id, a.prenom.trim(), a.nom.trim(), payload.presence, now)
+      .bind(crypto.randomUUID(), mariage.id, genToken(), convive.id, a.prenom.trim(), a.nom.trim(), payload.presence, now, convive.origine)
       .run();
   }
 
-  const retour =
-    payload.presence === "oui" && convive.message_perso
-      ? { message: convive.message_perso, photo_url: photoUrl(env, convive.photo_key) }
-      : {
-          message: payload.presence === "oui" ? mariage.reponse_generique_oui : mariage.reponse_generique_non,
-          photo_url: null,
-        };
+  const oui = payload.presence === "oui";
+
+  // message_perso et photo_key sont deux champs indépendants (cf. CLAUDE.md §1) :
+  // une photo sans texte accompagne la réponse générique plutôt que de disparaître.
+  // Les coupler, c'est perdre sans erreur une photo que le couple a pris la peine
+  // de choisir. Sur un « non », ni l'un ni l'autre — même raison que pour le
+  // message : ce qui est personnel devient cruel quand on décline (§4).
+  const retour = {
+    message: oui
+      ? convive.message_perso || mariage.reponse_generique_oui
+      : mariage.reponse_generique_non,
+    photo_url: oui ? photoUrl(env, convive.photo_key) : null,
+  };
 
   return json({ reconnu: true, retour });
 }
@@ -262,6 +269,7 @@ async function handleTableauConvives(request: Request, env: Env): Promise<Respon
       lien: c.accompagnant_de ? null : `https://${domaine}/${slugPrenom(c.prenom)}-${c.token}`,
       a_message: Boolean(c.message_perso),
       a_photo: Boolean(c.photo_key),
+      hors_liste: c.origine === "hors_liste",
       presence: c.presence,
       regime_alimentaire: c.regime_alimentaire,
       message_invite: c.message_invite,

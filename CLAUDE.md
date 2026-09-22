@@ -107,6 +107,14 @@ export function token(n = 8): string {
 4. Token inconnu → **faire-part générique** avec une ligne sobre (« nous n'avons pas
    reconnu votre lien, vous pouvez répondre ci-dessous »), jamais un 404. Un 404
    confirme le format à un attaquant et bloque un invité qui a mal recopié.
+   La ligne créée porte `origine = 'hors_liste'` (et ses accompagnants en
+   héritent) : c'est le seul moment où l'information existe, après elle est
+   indistinguable d'un invité importé.
+   Corollaire à dire au couple : **le lien est un droit au porteur**. Un invité
+   qui fait suivre son lien donne son identité avec — le destinataire répond à
+   sa place et lit le message écrit pour lui. Aucune parade technique sans
+   demander à l'invité de s'identifier, ce que le produit refuse. Un lien par
+   personne, et le tableau de bord montre qui a déjà répondu.
 5. Limitation de débit sur la route de lookup (règle Cloudflare, ~10 req/min/IP).
 
 ---
@@ -119,6 +127,11 @@ Elles viennent d'arbitrages déjà faits. Les changer change le produit.
   compte sur toi pour le discours » affiché à quelqu'un qui décline est cruel.
   Sur un « non », toujours la réponse générique.
 - **Deux réponses génériques obligatoires** par mariage : une « oui », une « non ».
+- **`photo_key` et `message_perso` sont indépendants.** Une photo sans message
+  accompagne la réponse générique. Les coupler faisait disparaître sans erreur
+  une photo que le couple avait pris la peine de choisir — corrigé, mais l'erreur
+  est facile à réintroduire en réécrivant la construction du retour. Sur un
+  « non », ni photo ni message perso : même raison que ci-dessus.
 - **Régime alimentaire = liste fermée.** Jamais de champ libre. Une allergie est une
   donnée de santé (RGPD art. 9), régime juridique renforcé. « Halal » ou « casher »
   formulés comme choix de menu, jamais comme question sur la religion.

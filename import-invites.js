@@ -107,8 +107,8 @@ fs.mkdirSync(dossier, { recursive: true });
 // lien envoyé (CLAUDE.md §3) — deux lignes pour la même personne, ce sont deux
 // liens en circulation et un plan de table faux.
 const insertions = invites.map((inv) =>
-  `INSERT INTO convives (id, mariage_id, token, prenom, nom, message_perso)\n` +
-  `SELECT ${sql(inv.id)}, ${sql(mariageId)}, ${sql(inv.token)}, ${sql(inv.prenom)}, ${sql(inv.nom)}, ${sql(inv.message)}\n` +
+  `INSERT INTO convives (id, mariage_id, token, prenom, nom, message_perso, origine)\n` +
+  `SELECT ${sql(inv.id)}, ${sql(mariageId)}, ${sql(inv.token)}, ${sql(inv.prenom)}, ${sql(inv.nom)}, ${sql(inv.message)}, 'liste'\n` +
   `WHERE NOT EXISTS (SELECT 1 FROM convives WHERE mariage_id = ${sql(mariageId)} AND prenom = ${sql(inv.prenom)} AND nom = ${sql(inv.nom)});`
 );
 
