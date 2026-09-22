@@ -7,285 +7,638 @@
 <!-- Une page protégée par Cloudflare Access n'a rien à faire dans un index de
      moteur de recherche, même si Access la refuserait au robot. -->
 <meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Mêmes polices que le thème botanique : le couple passe de son faire-part à
+     son tableau de bord, les deux doivent se ressembler. -->
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --encre: #2f3b33;
-    --doux: #6b7a6f;
-    --feuille: #7c9473;
-    --fond: #fbfaf7;
-    --carte: #ffffff;
-    --trait: #e6e4dc;
+    --sage: #7d9b76;
+    --sage-dark: #4f6b4a;
+    --cream: #f7f3ec;
+    --cream-dark: #ede6d8;
+    --gold: #c9a96e;
+    --ink: #3a3530;
+    --rose: #c98f8f;
   }
-  * { box-sizing: border-box; }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
   body {
-    margin: 0;
-    padding: 24px 16px 64px;
-    background: var(--fond);
-    color: var(--encre);
-    font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: 'Jost', sans-serif;
+    font-weight: 300;
+    line-height: 1.6;
+    padding: 32px 20px 80px;
   }
-  main { max-width: 960px; margin: 0 auto; }
-  h1 { font-size: 1.5rem; margin: 0 0 4px; font-weight: 600; }
-  .sous-titre { color: var(--doux); margin: 0 0 28px; font-size: 0.95rem; }
 
-  .chiffres { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
-  .chiffre {
-    flex: 1 1 140px; background: var(--carte); border: 1px solid var(--trait);
-    border-radius: 10px; padding: 14px 16px;
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  header {
+    text-align: center;
+    padding-bottom: 34px;
+    margin-bottom: 38px;
+    border-bottom: 1px solid rgba(201, 169, 110, 0.35);
   }
-  .chiffre b { display: block; font-size: 1.6rem; font-weight: 600; line-height: 1.2; }
-  .chiffre span { color: var(--doux); font-size: 0.85rem; }
-
-  /* Sans indicateur d'avancement, le couple abandonne en cours de saisie
-     (cf. CLAUDE.md §4). */
-  .avancement { background: var(--carte); border: 1px solid var(--trait); border-radius: 10px; padding: 14px 16px; margin-bottom: 24px; }
-  .jauge { height: 8px; background: var(--trait); border-radius: 4px; overflow: hidden; margin-top: 8px; }
-  .jauge > div { height: 100%; background: var(--feuille); width: 0; transition: width .4s; }
-
-  .barre-outils { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
-  .barre-outils input[type=search] {
-    flex: 1 1 220px; padding: 9px 12px; border: 1px solid var(--trait);
-    border-radius: 8px; font: inherit; background: var(--carte);
+  header h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-style: italic;
+    font-size: 2.4rem;
+    color: var(--sage-dark);
   }
-  button, .bouton {
-    font: inherit; padding: 9px 14px; border: 1px solid var(--trait);
-    background: var(--carte); color: var(--encre); border-radius: 8px; cursor: pointer;
-    text-decoration: none;
+  header .sub {
+    font-size: 0.68rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--sage);
+    margin-top: 10px;
   }
-  button:hover, .bouton:hover { border-color: var(--feuille); }
 
-  table { width: 100%; border-collapse: collapse; background: var(--carte); border: 1px solid var(--trait); border-radius: 10px; overflow: hidden; }
-  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--trait); font-size: 0.93rem; vertical-align: top; }
-  th { font-weight: 600; color: var(--doux); font-size: 0.8rem; text-transform: uppercase; letter-spacing: .04em; }
-  tr:last-child td { border-bottom: none; }
-  td.accompagnant .nom { padding-left: 18px; color: var(--doux); }
-  td.accompagnant .nom::before { content: "↳ "; }
+  .toolbar {
+    display: flex; justify-content: center; align-items: center;
+    gap: 14px; flex-wrap: wrap; margin-top: 22px;
+  }
 
-  .etiquette { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.8rem; border: 1px solid var(--trait); }
-  .oui { background: #eef4ea; border-color: #cfe0c6; }
-  .non { background: #f6efee; border-color: #e3cfcc; }
-  .attente { color: var(--doux); }
+  button {
+    font-family: 'Jost', sans-serif;
+    font-size: 0.66rem;
+    font-weight: 300;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    padding: 11px 22px;
+    border: 1px solid var(--gold);
+    background: transparent;
+    color: var(--sage-dark);
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+  button:hover { background: var(--gold); color: #fff; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.small { font-size: 0.6rem; padding: 8px 16px; letter-spacing: 0.16em; }
+  button.small.on { background: var(--sage-dark); border-color: var(--sage-dark); color: var(--cream); }
 
-  .lien-copie { font-size: 0.8rem; }
-  .message { color: var(--doux); font-style: italic; }
-  .etat { padding: 32px 0; color: var(--doux); }
-  .erreur { color: #8a4a41; }
-  @media (max-width: 640px) {
-    .masquable { display: none; }
+  .stamp { font-size: 0.66rem; color: var(--sage); letter-spacing: 0.08em; }
+
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    margin-bottom: 38px;
+  }
+  .kpi { background: #fff; border-top: 2px solid var(--gold); padding: 26px 18px; text-align: center; }
+  .kpi .num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.9rem; font-weight: 300; line-height: 1; color: var(--sage-dark);
+  }
+  .kpi .lbl {
+    font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--sage); margin-top: 10px;
+  }
+  .kpi .lbl .sub {
+    display: block; font-size: 0.58rem; letter-spacing: 0.1em;
+    text-transform: none; color: #9a938a; margin-top: 4px;
+  }
+  .kpi.accent { border-top-color: var(--sage-dark); }
+  .kpi.alert { border-top-color: var(--rose); }
+  .kpi.alert .num { color: #a86a6a; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px; margin-bottom: 20px;
+  }
+
+  .card { background: #fff; padding: 28px 26px; border: 1px solid rgba(201, 169, 110, 0.25); }
+  .card h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic; font-weight: 400; font-size: 1.35rem;
+    color: var(--sage-dark); margin-bottom: 22px;
+  }
+  .card-head {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 14px; flex-wrap: wrap; margin-bottom: 22px;
+  }
+  .card-head h2 { margin: 0; }
+  .card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .empty { font-size: 0.8rem; color: var(--sage); font-style: italic; padding: 18px 0; }
+  .muted { color: #9a938a; font-style: italic; }
+
+  .donut-row { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
+  .donut-mid { font-family: 'Cormorant Garamond', serif; font-size: 1.7rem; fill: #4f6b4a; }
+  .donut-sub { font-size: 0.42rem; letter-spacing: 0.18em; fill: #7d9b76; }
+
+  .legend { list-style: none; font-size: 0.78rem; }
+  .legend li { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+  .legend .n { color: var(--sage); margin-left: auto; padding-left: 16px; }
+
+  .bars { display: flex; flex-direction: column; gap: 14px; }
+  .bar-line .top { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 5px; }
+  .bar-line .top span:last-child { color: var(--sage); }
+  .track { height: 7px; background: var(--cream-dark); overflow: hidden; }
+  .fill { height: 100%; background: var(--sage); transition: width 0.7s ease; }
+  /* Hachures : ce n'est pas une donnée, c'est un trou dans la donnée. */
+  .fill.unknown {
+    background: repeating-linear-gradient(45deg,
+      var(--gold), var(--gold) 4px, rgba(201, 169, 110, 0.45) 4px, rgba(201, 169, 110, 0.45) 8px);
+  }
+  .hint {
+    font-style: normal; margin-left: 5px; color: #9a7b3f; cursor: help;
+    background: rgba(201, 169, 110, 0.28); border-radius: 50%;
+    width: 15px; height: 15px; display: inline-block; text-align: center;
+    line-height: 15px; font-size: 0.7rem;
+  }
+  .reg-foot {
+    display: flex; gap: 20px; flex-wrap: wrap; margin-top: 18px; padding-top: 14px;
+    border-top: 1px solid var(--cream-dark); font-size: 0.75rem; color: #8a837a;
+  }
+  .reg-foot b { font-weight: 400; color: var(--sage-dark); }
+  .reg-warn { font-size: 0.72rem; color: #9a7b3f; margin-top: 12px; line-height: 1.6; }
+
+  .filtres {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--cream); padding: 14px 18px; margin-bottom: 18px;
+    border-left: 2px solid var(--gold);
+  }
+  .filtres input[type="search"] {
+    font-family: 'Jost', sans-serif; font-size: 0.8rem; font-weight: 300;
+    padding: 8px 12px; border: 1px solid rgba(201, 169, 110, 0.5);
+    background: #fff; color: var(--ink); flex: 1 1 180px; min-width: 140px;
+  }
+  .filtres input[type="search"]:focus { outline: none; border-color: var(--gold); }
+  .filtres .count { font-size: 0.75rem; color: var(--sage-dark); margin-left: auto; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th {
+    text-align: left; font-size: 0.6rem; font-weight: 400;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--sage);
+    padding: 0 12px 12px; border-bottom: 1px solid rgba(201, 169, 110, 0.35);
+    white-space: nowrap; user-select: none;
+  }
+  th.sortable { cursor: pointer; }
+  th.sortable:hover { color: var(--gold); }
+  th .arrow { opacity: 0.45; font-size: 0.7rem; }
+  td { padding: 13px 12px; border-bottom: 1px solid var(--cream-dark); vertical-align: top; }
+  tr:hover td { background: rgba(247, 243, 236, 0.7); }
+  td, .note { overflow-wrap: anywhere; }
+  .note { font-size: 0.78rem; max-width: 300px; }
+
+  /* Un accompagnant n'est pas un invité de plus dans la liste : il est rattaché
+     à la personne qui l'a annoncé, sinon le plan de table devient faux. */
+  td .accomp { padding-left: 18px; color: #8a837a; }
+  td .accomp::before { content: "↳ "; color: var(--gold); }
+
+  .tag {
+    display: inline-block; font-size: 0.62rem; letter-spacing: 0.12em;
+    text-transform: uppercase; padding: 3px 11px; border-radius: 11px; white-space: nowrap;
+  }
+  .tag.oui { background: rgba(125, 155, 118, 0.16); color: var(--sage-dark); }
+  .tag.non { background: rgba(201, 143, 143, 0.16); color: #a86a6a; }
+  .tag.warn { background: rgba(201, 169, 110, 0.22); color: #9a7b3f; }
+
+  #err { display: none; padding: 18px 22px; font-size: 0.82rem; margin-bottom: 24px;
+    background: rgba(201, 143, 143, 0.12); border-left: 2px solid var(--rose); }
+  #loader { text-align: center; padding: 70px 0; color: var(--sage); font-style: italic; }
+
+  footer {
+    text-align: center; margin-top: 46px; font-size: 0.62rem;
+    letter-spacing: 0.2em; text-transform: uppercase; color: var(--sage);
+  }
+
+  @media (max-width: 600px) {
+    body { padding: 22px 14px 60px; }
+    header h1 { font-size: 1.9rem; }
+    .kpi .num { font-size: 2.3rem; }
+    .card { padding: 22px 18px; }
   }
 </style>
 </head>
 <body>
-<main>
-  <h1 id="titre">Tableau de bord</h1>
-  <p class="sous-titre" id="sous-titre">Chargement…</p>
+<div class="wrap">
 
-  <div id="contenu" hidden>
-    <div class="chiffres" id="chiffres"></div>
+  <header>
+    <h1 id="titre">Tableau de bord</h1>
+    <p class="sub" id="sous-titre">Tableau de bord des réponses</p>
+    <div class="toolbar">
+      <button type="button" id="btn-refresh">Rafraîchir</button>
+      <button type="button" id="btn-export">Export traiteur (CSV)</button>
+      <span class="stamp" id="stamp"></span>
+    </div>
+  </header>
 
-    <div class="avancement">
-      <div id="avancement-texte"></div>
-      <div class="jauge"><div id="jauge-barre"></div></div>
+  <div id="err"></div>
+  <div id="loader">Chargement des réponses…</div>
+
+  <main id="content" style="display:none">
+
+    <section class="kpis">
+      <div class="kpi accent"><div class="num" id="k-oui">0</div><div class="lbl">Réponses oui</div></div>
+      <div class="kpi accent"><div class="num" id="k-pers">0</div><div class="lbl">Personnes à table<span class="sub" id="k-pers-sub"></span></div></div>
+      <div class="kpi"><div class="num" id="k-non">0</div><div class="lbl">Réponses non</div></div>
+      <div class="kpi"><div class="num" id="k-taux">0%</div><div class="lbl">Taux de réponse</div></div>
+      <div class="kpi alert"><div class="num" id="k-attente">0</div><div class="lbl">Sans réponse</div></div>
+    </section>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Répartition des réponses</h2>
+        <div class="donut-row">
+          <svg id="donut" viewBox="0 0 160 160" width="160" height="160"></svg>
+          <ul class="legend" id="donut-legend"></ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Régimes &amp; allergies</h2>
+        <div class="bars" id="regimes"></div>
+      </div>
     </div>
 
-    <div class="barre-outils">
-      <input type="search" id="recherche" placeholder="Rechercher un invité" aria-label="Rechercher un invité">
-      <button type="button" id="export">Export traiteur (CSV)</button>
+    <div class="card" style="margin-bottom:20px">
+      <h2>Messages personnalisés</h2>
+      <div class="bar-line">
+        <div class="top"><span id="msg-texte"></span><span id="msg-part"></span></div>
+        <div class="track"><div class="fill" id="msg-fill" style="width:0"></div></div>
+      </div>
+      <p class="reg-warn" id="msg-note"></p>
     </div>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Invité</th>
-          <th>Réponse</th>
-          <th class="masquable">Régime</th>
-          <th class="masquable">Message reçu</th>
-          <th>Lien</th>
-        </tr>
-      </thead>
-      <tbody id="lignes"></tbody>
-    </table>
-  </div>
+    <div class="card">
+      <div class="card-head">
+        <h2>Détail des réponses <span class="stamp" id="tbl-count"></span></h2>
+        <div class="card-actions">
+          <button class="small" type="button" data-f="tous">Tous</button>
+          <button class="small" type="button" data-f="oui">Présents</button>
+          <button class="small" type="button" data-f="non">Absents</button>
+          <button class="small" type="button" data-f="attente">Sans réponse</button>
+          <button class="small" type="button" data-f="sans-message">Sans message perso</button>
+        </div>
+      </div>
 
-  <p class="etat" id="etat"></p>
-</main>
+      <div class="filtres">
+        <input type="search" id="recherche" placeholder="Rechercher un invité" aria-label="Rechercher un invité">
+        <span class="count" id="filtre-count"></span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="sortable" data-k="nom">Invité <span class="arrow"></span></th>
+              <th class="sortable" data-k="presence">Présence <span class="arrow"></span></th>
+              <th class="sortable" data-k="regime">Régime <span class="arrow"></span></th>
+              <th class="sortable" data-k="message_invite">Message reçu <span class="arrow"></span></th>
+              <th class="sortable" data-k="a_message">Message perso <span class="arrow"></span></th>
+              <th class="sortable" data-k="repondu_le">Répondu le <span class="arrow"></span></th>
+              <th>Lien</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <footer id="pied"></footer>
+</div>
 
 <script>
-// Même origine que le tableau de bord : le Worker répond sur /api/tableau/* du
-// même hôte, donc pas de CORS et le cookie d'Access part tout seul.
-const API = "";
-
+/* ============================================================
+   Le Worker répond sur /api/tableau/* du même hôte : même origine,
+   donc pas de CORS et le cookie d'Access part tout seul.
+   ============================================================ */
 const REGIMES = {
-  vegetarien: "Végétarien",
-  vegan: "Vegan",
-  halal: "Halal",
-  casher: "Casher",
-  sans_gluten: "Sans gluten",
+  vegetarien: 'Végétarien',
+  vegan: 'Vegan',
+  halal: 'Halal',
+  casher: 'Casher',
+  sans_gluten: 'Sans gluten',
 };
 
-let convives = [];
+let MARIAGE = null;
+let CONVIVES = [];
+let filtre = 'tous';
+let recherche = '';
+let triCle = 'nom', triAsc = true;
 
 const $ = (id) => document.getElementById(id);
-const txt = (v) => (v == null ? "" : String(v));
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-function etat(message, erreur) {
-  const el = $("etat");
-  el.textContent = message;
-  el.className = erreur ? "etat erreur" : "etat";
-  el.hidden = !message;
-}
-
-async function lire(chemin) {
-  const res = await fetch(API + chemin, { headers: { accept: "application/json" } });
-  if (res.status === 403) throw new Error("acces");
-  if (!res.ok) throw new Error("http " + res.status);
-  return res.json();
-}
+const nomComplet = (c) => `${c.prenom || ''} ${c.nom || ''}`.trim();
 
 function dateFr(iso) {
-  if (!iso) return "";
-  const [a, m, j] = iso.slice(0, 10).split("-");
+  if (!iso) return '';
+  const [a, m, j] = iso.slice(0, 10).split('-');
   return `${j}/${m}/${a}`;
 }
 
-// Sans indicateur d'avancement, le couple abandonne en cours de saisie
-// (cf. CLAUDE.md §4).
-function phraseAvancement(avecMessage, total) {
-  if (total === 0) return "Aucun invité pour le moment.";
-  if (avecMessage === 0) return `Aucun de vos ${total} invités n'a encore son message personnalisé.`;
-  if (avecMessage === 1) return `1 invité sur ${total} a son message personnalisé.`;
-  return `${avecMessage} invités sur ${total} ont leur message personnalisé.`;
+function dateHeure(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return esc(iso);
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' });
 }
 
-function nombres() {
-  // Un accompagnant n'a pas répondu lui-même : il a été annoncé. Il compte
-  // dans les convives à table, pas dans les réponses attendues.
-  const invites = convives.filter((c) => !c.accompagnant_de);
-  const oui = convives.filter((c) => c.presence === "oui").length;
-  const non = invites.filter((c) => c.presence === "non").length;
-  const attente = invites.filter((c) => !c.presence).length;
-
-  $("chiffres").innerHTML = [
-    [invites.length, "invités"],
-    [oui, "à table"],
-    [non, "déclinent"],
-    [attente, "sans réponse"],
-  ]
-    .map(([n, l]) => `<div class="chiffre"><b>${n}</b><span>${l}</span></div>`)
-    .join("");
-
-  const avecMessage = invites.filter((c) => c.a_message).length;
-  $("avancement-texte").textContent = phraseAvancement(avecMessage, invites.length);
-  $("jauge-barre").style.width = invites.length ? (avecMessage / invites.length) * 100 + "%" : "0";
+function erreur(html) {
+  $('loader').style.display = 'none';
+  $('err').innerHTML = html;
+  $('err').style.display = 'block';
 }
 
-function etiquettePresence(c) {
-  if (c.presence === "oui") return '<span class="etiquette oui">Oui</span>';
-  if (c.presence === "non") return '<span class="etiquette non">Non</span>';
-  return '<span class="attente">en attente</span>';
+async function lire(chemin) {
+  const res = await fetch(chemin, { headers: { accept: 'application/json' }, cache: 'no-store' });
+  if (res.status === 403) throw new Error('acces');
+  if (!res.ok) throw new Error('Le serveur a répondu ' + res.status);
+  return res.json();
 }
 
-function afficher(filtre) {
-  const f = filtre.trim().toLowerCase();
-  const visibles = f
-    ? convives.filter((c) => `${c.prenom} ${c.nom}`.toLowerCase().includes(f))
-    : convives;
+/* ---------- Comptages ----------
+   Un accompagnant ne répond pas lui-même : il est annoncé. Il compte dans les
+   personnes à table, jamais dans les réponses attendues — sans quoi le taux de
+   réponse dépasse 100 % dès qu'un invité vient accompagné. */
+function chiffres() {
+  const invites = CONVIVES.filter((c) => !c.accompagnant_de);
+  return {
+    invites,
+    oui: invites.filter((c) => c.presence === 'oui').length,
+    non: invites.filter((c) => c.presence === 'non').length,
+    attente: invites.filter((c) => !c.presence).length,
+    personnes: CONVIVES.filter((c) => c.presence === 'oui').length,
+    accompagnants: CONVIVES.filter((c) => c.accompagnant_de && c.presence === 'oui').length,
+  };
+}
 
-  $("lignes").innerHTML = visibles
-    .map((c) => {
-      const nom = `${txt(c.prenom)} ${txt(c.nom)}`.trim();
-      const lien = c.lien
-        ? `<button type="button" class="lien-copie" data-lien="${c.lien}">Copier</button>`
-        : '<span class="attente">—</span>';
-      return `<tr>
-        <td class="${c.accompagnant_de ? "accompagnant" : ""}"><span class="nom">${nom}</span></td>
-        <td>${etiquettePresence(c)}</td>
-        <td class="masquable">${REGIMES[c.regime_alimentaire] || ""}</td>
-        <td class="masquable message">${txt(c.message_invite)}</td>
-        <td>${lien}</td>
-      </tr>`;
-    })
-    .join("");
+function kpis() {
+  const n = chiffres();
+  const repondu = n.oui + n.non;
+  $('k-oui').textContent = n.oui;
+  $('k-non').textContent = n.non;
+  $('k-pers').textContent = n.personnes;
+  $('k-pers-sub').textContent = n.accompagnants
+    ? `dont ${n.accompagnants} accompagnant${n.accompagnants > 1 ? 's' : ''}`
+    : '';
+  $('k-attente').textContent = n.attente;
+  $('k-taux').textContent = n.invites.length
+    ? Math.round((repondu / n.invites.length) * 100) + '%'
+    : '0%';
+  $('stamp').textContent = 'Mis à jour à ' +
+    new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
 
-  if (!visibles.length) {
-    $("lignes").innerHTML = '<tr><td colspan="5" class="attente">Aucun invité ne correspond.</td></tr>';
+/* ---------- Donut ---------- */
+function donut() {
+  const n = chiffres();
+  const parts = [
+    { label: 'Réponses oui', v: n.oui, c: '#4f6b4a', sub: n.personnes + ' personnes' },
+    { label: 'Réponses non', v: n.non, c: '#c98f8f', sub: '' },
+    { label: 'Sans réponse', v: n.attente, c: '#ede6d8', sub: 'invités restants' },
+  ].filter((p) => p.v > 0);
+
+  const total = parts.reduce((s, p) => s + p.v, 0);
+  const svg = $('donut');
+  const R = 62, C = 2 * Math.PI * R;
+
+  if (!total) {
+    svg.innerHTML = '<circle cx="80" cy="80" r="62" fill="none" stroke="#ede6d8" stroke-width="16"/>';
+    $('donut-legend').innerHTML = '<li class="muted">Aucun invité pour le moment</li>';
+    return;
   }
+
+  let off = 0, arcs = '';
+  for (const p of parts) {
+    const len = (p.v / total) * C;
+    arcs += `<circle cx="80" cy="80" r="${R}" fill="none" stroke="${p.c}" stroke-width="16"
+             stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}"
+             transform="rotate(-90 80 80)"></circle>`;
+    off += len;
+  }
+
+  svg.innerHTML = arcs +
+    `<text x="80" y="76" text-anchor="middle" class="donut-mid">${n.oui + n.non}</text>` +
+    `<text x="80" y="94" text-anchor="middle" class="donut-sub">REPONSES</text>`;
+
+  $('donut-legend').innerHTML = parts.map((p) =>
+    `<li><span class="dot" style="background:${p.c}"></span>
+       <span>${esc(p.label)}${p.sub ? `<br><span class="muted" style="font-size:0.7rem">${esc(p.sub)}</span>` : ''}</span>
+       <span class="n">${p.v}</span></li>`).join('') +
+    `<li style="margin-top:6px;padding-top:10px;border-top:1px solid var(--cream-dark)">
+       <span class="muted" style="font-size:0.72rem">Le cercle compte les réponses, pas les personnes.</span></li>`;
 }
 
-// Export pour le traiteur : qui vient, et qui mange quoi. Construit dans le
-// navigateur à partir des données déjà chargées — pas de route de plus à
-// protéger côté Worker.
-function exporterCsv() {
-  const guillemets = (v) => `"${txt(v).replace(/"/g, '""')}"`;
-  const lignes = [["Prénom", "Nom", "Présence", "Régime", "Annoncé par"]]
-    .concat(
-      convives
-        .filter((c) => c.presence === "oui")
-        .map((c) => {
-          const parent = c.accompagnant_de
-            ? convives.find((p) => p.id === c.accompagnant_de)
-            : null;
-          return [
-            c.prenom,
-            c.nom,
-            "oui",
-            REGIMES[c.regime_alimentaire] || "",
-            parent ? `${parent.prenom} ${parent.nom}` : "",
-          ];
-        }),
-    )
-    .map((l) => l.map(guillemets).join(","))
-    .join("\r\n");
+/* ---------- Régimes ----------
+   Un accompagnant sans régime renseigné n'est pas « sans contrainte » : il est
+   inconnu. Les deux dans la même barre donneraient au traiteur un chiffre faux. */
+function regimes() {
+  const box = $('regimes');
+  const presents = CONVIVES.filter((c) => c.presence === 'oui');
+
+  const compte = new Map();
+  for (const c of presents) {
+    const cle = c.regime_alimentaire || (c.accompagnant_de ? 'inconnu' : 'aucun');
+    compte.set(cle, (compte.get(cle) || 0) + 1);
+  }
+
+  if (!compte.size) {
+    box.innerHTML = '<p class="empty">Aucune réponse positive pour le moment.</p>';
+    return;
+  }
+
+  const libelle = (cle) =>
+    cle === 'aucun' ? 'Sans contrainte' : cle === 'inconnu' ? 'À déterminer' : (REGIMES[cle] || cle);
+
+  const list = [...compte.entries()]
+    .map(([cle, personnes]) => ({ cle, personnes, label: libelle(cle) }))
+    // « À déterminer » ferme la marche : c'est un trou, pas un régime.
+    .sort((a, b) => (a.cle === 'inconnu') - (b.cle === 'inconnu') || b.personnes - a.personnes);
+
+  const total = list.reduce((s, r) => s + r.personnes, 0);
+  const max = Math.max(1, ...list.map((r) => r.personnes));
+  const inconnus = compte.get('inconnu') || 0;
+
+  box.innerHTML = list.map((r) => `
+    <div class="bar-line">
+      <div class="top">
+        <span>${esc(r.label)}${r.cle === 'inconnu'
+          ? ' <i class="hint" title="Accompagnants dont le régime n\'a pas été précisé">?</i>' : ''}</span>
+        <span>${r.personnes} pers.</span>
+      </div>
+      <div class="track"><div class="fill${r.cle === 'inconnu' ? ' unknown' : ''}"
+        style="width:${(r.personnes / max) * 100}%"></div></div>
+    </div>`).join('')
+    + `<div class="reg-foot"><span><b>${total}</b> personnes à table au total</span></div>`
+    + (inconnus
+      ? `<p class="reg-warn">« À déterminer » regroupe les accompagnants : le formulaire ne
+         demande le régime qu'à la personne qui répond, celui des convives qu'elle annonce
+         reste à confirmer.</p>`
+      : '');
+}
+
+/* ---------- Avancement de la saisie des messages ----------
+   Sans cet indicateur, le couple abandonne en cours de saisie. */
+function messages() {
+  const invites = CONVIVES.filter((c) => !c.accompagnant_de);
+  const avec = invites.filter((c) => c.a_message).length;
+  const part = invites.length ? (avec / invites.length) * 100 : 0;
+
+  $('msg-texte').textContent =
+    invites.length === 0 ? 'Aucun invité pour le moment.'
+    : avec === 0 ? `Aucun de vos ${invites.length} invités n'a encore son message personnalisé.`
+    : avec === 1 ? `1 invité sur ${invites.length} a son message personnalisé.`
+    : `${avec} invités sur ${invites.length} ont leur message personnalisé.`;
+  $('msg-part').textContent = invites.length ? Math.round(part) + '%' : '';
+  $('msg-fill').style.width = part + '%';
+  $('msg-note').textContent = invites.length && avec < invites.length
+    ? "Les invités sans message reçoivent la réponse générique du mariage — c'est un choix valide, pas un oubli."
+    : '';
+}
+
+/* ---------- Liste de récap ---------- */
+function correspond(c) {
+  if (filtre === 'oui' && c.presence !== 'oui') return false;
+  if (filtre === 'non' && c.presence !== 'non') return false;
+  if (filtre === 'attente' && c.presence) return false;
+  // Un accompagnant n'a jamais de message personnalisé : l'inclure ici gonflerait
+  // une liste de travail que le couple doit pouvoir vider.
+  if (filtre === 'sans-message' && (c.a_message || c.accompagnant_de)) return false;
+  if (recherche && !nomComplet(c).toLowerCase().includes(recherche)) return false;
+  return true;
+}
+
+function valeurTri(c, cle) {
+  if (cle === 'nom') return nomComplet(c).toLowerCase();
+  if (cle === 'presence') return c.presence || 'zzz';   // les sans-réponse en dernier
+  if (cle === 'regime') return REGIMES[c.regime_alimentaire] || '';
+  if (cle === 'a_message') return c.a_message ? 1 : 0;
+  return c[cle] || '';
+}
+
+function tableau() {
+  const lignes = CONVIVES.filter(correspond).sort((a, b) => {
+    const x = valeurTri(a, triCle), y = valeurTri(b, triCle);
+    const d = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'fr');
+    return triAsc ? d : -d;
+  });
+
+  $('tbl-count').textContent = `· ${CONVIVES.length} lignes`;
+  $('filtre-count').textContent = lignes.length === CONVIVES.length
+    ? `${lignes.length} affichés`
+    : `${lignes.length} sur ${CONVIVES.length} affichés`;
+
+  $('tbody').innerHTML = lignes.length ? lignes.map((c) => {
+    const tag = c.presence === 'oui' ? '<span class="tag oui">Présent</span>'
+      : c.presence === 'non' ? '<span class="tag non">Absent</span>'
+      : '<span class="muted">en attente</span>';
+    const lien = c.lien
+      ? `<button class="small" type="button" data-lien="${esc(c.lien)}">Copier</button>`
+      : '<span class="muted">—</span>';
+    return `<tr>
+      <td><span class="${c.accompagnant_de ? 'accomp' : ''}">${esc(nomComplet(c)) || '<span class="muted">—</span>'}</span></td>
+      <td>${tag}</td>
+      <td>${esc(REGIMES[c.regime_alimentaire] || '') || '<span class="muted">—</span>'}</td>
+      <td class="note">${esc(c.message_invite) || '<span class="muted">—</span>'}</td>
+      <td>${c.accompagnant_de ? '<span class="muted">—</span>'
+        : c.a_message ? '<span class="tag oui">Écrit</span>'
+        : '<span class="tag warn">Générique</span>'}</td>
+      <td style="white-space:nowrap">${c.repondu_le ? dateHeure(c.repondu_le) : '<span class="muted">—</span>'}</td>
+      <td>${lien}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="7" class="empty">Aucun invité ne correspond à ce filtre.</td></tr>';
+
+  document.querySelectorAll('th[data-k] .arrow').forEach((a) => {
+    a.textContent = a.parentElement.dataset.k === triCle ? (triAsc ? '▲' : '▼') : '';
+  });
+  document.querySelectorAll('.card-actions button[data-f]').forEach((b) =>
+    b.classList.toggle('on', b.dataset.f === filtre));
+}
+
+/* ---------- Export traiteur ----------
+   Construit dans le navigateur à partir des données déjà chargées : pas de
+   route de plus à protéger côté Worker. */
+function exportCsv() {
+  const q = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const entete = ['Prénom', 'Nom', 'Présence', 'Régime', 'Annoncé par'];
+  const corps = CONVIVES.filter((c) => c.presence === 'oui').map((c) => {
+    const parent = c.accompagnant_de ? CONVIVES.find((p) => p.id === c.accompagnant_de) : null;
+    return [c.prenom, c.nom, 'oui',
+      REGIMES[c.regime_alimentaire] || (c.accompagnant_de ? 'à déterminer' : ''),
+      parent ? nomComplet(parent) : ''].map(q).join(',');
+  });
 
   // ﻿ : sans ce BOM, Excel lit le CSV en latin-1 et abîme les accents.
-  const a = document.createElement("a");
-  a.href = "data:text/csv;charset=utf-8," + encodeURIComponent("﻿" + lignes + "\r\n");
-  a.download = "traiteur.csv";
+  // data: plutôt que blob: — les blob: sont bloqués dans le navigateur intégré
+  // de WhatsApp, et le couple ouvre parfois son tableau de bord depuis là.
+  const csv = '﻿' + [entete.map(q).join(','), ...corps].join('\r\n') + '\r\n';
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'traiteur-' + new Date().toISOString().slice(0, 10) + '.csv';
   a.click();
 }
 
-$("lignes").addEventListener("click", (e) => {
-  const bouton = e.target.closest("[data-lien]");
+/* ---------- Écouteurs ---------- */
+$('recherche').addEventListener('input', (e) => { recherche = e.target.value.trim().toLowerCase(); tableau(); });
+$('btn-export').addEventListener('click', exportCsv);
+$('btn-refresh').addEventListener('click', charger);
+
+document.querySelectorAll('.card-actions button[data-f]').forEach((b) =>
+  b.addEventListener('click', () => { filtre = b.dataset.f; tableau(); }));
+
+document.querySelectorAll('th[data-k]').forEach((th) =>
+  th.addEventListener('click', () => {
+    const k = th.dataset.k;
+    if (k === triCle) triAsc = !triAsc; else { triCle = k; triAsc = true; }
+    tableau();
+  }));
+
+$('tbody').addEventListener('click', (e) => {
+  const bouton = e.target.closest('[data-lien]');
   if (!bouton) return;
   navigator.clipboard.writeText(bouton.dataset.lien).then(
-    () => {
-      bouton.textContent = "Copié";
-      setTimeout(() => (bouton.textContent = "Copier"), 1500);
-    },
+    () => { bouton.textContent = 'Copié'; setTimeout(() => (bouton.textContent = 'Copier'), 1500); },
     () => (bouton.textContent = bouton.dataset.lien),
   );
 });
 
-$("recherche").addEventListener("input", (e) => afficher(e.target.value));
-$("export").addEventListener("click", exporterCsv);
+/* ---------- Chargement ---------- */
+async function charger() {
+  $('err').style.display = 'none';
+  $('loader').style.display = 'block';
 
-(async function demarrer() {
   try {
-    const [{ mariage }, liste] = await Promise.all([
-      lire("/api/tableau/mariage"),
-      lire("/api/tableau/convives"),
-    ]);
-    convives = liste.convives;
+    const [m, liste] = await Promise.all([lire('/api/tableau/mariage'), lire('/api/tableau/convives')]);
+    MARIAGE = m.mariage;
+    CONVIVES = liste.convives;
 
-    document.title = `${mariage.prenom_1} & ${mariage.prenom_2} — Tableau de bord`;
-    $("titre").textContent = `${mariage.prenom_1} & ${mariage.prenom_2}`;
-    $("sous-titre").textContent =
-      `Mariage le ${dateFr(mariage.date_mariage)} · réponses attendues avant le ${dateFr(mariage.date_limite_rsvp)}`;
+    document.title = `${MARIAGE.prenom_1} & ${MARIAGE.prenom_2} — Tableau de bord`;
+    $('titre').textContent = `${MARIAGE.prenom_1} & ${MARIAGE.prenom_2}`;
+    $('sous-titre').textContent = 'Tableau de bord des réponses';
+    $('pied').textContent =
+      `${MARIAGE.prenom_1} & ${MARIAGE.prenom_2} · ${dateFr(MARIAGE.date_mariage)} · réponses attendues avant le ${dateFr(MARIAGE.date_limite_rsvp)}`;
 
-    nombres();
-    afficher("");
-    $("contenu").hidden = false;
-    etat("");
+    kpis();
+    donut();
+    regimes();
+    messages();
+    tableau();
+
+    $('loader').style.display = 'none';
+    $('content').style.display = 'block';
   } catch (e) {
-    $("sous-titre").textContent = "";
-    etat(
-      e.message === "acces"
-        ? "Cette session n'est rattachée à aucun mariage. Si vous venez de recevoir vos accès, réessayez après vous être reconnecté."
-        : "Le tableau de bord n'a pas pu être chargé. Réessayez dans un instant.",
-      true,
-    );
+    $('content').style.display = 'none';
+    $('sous-titre').textContent = '';
+    erreur(e.message === 'acces'
+      ? "<strong>Cette session n'est rattachée à aucun mariage.</strong><br>Si vous venez de recevoir vos accès, réessayez après vous être reconnecté."
+      : '<strong>Le tableau de bord n\'a pas pu être chargé.</strong><br>' + esc(e.message));
   }
-})();
+}
+
+charger();
 </script>
 </body>
 </html>

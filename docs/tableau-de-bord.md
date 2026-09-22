@@ -74,11 +74,29 @@ node proxy-local.js --tableau          # tableau de bord sur :8081
 
 ## Ce qu'il fait, et ce qu'il ne fait pas encore
 
-Fait : liste des invités (accompagnants rattachés à la personne qui les a
-annoncés), réponses, régimes, messages reçus, copie du lien personnel,
-avancement de la saisie des messages, export CSV pour le traiteur — construit
-dans le navigateur à partir des données déjà chargées, donc sans route
-supplémentaire à protéger.
+Fait : cinq indicateurs en tête (réponses oui, personnes à table, réponses non,
+taux de réponse, sans réponse), répartition des réponses en anneau, régimes &
+allergies, avancement de la saisie des messages, et la liste de récap avec
+filtres, recherche et tri par colonne. Copie du lien personnel invité par
+invité, export CSV pour le traiteur — construit dans le navigateur à partir des
+données déjà chargées, donc sans route supplémentaire à protéger.
+
+Deux comptages à ne pas confondre, et c'est la raison d'être de deux
+indicateurs séparés : **un accompagnant ne répond pas**, il est annoncé. Il
+compte dans « personnes à table », jamais dans le taux de réponse — sinon
+celui-ci dépasse 100 % dès qu'un invité vient accompagné. Même logique dans la
+carte des régimes : un accompagnant sans régime renseigné n'est pas « sans
+contrainte », il est **à déterminer** (barre hachurée), parce que le formulaire
+ne pose la question qu'à la personne qui répond. Donner au traiteur ces deux-là
+dans la même barre, c'est lui donner un chiffre faux.
+
+Repris du tableau de bord `Mon-Mariage`, mais **pas portable en l'état** : le
+suivi des relances et la courbe cumulée. Les deux reposaient sur l'email de
+chaque invité (`invites.csv`, `relances.csv`) ; ici les liens partent par
+WhatsApp et `convives` n'a pas de colonne email. Un suivi des relances
+demanderait d'abord de décider ce qu'on enregistre — date d'envoi du lien, date
+de chaque relance — et où. À trancher quand le besoin se posera pour de vrai,
+c'est-à-dire en avril.
 
 Pas encore fait : **aucune écriture**. Les messages personnalisés et les photos
 se saisissent encore en base. C'est délibéré pour cette première tranche : une
