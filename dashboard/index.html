@@ -14,14 +14,26 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --sage: #7d9b76;
+    /* Quatre niveaux de texte, un par rôle, tous au-dessus de 4,5:1 sur le
+       crème comme sur le blanc — mesuré, pas estimé. Le plus foncé va à ce que
+       le couple a écrit : c'est le contenu, il doit dominer l'interface.
+         --ink      12,9:1   ce que le couple a saisi
+         --ink-2     7,3:1   infos du mariage, valeurs, dates
+         --aide      5,3:1   consignes et explications
+         --sage      4,6:1   libellés en petites majuscules */
+    --ink: #2e2a25;
+    --ink-2: #554f47;
+    --aide: #6b645a;
+    --sage: #5b7555;
+    --sage-dark: #446042;
     --sage-light: #a8c4a2;
-    --sage-dark: #4f6b4a;
     --cream: #f7f3ec;
     --cream-dark: #ede6d8;
     --gold: #c9a96e;
-    --ink: #3a3530;
-    --rose: #c98f8f;
+    --gold-texte: #7d6a3c;   /* l'or est lisible en aplat, pas en texte */
+    --ambre: #8a6a2c;        /* avertissements */
+    --rose: #c98f8f;          /* aplats et marques */
+    --rose-texte: #9c5a5a;    /* le même rôle, en texte lisible */
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -30,7 +42,9 @@
     background: var(--cream);
     color: var(--ink);
     font-family: 'Jost', sans-serif;
-    font-weight: 300;
+    /* 400 et non 300 : en petit corps, une graisse fine grise le texte autant
+       qu'une couleur trop claire. Les titres gardent leur légèreté. */
+    font-weight: 400;
     line-height: 1.6;
     padding: 32px 20px 80px;
   }
@@ -65,8 +79,8 @@
 
   button {
     font-family: 'Jost', sans-serif;
-    font-size: 0.66rem;
-    font-weight: 300;
+    font-size: 0.68rem;
+    font-weight: 400;
     letter-spacing: 0.22em;
     text-transform: uppercase;
     padding: 11px 22px;
@@ -82,6 +96,82 @@
   button.small.on { background: var(--sage-dark); border-color: var(--sage-dark); color: var(--cream); }
 
   .stamp { font-size: 0.66rem; color: var(--sage); letter-spacing: 0.08em; }
+
+  /* Deux onglets, repris du tableau de bord d'origine : le couple a deux métiers
+     séparés dans le temps — écrire ses messages en novembre, suivre les réponses
+     en avril — et une page qui fait les deux à la fois ne fait bien ni l'un ni
+     l'autre. */
+  .aide { font-size: 0.8rem; color: var(--ink-2); margin-bottom: 14px; line-height: 1.6; }
+  #import-coller {
+    width: 100%; resize: vertical; font-family: 'Jost', sans-serif;
+    font-size: 0.88rem; font-weight: 400; line-height: 1.65;
+    padding: 11px 13px; border: 1px solid rgba(201, 169, 110, 0.5); background: #fff; color: var(--ink);
+  }
+  #import-coller:focus { outline: none; border-color: var(--gold); }
+  .import-pied { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .import-pied .etat { font-size: 0.76rem; color: var(--aide); }
+  .import-pied .etat.ok { color: var(--sage-dark); }
+  .import-pied .etat.ko { color: var(--rose-texte); }
+  .zone-survol { border-color: var(--gold) !important; background: var(--cream) !important; }
+
+  #import-un { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  #import-un input {
+    font-family: 'Jost', sans-serif; font-size: 0.88rem; font-weight: 400; flex: 1 1 150px;
+    padding: 9px 12px; border: 1px solid rgba(201, 169, 110, 0.5); background: #fff; color: var(--ink);
+  }
+  #import-un input:focus { outline: none; border-color: var(--gold); }
+
+  .apercu { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--cream-dark); }
+  .apercu h3 {
+    font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--sage); font-weight: 400; margin-bottom: 10px;
+  }
+  .apercu table { min-width: 0; font-size: 0.8rem; }
+  .apercu td, .apercu th { padding: 7px 10px; }
+  .apercu .colonnes-lues { font-size: 0.78rem; color: var(--ink-2); margin-bottom: 12px; line-height: 1.7; }
+  .apercu .colonnes-lues b { font-weight: 400; color: var(--sage-dark); }
+  .apercu .colonnes-lues .ignorees { color: var(--ambre); }
+  .apercu .alertes { list-style: none; margin: 12px 0 0; font-size: 0.78rem; color: var(--ambre); }
+  .apercu .alertes li { padding: 3px 0 3px 16px; position: relative; }
+  .apercu .alertes li::before { content: "·"; position: absolute; left: 4px; }
+  .apercu .bilan { font-size: 0.86rem; margin-top: 14px; }
+  .apercu .bilan b { font-weight: 400; color: var(--sage-dark); }
+  .apercu .valider { margin-top: 14px; }
+  .correspondance { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .correspondance label { font-size: 0.72rem; color: var(--sage); display: flex; flex-direction: column; gap: 5px; }
+  .apercu .conflit { font-size: 0.78rem; color: var(--ambre); margin-bottom: 12px; }
+  .correspondance select {
+    font-family: 'Jost', sans-serif; font-size: 0.84rem; font-weight: 400;
+    padding: 7px 10px; border: 1px solid rgba(201, 169, 110, 0.5); background: #fff; color: var(--ink);
+  }
+
+  .onglets {
+    display: flex; justify-content: center; gap: 0;
+    border-bottom: 1px solid rgba(201, 169, 110, 0.35);
+    margin-bottom: 34px;
+  }
+  .onglets button {
+    border: none; border-bottom: 2px solid transparent; background: none;
+    padding: 12px 26px; color: var(--sage); font-size: 0.68rem; letter-spacing: 0.24em;
+  }
+  .onglets button:hover { background: none; color: var(--sage-dark); }
+  .onglets button.on { color: var(--sage-dark); border-bottom-color: var(--gold); }
+
+  /* Une fiche par invité : le nom, puis directement de quoi écrire. Rien à
+     décoder, rien à déplier — dans cet onglet les invités ne sont pas à
+     trouver, ils sont la page. */
+  .fiche { border-bottom: 1px solid var(--cream-dark); padding: 20px 0; }
+  .fiche:first-child { padding-top: 4px; }
+  .fiche:last-child { border-bottom: none; padding-bottom: 4px; }
+  .fiche-tete { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .fiche-tete .nom { font-size: 1.02rem; color: var(--ink); font-weight: 400; }
+  .fiche-tete .groupe { font-size: 0.76rem; color: var(--ink-2); }
+  .fiche-tete .etat-fiche { margin-left: auto; }
+  .fiche-groupe { background: var(--cream); margin: 0 -26px; padding: 20px 26px; }
+  .fiche-groupe .nom { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.1rem; color: var(--sage-dark); }
+  .fiche-groupe .aide { margin: -4px 0 12px; }
+  .fiche .editeur { padding: 0; background: none; }
+  .fiche .editeur .titre { display: none; }
 
   .kpis {
     display: grid;
@@ -100,11 +190,11 @@
   }
   .kpi .lbl .sub {
     display: block; font-size: 0.58rem; letter-spacing: 0.1em;
-    text-transform: none; color: #9a938a; margin-top: 4px;
+    text-transform: none; color: var(--aide); margin-top: 4px;
   }
   .kpi.accent { border-top-color: var(--sage-dark); }
   .kpi.alert { border-top-color: var(--rose); }
-  .kpi.alert .num { color: #a86a6a; }
+  .kpi.alert .num { color: var(--rose-texte); }
 
   .grid {
     display: grid;
@@ -126,7 +216,7 @@
   .card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
   .empty { font-size: 0.8rem; color: var(--sage); font-style: italic; padding: 18px 0; }
-  .muted { color: #9a938a; font-style: italic; }
+  .muted { color: var(--aide); font-style: italic; }
 
   .donut-row { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
   .donut-mid { font-family: 'Cormorant Garamond', serif; font-size: 1.7rem; fill: #4f6b4a; }
@@ -148,17 +238,17 @@
       var(--gold), var(--gold) 4px, rgba(201, 169, 110, 0.45) 4px, rgba(201, 169, 110, 0.45) 8px);
   }
   .hint {
-    font-style: normal; margin-left: 5px; color: #9a7b3f; cursor: help;
+    font-style: normal; margin-left: 5px; color: var(--ambre); cursor: help;
     background: rgba(201, 169, 110, 0.28); border-radius: 50%;
     width: 15px; height: 15px; display: inline-block; text-align: center;
     line-height: 15px; font-size: 0.7rem;
   }
   .reg-foot {
     display: flex; gap: 20px; flex-wrap: wrap; margin-top: 18px; padding-top: 14px;
-    border-top: 1px solid var(--cream-dark); font-size: 0.75rem; color: #8a837a;
+    border-top: 1px solid var(--cream-dark); font-size: 0.75rem; color: var(--ink-2);
   }
   .reg-foot b { font-weight: 400; color: var(--sage-dark); }
-  .reg-warn { font-size: 0.72rem; color: #9a7b3f; margin-top: 12px; line-height: 1.6; }
+  .reg-warn { font-size: 0.72rem; color: var(--ambre); margin-top: 12px; line-height: 1.6; }
 
   .filtres {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -166,11 +256,17 @@
     border-left: 2px solid var(--gold);
   }
   .filtres input[type="search"] {
-    font-family: 'Jost', sans-serif; font-size: 0.8rem; font-weight: 300;
+    font-family: 'Jost', sans-serif; font-size: 0.82rem; font-weight: 400;
     padding: 8px 12px; border: 1px solid rgba(201, 169, 110, 0.5);
     background: #fff; color: var(--ink); flex: 1 1 180px; min-width: 140px;
   }
   .filtres input[type="search"]:focus { outline: none; border-color: var(--gold); }
+  .filtres select {
+    font-family: 'Jost', sans-serif; font-size: 0.82rem; font-weight: 400;
+    padding: 8px 12px; border: 1px solid rgba(201, 169, 110, 0.5);
+    background: #fff; color: var(--ink);
+  }
+  .filtres select:focus { outline: none; border-color: var(--gold); }
   /* Les trois niveaux sont ordonnés (du plus personnel au moins personnel), pas
      trois catégories sans rapport : un dégradé d'une seule teinte, du foncé au
      clair, dit cet ordre. Clartés 0,47 / 0,63 / 0,79 — monotones et régulières.
@@ -195,19 +291,19 @@
   .barre.groupe { background: var(--sage); }
   .barre.generique { background: var(--sage-light); }
   .colonne .l { font-size: 0.72rem; color: var(--ink); margin-top: 10px; padding: 0 6px; line-height: 1.35; }
-  .colonne .l small { display: block; font-size: 0.68rem; color: #9a938a; margin-top: 2px; }
+  .colonne .l small { display: block; font-size: 0.68rem; color: var(--aide); margin-top: 2px; }
   .msg-titre { font-size: 0.86rem; }
 
   .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
   .chips-titre {
-    flex: 1 0 100%; font-size: 0.72rem; color: #8a837a; margin-bottom: 2px;
+    flex: 1 0 100%; font-size: 0.72rem; color: var(--ink-2); margin-bottom: 2px;
   }
   .chips .chip {
     font-size: 0.72rem; padding: 5px 12px; background: var(--cream);
     border: 1px solid var(--cream-dark);
   }
   .chips .chip b { font-weight: 400; color: var(--sage-dark); margin-left: 6px; }
-  .chips .chip.manque { border-color: rgba(201, 169, 110, 0.6); color: #9a7b3f; }
+  .chips .chip.manque { border-color: rgba(201, 169, 110, 0.6); color: var(--ambre); }
 
   .filtres .count { font-size: 0.75rem; color: var(--sage-dark); margin-left: auto; }
 
@@ -219,20 +315,20 @@
   th {
     text-align: left; font-size: 0.6rem; font-weight: 400;
     letter-spacing: 0.18em; text-transform: uppercase; color: var(--sage);
-    padding: 0 9px 12px; border-bottom: 1px solid rgba(201, 169, 110, 0.35);
+    padding: 0 8px 12px; border-bottom: 1px solid rgba(201, 169, 110, 0.35);
     white-space: nowrap; user-select: none;
   }
   th.sortable { cursor: pointer; }
   th.sortable:hover { color: var(--gold); }
   th .arrow { opacity: 0.45; font-size: 0.7rem; }
-  td { padding: 13px 9px; border-bottom: 1px solid var(--cream-dark); vertical-align: top; }
+  td { padding: 13px 8px; border-bottom: 1px solid var(--cream-dark); vertical-align: top; }
   tr:hover td { background: rgba(247, 243, 236, 0.7); }
   .note { font-size: 0.78rem; max-width: 210px; overflow-wrap: anywhere; }
   td .nom { display: inline-block; }
 
   /* Un accompagnant n'est pas un invité de plus dans la liste : il est rattaché
      à la personne qui l'a annoncé, sinon le plan de table devient faux. */
-  td .accomp { padding-left: 18px; color: #8a837a; }
+  td .accomp { padding-left: 18px; color: var(--ink-2); }
   td .accomp::before { content: "↳ "; color: var(--gold); }
 
   .tag {
@@ -240,41 +336,59 @@
     text-transform: uppercase; padding: 3px 11px; border-radius: 11px; white-space: nowrap;
   }
   .tag.oui { background: rgba(125, 155, 118, 0.16); color: var(--sage-dark); }
-  .tag.non { background: rgba(201, 143, 143, 0.16); color: #a86a6a; }
-  .tag.warn { background: rgba(201, 169, 110, 0.22); color: #9a7b3f; }
+  .tag.non { background: rgba(201, 143, 143, 0.16); color: var(--rose-texte); }
+  .tag.warn { background: rgba(201, 169, 110, 0.22); color: var(--ambre); }
   .tag.groupe { background: rgba(125, 155, 118, 0.10); color: var(--sage); }
-  td .par { color: #8a837a; }
+  td .par { color: var(--ink-2); }
 
-  /* L'éditeur se déplie sous la ligne plutôt que dans une colonne : à dix
-     colonnes, une cellule de saisie serait large de deux centimètres. */
-  tr.edition td { background: var(--cream); padding: 0; }
-  .editeur { padding: 18px 20px 20px; }
+  .editeur { padding: 0; }
   .editeur .titre {
     font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase;
     color: var(--sage); margin-bottom: 9px;
   }
   .editeur textarea {
     width: 100%; min-height: 90px; resize: vertical;
-    font-family: 'Jost', sans-serif; font-size: 0.88rem; font-weight: 300; line-height: 1.6;
+    font-family: 'Jost', sans-serif; font-size: 0.9rem; font-weight: 400; line-height: 1.65;
     padding: 11px 13px; border: 1px solid rgba(201, 169, 110, 0.5);
     background: #fff; color: var(--ink);
   }
   .editeur textarea:focus { outline: none; border-color: var(--gold); }
+  /* Texte et photo côte à côte : ensemble ils forment le retour personnalisé,
+     ils se préparent au même endroit. */
+  .editeur .deux { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+  .editeur .texte { flex: 1 1 320px; min-width: 0; }
+  .editeur .photo { flex: 0 0 150px; text-align: center; }
+  .editeur .photo .cadre {
+    width: 110px; height: 110px; border-radius: 50%; margin: 0 auto 10px;
+    background: var(--cream-dark); overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(201, 169, 110, 0.4);
+  }
+  /* Même cadrage que le médaillon du faire-part : le couple voit ce que
+     l'invité verra, pas une vignette approximative. */
+  .editeur .photo .cadre img { width: 100%; height: 100%; object-fit: cover; object-position: center 25%; }
+  .editeur .photo .cadre .vide { font-size: 0.68rem; color: var(--aide); padding: 0 10px; line-height: 1.4; }
+  .editeur .photo input[type="file"] { display: none; }
+  .editeur .photo .actions { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+  .editeur .photo .etat-photo { font-size: 0.7rem; margin-top: 8px; color: var(--aide); line-height: 1.5; }
+  .editeur .photo .etat-photo.ok { color: var(--sage-dark); }
+  .editeur .photo .etat-photo.ko { color: var(--rose-texte); }
+
   .editeur .pied {
     display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-    margin-top: 10px; font-size: 0.74rem; color: #9a938a;
+    margin-top: 10px; font-size: 0.74rem; color: var(--aide);
   }
   .editeur .etat { margin-left: auto; }
   .editeur .etat.ok { color: var(--sage-dark); }
-  .editeur .etat.ko { color: #a86a6a; }
-  .editeur .compteur.trop { color: #a86a6a; }
+  .editeur .etat.ko { color: var(--rose-texte); }
+  .editeur .compteur.trop { color: var(--rose-texte); }
   button.retour {
     border: none; background: none; padding: 0; cursor: pointer;
     display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0;
     text-transform: none; font-size: inherit;
   }
   button.retour:hover { background: none; }
-  .crayon { color: var(--gold); font-size: 0.9rem; opacity: 0; transition: opacity 0.15s; }
+  .crayon { color: var(--gold-texte); font-size: 0.9rem; opacity: 0; transition: opacity 0.15s; }
   tr:hover .crayon, button.retour:focus .crayon { opacity: 1; }
   .chips .chip.modifiable {
     cursor: pointer; font-family: 'Jost', sans-serif; letter-spacing: 0;
@@ -318,6 +432,71 @@
 
   <main id="content" style="display:none">
 
+
+    <nav class="onglets" id="onglets">
+      <button type="button" data-vue="messages">Messages</button>
+      <button type="button" data-vue="reponses">Réponses</button>
+    </nav>
+
+    <section id="vue-messages" hidden>
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-head">
+          <h2>Ajouter des invités</h2>
+          <div class="card-actions">
+            <button class="small" type="button" id="btn-modele">Télécharger le modèle</button>
+          </div>
+        </div>
+
+        <p class="aide">Dans votre tableur, sélectionnez vos lignes, copiez-les
+          (Ctrl+C), et collez-les ici. Pas besoin d'exporter quoi que ce soit.
+          L'ordre des colonnes n'a pas d'importance — on lit la ligne d'en-tête.</p>
+
+        <textarea id="import-coller" rows="4"
+          placeholder="Prénom	Nom	Message	Groupe&#10;Héloïse	Martin	Hâte de te voir danser !	Témoins"></textarea>
+
+        <div class="import-pied">
+          <input type="file" id="import-fichier" accept=".csv,.txt,text/csv,text/plain" hidden>
+          <button class="small" type="button" id="btn-fichier">Ou déposer un fichier CSV</button>
+          <button class="small" type="button" id="btn-un">+ Un seul invité</button>
+          <span class="etat" id="import-etat"></span>
+        </div>
+
+        <form id="import-un" hidden>
+          <input type="text" id="un-prenom" placeholder="Prénom" required>
+          <input type="text" id="un-nom" placeholder="Nom">
+          <input type="text" id="un-groupe" placeholder="Groupe (facultatif)">
+          <button class="small" type="submit">Ajouter</button>
+        </form>
+
+        <div id="import-apercu"></div>
+      </div>
+    <div class="card" style="margin-bottom:20px">
+      <h2>Messages personnalisés</h2>
+      <p class="msg-titre" id="msg-texte"></p>
+      <div class="colonnes" id="msg-colonnes"></div>
+      <p class="reg-warn" id="msg-note"></p>
+      <div class="chips" id="msg-groupes"></div>
+      <div id="msg-editeur"></div>
+    </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Vos invités <span class="stamp" id="fiches-compte"></span></h2>
+          <div class="card-actions">
+            <button class="small" type="button" data-fiches="a-ecrire">À écrire</button>
+            <button class="small" type="button" data-fiches="ecrits">Déjà écrits</button>
+            <button class="small" type="button" data-fiches="tous">Tous</button>
+          </div>
+        </div>
+        <div class="filtres">
+          <input type="search" id="fiches-recherche" placeholder="Rechercher un invité" aria-label="Rechercher un invité">
+          <select id="fiches-groupe" aria-label="Filtrer par groupe"></select>
+        </div>
+        <div id="fiches"></div>
+      </div>
+    </section>
+
+    <section id="vue-reponses" hidden>
     <section class="kpis">
       <div class="kpi accent"><div class="num" id="k-oui">0</div><div class="lbl">Réponses oui</div></div>
       <div class="kpi accent"><div class="num" id="k-pers">0</div><div class="lbl">Personnes à table<span class="sub" id="k-pers-sub"></span></div></div>
@@ -340,15 +519,6 @@
         <h2>Régimes &amp; allergies</h2>
         <div class="bars" id="regimes"></div>
       </div>
-    </div>
-
-    <div class="card" style="margin-bottom:20px">
-      <h2>Messages personnalisés</h2>
-      <p class="msg-titre" id="msg-texte"></p>
-      <div class="colonnes" id="msg-colonnes"></div>
-      <p class="reg-warn" id="msg-note"></p>
-      <div class="chips" id="msg-groupes"></div>
-      <div id="msg-editeur"></div>
     </div>
 
     <div class="card">
@@ -390,6 +560,8 @@
         </table>
       </div>
     </div>
+
+    </section>
 
   </main>
 
@@ -610,7 +782,7 @@ function messages() {
 
   const colonnes = [
     { cls: 'perso', v: compte.perso, l: 'Message dédié', sous: 'écrit pour cette personne' },
-    { cls: 'groupe', v: compte.groupe, l: 'Son groupe', sous: 'un texte pour plusieurs' },
+    { cls: 'groupe', v: compte.groupe, l: 'Message de groupe', sous: 'un texte pour plusieurs' },
     { cls: 'generique', v: compte.generique, l: 'Réponse générique', sous: 'le mot du mariage' },
   ];
   // Échelle sur la plus haute colonne : ce qu'on compare ici, ce sont les trois
@@ -650,20 +822,32 @@ function messages() {
 const MAX_MESSAGE = 1500;
 const ATTENTE_SAUVEGARDE = 700;   // frappe terminée → envoi
 
-let ouvert = null;   // id du convive dont l'éditeur est déplié
+function editeurHtml(valeur, titre, photo) {
+  const colonnePhoto = !photo ? '' : `
+    <div class="photo">
+      <div class="titre">Photo</div>
+      <div class="cadre">${photo.url
+        ? `<img src="${esc(photo.url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'), { className: 'vide', textContent: 'Photo introuvable' }))">`
+        : '<span class="vide">Aucune photo</span>'}</div>
+      <div class="actions">
+        <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" id="${photo.champId}">
+        <button class="small" type="button" data-choisir="${photo.champId}">${photo.url ? 'Remplacer' : 'Choisir'}</button>
+        <button class="small" type="button" data-retirer hidden>Retirer</button>
+      </div>
+      <p class="etat-photo"></p>
+    </div>`;
 
-function fermerEditeur() {
-  document.querySelectorAll('tr.edition').forEach((tr) => tr.remove());
-  ouvert = null;
-}
-
-function editeurHtml(valeur, titre) {
   return `<div class="editeur">
-    <div class="titre">${esc(titre)}</div>
-    <textarea maxlength="${MAX_MESSAGE}" placeholder="Ce mot s'affichera après un « oui ». Laissez vide pour la réponse générique.">${esc(valeur || '')}</textarea>
-    <div class="pied">
-      <span class="compteur"></span>
-      <span class="etat"></span>
+    <div class="deux">
+      <div class="texte">
+        <div class="titre">${esc(titre)}</div>
+        <textarea maxlength="${MAX_MESSAGE}" placeholder="Ce mot s'affichera après un « oui ». Laissez vide pour la réponse générique.">${esc(valeur || '')}</textarea>
+        <div class="pied">
+          <span class="compteur"></span>
+          <span class="etat"></span>
+        </div>
+      </div>
+      ${colonnePhoto}
     </div>
   </div>`;
 }
@@ -673,7 +857,7 @@ function editeurHtml(valeur, titre) {
  * `onEnregistre(aMessage)` permet de rafraîchir les compteurs sans recharger
  * toute la page — recharger ferait perdre le curseur en pleine phrase.
  */
-function brancherEditeur(zone, chemin, onEnregistre) {
+function brancherEditeur(zone, chemin, onEnregistre, focus = true) {
   const champ = zone.querySelector('textarea');
   const etat = zone.querySelector('.etat');
   const compteur = zone.querySelector('.compteur');
@@ -722,47 +906,669 @@ function brancherEditeur(zone, chemin, onEnregistre) {
   champ.addEventListener('blur', () => { clearTimeout(minuteur); enregistrer(); });
 
   majCompteur();
-  champ.focus();
-  champ.setSelectionRange(champ.value.length, champ.value.length);
+  if (focus) {
+    champ.focus();
+    champ.setSelectionRange(champ.value.length, champ.value.length);
+  }
 }
 
-function ouvrirEditeurInvite(id) {
-  if (ouvert === id) { fermerEditeur(); return; }
-  fermerEditeur();
 
-  const convive = CONVIVES.find((c) => c.id === id);
-  const ligne = document.querySelector(`[data-ecrire="${CSS.escape(id)}"]`)?.closest('tr');
-  if (!convive || !ligne) return;
+/* ---------- Photo d'un invité ----------
+   Le redimensionnement se fait ici, dans le navigateur, et pas côté serveur.
+   Ce n'est pas une question de coût (cf. CLAUDE.md §4) : c'est pour ne jamais
+   détenir l'original — 4 Mo porteurs des EXIF, donc des coordonnées GPS du
+   domicile d'un tiers — et pour ne pas faire monter trente fois 4 Mo depuis un
+   téléphone, ce qui fait abandonner la séance de saisie. */
+const PHOTO_COTE = 400;      // fichier, pour un affichage 180 × 180 (cf. §7)
+const PHOTO_QUALITE = 0.82;
+const PHOTO_CADRAGE = 0.25;  // 0 = haut, 1 = bas — le visage un peu vers le haut
 
-  const tr = document.createElement('tr');
-  tr.className = 'edition';
-  tr.innerHTML = `<td colspan="10">${editeurHtml(convive.message_perso, `Message pour ${nomComplet(convive)}`)}</td>`;
-  ligne.after(tr);
-  ouvert = id;
+/**
+ * Décode, recadre en carré et réencode en JPEG. Retourne un Blob.
+ * `imageOrientation: 'from-image'` est ce qui évite la photo couchée : une image
+ * de téléphone dessinée dans un canvas sans tenir compte de son EXIF ressort
+ * pivotée (§7).
+ */
+async function preparerPhoto(fichier) {
+  let source;
+  try {
+    source = await createImageBitmap(fichier, { imageOrientation: 'from-image' });
+  } catch {
+    // Le canvas ne réencode que ce que le navigateur sait décoder. Safari décode
+    // le HEIC, Chrome et Firefox sur ordinateur non : sans ce message, le bouton
+    // semblerait simplement ne rien faire.
+    const heic = /heic|heif/i.test(fichier.type) || /\.hei[cf]$/i.test(fichier.name);
+    throw new Error(heic
+      ? "Ce navigateur ne sait pas lire les photos HEIC de l'iPhone. Exportez-la en JPEG, ou envoyez-la depuis un iPhone."
+      : "Ce fichier n'a pas pu être lu comme une image.");
+  }
 
-  brancherEditeur(tr, `/api/tableau/convives/${encodeURIComponent(id)}/message`, (aMessage, texte) => {
-    convive.a_message = aMessage;
-    convive.message_perso = texte || null;
-    // Les compteurs bougent, la ligne aussi (« Retour prévu »), mais on ne
-    // redessine pas le tableau : le curseur est encore dans la zone de saisie.
-    messages();
-    const cellule = ligne.querySelector('td:nth-child(8)');
-    if (cellule) cellule.innerHTML = etiquetteRetour(convive);
+  // Carré centré horizontalement, décalé vers le haut : même cadrage que le
+  // médaillon du faire-part, pour que le couple voie ce que l'invité verra.
+  const cote = Math.min(source.width, source.height);
+  const sx = (source.width - cote) / 2;
+  const sy = (source.height - cote) * PHOTO_CADRAGE;
+
+  const toile = document.createElement('canvas');
+  toile.width = PHOTO_COTE;
+  toile.height = PHOTO_COTE;
+  toile.getContext('2d').drawImage(source, sx, sy, cote, cote, 0, 0, PHOTO_COTE, PHOTO_COTE);
+  source.close();
+
+  const blob = await new Promise((r) => toile.toBlob(r, 'image/jpeg', PHOTO_QUALITE));
+  if (!blob) throw new Error("La photo n'a pas pu être convertie.");
+  return blob;
+}
+
+function brancherPhoto(zone, convive) {
+  const champ = zone.querySelector('input[type="file"]');
+  const cadre = zone.querySelector('.cadre');
+  const etat = zone.querySelector('.etat-photo');
+  const choisir = zone.querySelector('[data-choisir]');
+  const retirer = zone.querySelector('[data-retirer]');
+  if (!champ) return;
+
+  const majAffichage = () => {
+    cadre.innerHTML = convive.photo_url
+      ? `<img src="${esc(convive.photo_url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'), { className: 'vide', textContent: 'Photo introuvable' }))">`
+      : '<span class="vide">Aucune photo</span>';
+    choisir.textContent = convive.photo_url ? 'Remplacer' : 'Choisir';
+    retirer.hidden = !convive.photo_url;
+  };
+
+  const dire = (texte, classe) => {
+    etat.textContent = texte;
+    etat.className = 'etat-photo' + (classe ? ' ' + classe : '');
+  };
+
+  choisir.addEventListener('click', () => champ.click());
+
+  champ.addEventListener('change', async () => {
+    const fichier = champ.files?.[0];
+    if (!fichier) return;
+    champ.value = '';   // pour que redéposer le même fichier redéclenche
+
+    try {
+      dire('Préparation…');
+      const blob = await preparerPhoto(fichier);
+      dire('Envoi…');
+      const res = await fetch(`/api/tableau/convives/${encodeURIComponent(convive.id)}/photo`, {
+        method: 'PUT',
+        headers: { 'content-type': 'image/jpeg' },
+        body: blob,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.erreur || 'Le serveur a répondu ' + res.status);
+
+      convive.photo_url = data.photo_url;
+      convive.a_photo = Boolean(data.photo_url);
+      majAffichage();
+      dire(`Enregistrée · ${Math.round(blob.size / 1024)} Ko`, 'ok');
+    } catch (e) {
+      dire(e.message, 'ko');
+    }
   });
+
+  retirer.addEventListener('click', async () => {
+    dire('Suppression…');
+    try {
+      const res = await fetch(`/api/tableau/convives/${encodeURIComponent(convive.id)}/photo`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Le serveur a répondu ' + res.status);
+      convive.photo_url = null;
+      convive.a_photo = false;
+      majAffichage();
+      dire('Photo retirée', 'ok');
+    } catch (e) {
+      dire(e.message, 'ko');
+    }
+  });
+
+  majAffichage();
 }
 
 function ouvrirEditeurGroupe(nom) {
   const groupe = GROUPES.find((g) => g.nom === nom);
   if (!groupe) return;
-  fermerEditeur();
 
   const boite = $('msg-editeur');
-  boite.innerHTML = editeurHtml(groupe.message, `Message du groupe « ${nom} »`);
+  boite.innerHTML = editeurHtml(groupe.message, `Message du groupe « ${nom} »`, null);
   brancherEditeur(boite, `/api/tableau/groupes/${encodeURIComponent(nom)}/message`, (aMessage, texte) => {
     groupe.a_message = aMessage;
     groupe.message = texte || null;
     messages();
+    fiches();
   });
+}
+
+
+
+/* ---------- Import d'invités ----------
+   Le chemin principal est le collage : la liste d'un couple vit dans un
+   tableur, et « exportez en CSV » est l'étape où les gens décrochent. Coller
+   des cellules donne du texte séparé par des tabulations, sans fichier, sans
+   encodage et sans séparateur à deviner. Le fichier reste en secours. */
+
+const EN_TETES = {
+  prenom: ['prenom', 'first name', 'firstname', 'given name'],
+  nom: ['nom', 'name', 'last name', 'lastname', 'surname', 'nom de famille', 'famille'],
+  message: ['message', 'message perso', 'message personnalise', 'mot', 'mot perso'],
+  groupe: ['groupe', 'group', 'table', 'categorie', 'tablee'],
+};
+
+const sansAccent = (v) =>
+  String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
+/* Tabulation pour un collage, point-virgule pour un Excel français, virgule
+   sinon. On compte sur les premières lignes : le séparateur réel y revient à
+   chaque ligne, un caractère de texte non. */
+function detecterSeparateur(texte) {
+  const lignes = texte.split(/\r?\n/).filter((l) => l.trim()).slice(0, 6);
+  const score = (sep) => {
+    const parGigne = lignes.map((l) => l.split(sep).length - 1);
+    const mini = Math.min(...parGigne);
+    return mini > 0 ? mini * 10 + parGigne.reduce((a, b) => a + b, 0) : 0;
+  };
+  return [['\t', score('\t')], [';', score(';')], [',', score(',')]]
+    .sort((a, b) => b[1] - a[1])[0][0];
+}
+
+/* Analyse en gérant les champs entre guillemets — les messages contiennent des
+   virgules et des retours à la ligne. */
+function lireTableau(texte, sep) {
+  if (texte.charCodeAt(0) === 0xfeff) texte = texte.slice(1);   // BOM d'Excel
+  const lignes = [];
+  let champ = '';
+  let ligne = [];
+  let dansGuillemets = false;
+
+  for (let i = 0; i < texte.length; i++) {
+    const c = texte[i];
+    if (dansGuillemets) {
+      if (c === '"') {
+        if (texte[i + 1] === '"') { champ += '"'; i++; }
+        else dansGuillemets = false;
+      } else champ += c;
+      continue;
+    }
+    if (c === '"') dansGuillemets = true;
+    else if (c === sep) { ligne.push(champ); champ = ''; }
+    else if (c === '\n') { ligne.push(champ); lignes.push(ligne); ligne = []; champ = ''; }
+    else if (c !== '\r') champ += c;   // les \r de Windows cassent tout
+  }
+  if (champ !== '' || ligne.length) { ligne.push(champ); lignes.push(ligne); }
+  return lignes.filter((l) => l.some((c) => c.trim() !== ''));
+}
+
+function associerColonnes(entete) {
+  const trouve = {};
+  entete.forEach((cellule, i) => {
+    const v = sansAccent(cellule);
+    for (const [champ, variantes] of Object.entries(EN_TETES)) {
+      if (trouve[champ] === undefined && variantes.some((x) => v === x || v.startsWith(x))) {
+        trouve[champ] = i;
+      }
+    }
+  });
+  return trouve;
+}
+
+let importPret = null;   // lignes prêtes à envoyer, une fois l'aperçu validé
+
+function analyserImport(texte) {
+  const etat = $('import-etat');
+  const boite = $('import-apercu');
+  importPret = null;
+  boite.innerHTML = '';
+  etat.textContent = '';
+  etat.className = 'etat';
+  if (!texte.trim()) return;
+
+  const sep = detecterSeparateur(texte);
+  const lignes = lireTableau(texte, sep);
+  if (!lignes.length) return;
+
+  let colonnes = associerColonnes(lignes[0]);
+  let donnees = lignes.slice(1);
+
+  // Pas d'en-tête reconnu : on ne devine pas l'ordre, on demande.
+  if (colonnes.prenom === undefined) {
+    afficherCorrespondance(lignes, sep);
+    return;
+  }
+
+  construireApercu(donnees, colonnes, sep === '\t' ? 'collage' : `séparateur « ${sep} »`, lignes[0]);
+}
+
+/* Sans ligne d'en-tête, on ne devine pas au hasard : on regarde ce qu'il y a
+   dans chaque colonne. Une colonne d'emails ou de téléphones s'écarte d'elle-
+   même, un message se reconnaît à sa longueur, un groupe au fait qu'il se
+   répète. Proposer « colonne 1 » partout, c'était offrir l'erreur en premier. */
+function profilerColonnes(lignes) {
+  const nb = Math.max(...lignes.map((l) => l.length));
+  const profils = [];
+
+  for (let i = 0; i < nb; i++) {
+    const valeurs = lignes.map((l) => (l[i] || '').trim()).filter(Boolean);
+    if (!valeurs.length) { profils.push({ i, vide: true }); continue; }
+    const part = (test) => valeurs.filter(test).length / valeurs.length;
+    profils.push({
+      i,
+      vide: false,
+      email: part((v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)),
+      telephone: part((v) => /^[+\d][\d\s.()-]{7,}$/.test(v)),
+      longueur: valeurs.reduce((a, v) => a + v.length, 0) / valeurs.length,
+      motsUniques: new Set(valeurs.map((v) => v.toLowerCase())).size / valeurs.length,
+      unMot: part((v) => !v.includes(' ')),
+    });
+  }
+  return profils;
+}
+
+function devinerColonnes(lignes) {
+  const profils = profilerColonnes(lignes);
+  // Un email ou un téléphone n'est ni un prénom ni un message : hors course.
+  const libres = profils.filter((p) => !p.vide && p.email < 0.5 && p.telephone < 0.5);
+  const pris = new Set();
+  const prendre = (p) => { if (p) pris.add(p.i); return p ? p.i : undefined; };
+  const dispo = () => libres.filter((p) => !pris.has(p.i));
+
+  // Le message est la colonne la plus bavarde, si elle l'est vraiment.
+  const message = dispo().slice().sort((a, b) => b.longueur - a.longueur)[0];
+  const colonnes = {};
+  if (message && message.longueur > 25) colonnes.message = prendre(message);
+
+  // Le groupe se répète : peu de valeurs distinctes, et court.
+  const groupe = dispo()
+    .filter((p) => p.longueur < 25 && p.motsUniques < 0.75)
+    .sort((a, b) => a.motsUniques - b.motsUniques)[0];
+  if (groupe) colonnes.groupe = prendre(groupe);
+
+  // Restent prénom puis nom, dans l'ordre où ils apparaissent.
+  const noms = dispo().filter((p) => p.longueur < 40);
+  colonnes.prenom = prendre(noms[0]) ?? (profils.find((p) => !p.vide) || {}).i ?? 0;
+  if (noms[1]) colonnes.nom = prendre(noms[1]);
+
+  return colonnes;
+}
+
+function afficherCorrespondance(lignes, sep) {
+  const boite = $('import-apercu');
+  const profils = profilerColonnes(lignes);
+  const devine = devinerColonnes(lignes);
+  const exemple = lignes[0];
+
+  const etiquette = (p) => {
+    const apercu = (exemple[p.i] || '').trim().slice(0, 22) || '(vide)';
+    if (p.email >= 0.5) return `Colonne ${p.i + 1} — ${apercu} · emails`;
+    if (p.telephone >= 0.5) return `Colonne ${p.i + 1} — ${apercu} · téléphones`;
+    return `Colonne ${p.i + 1} — ${apercu}`;
+  };
+
+  const menu = (champ, facultatif) =>
+    `<select id="map-${champ}" data-map>${facultatif ? '<option value="">—</option>' : ''}` +
+    profils.filter((p) => !p.vide).map((p) =>
+      `<option value="${p.i}"${devine[champ] === p.i ? ' selected' : ''}>${esc(etiquette(p))}</option>`
+    ).join('') + '</select>';
+
+  boite.innerHTML = `<div class="apercu">
+    <h3>Quelle colonne est quoi ?</h3>
+    <p class="aide">Aucune ligne d'en-tête reconnue. Voici ce qu'on a deviné d'après
+      le contenu de chaque colonne — corrigez si besoin. Une même colonne ne peut
+      pas servir deux fois.</p>
+    <div class="correspondance">
+      <label>Prénom${menu('prenom', false)}</label>
+      <label>Nom${menu('nom', true)}</label>
+      <label>Message${menu('message', true)}</label>
+      <label>Groupe${menu('groupe', true)}</label>
+    </div>
+    <p class="conflit" id="map-conflit" hidden></p>
+    <button class="small" type="button" id="btn-map">Continuer</button>
+  </div>`;
+
+  // Une colonne ne peut désigner qu'un champ. Les deux champs échangent leur
+  // colonne plutôt que d'en vider un : vider, c'est obliger à tout refaire, et
+  // c'est comme ça qu'on se retrouvait avec le prénom sur la colonne d'emails.
+  const dire = (texte) => {
+    $('map-conflit').hidden = false;
+    $('map-conflit').textContent = texte;
+  };
+
+  boite.querySelectorAll('[data-map]').forEach((sel) => {
+    sel.dataset.avant = sel.value;
+    sel.addEventListener('change', () => {
+      const avant = sel.dataset.avant;
+      if (sel.value) {
+        for (const autre of boite.querySelectorAll('[data-map]')) {
+          if (autre === sel || autre.value !== sel.value) continue;
+
+          if (autre.id === 'map-prenom' && avant === '') {
+            // Le prénom est obligatoire et n'a rien à recevoir en échange :
+            // on refuse le changement au lieu de le laisser sans colonne.
+            sel.value = avant;
+            dire('Le prénom est obligatoire ; choisissez-lui une autre colonne d\'abord.');
+            return;
+          }
+          autre.value = avant;
+          autre.dataset.avant = avant;
+          dire(`Les deux champs ont échangé leur colonne : une colonne ne peut en désigner qu'un.`);
+        }
+      }
+      sel.dataset.avant = sel.value;
+    });
+  });
+
+  $('btn-map').addEventListener('click', () => {
+    const lire = (id) => ($(id).value === '' ? undefined : Number($(id).value));
+    construireApercu(lignes, {
+      prenom: Number($('map-prenom').value),
+      nom: lire('map-nom'),
+      message: lire('map-message'),
+      groupe: lire('map-groupe'),
+    }, sep === '\t' ? 'collage' : `séparateur « ${sep} »`, null);
+  });
+}
+
+/* Sans cette ligne, on ne sait pas si une colonne a été comprise puis écartée
+   ou simplement perdue — et dans un champ de collage, les tabulations ne
+   s'alignent pas, ce qui donne l'impression d'un décalage qui n'existe pas. */
+function resumerColonnes(colonnes, entete) {
+  if (!entete) return '';
+  const noms = { prenom: 'Prénom', nom: 'Nom', message: 'Message', groupe: 'Groupe' };
+  const lues = Object.entries(colonnes)
+    .filter(([, i]) => i !== undefined)
+    .map(([champ, i]) => `<b>${esc(entete[i] || `colonne ${i + 1}`)}</b> → ${noms[champ]}`);
+  const prises = new Set(Object.values(colonnes).filter((i) => i !== undefined));
+  const ignorees = entete
+    .map((c, i) => (prises.has(i) || !String(c).trim() ? null : String(c).trim()))
+    .filter(Boolean);
+
+  return `<p class="colonnes-lues">${lues.join(' · ')}${
+    ignorees.length
+      ? `<br><span class="ignorees">Colonnes ignorées : ${esc(ignorees.join(', '))} — le produit n'en a pas besoin, les liens partent par vos soins.</span>`
+      : ''}</p>`;
+}
+
+function construireApercu(donnees, colonnes, origine, entete) {
+  const boite = $('import-apercu');
+  const alertes = [];
+  const invites = [];
+  const vus = new Map();
+
+  donnees.forEach((l, i) => {
+    const val = (k) => (colonnes[k] === undefined ? '' : (l[colonnes[k]] || '').trim());
+    const prenom = val('prenom');
+    const nom = val('nom');
+    if (!prenom) { alertes.push(`ligne ${i + 2} ignorée : pas de prénom`); return; }
+    if (!nom) alertes.push(`${prenom} n'a pas de nom`);
+
+    const cle = sansAccent(`${prenom} ${nom}`);
+    if (vus.has(cle)) alertes.push(`« ${prenom} ${nom} » apparaît plusieurs fois`);
+    vus.set(cle, true);
+
+    invites.push({ prenom, nom, message: val('message'), groupe: val('groupe') });
+  });
+
+  // Deux étiquettes voisines font deux groupes, donc deux messages à écrire et
+  // un invité qui reçoit le mauvais.
+  const groupes = [...new Set(invites.map((i) => i.groupe).filter(Boolean))];
+  const collisions = groupes.filter((g, i) =>
+    groupes.findIndex((h) => sansAccent(h) === sansAccent(g)) !== i);
+  if (collisions.length) {
+    alertes.push(`étiquettes de groupe presque identiques : ${[...new Set(collisions)].join(', ')} — elles feront des groupes distincts`);
+  }
+
+  const connus = new Set(CONVIVES.map((c) => sansAccent(`${c.prenom} ${c.nom}`)));
+  const nouveaux = [];
+  for (const invite of invites) {
+    const cle = sansAccent(`${invite.prenom} ${invite.nom}`);
+    if (connus.has(cle)) continue;
+    connus.add(cle);
+    nouveaux.push(invite);
+  }
+  const dejaLa = invites.length - nouveaux.length;
+
+  if (!invites.length) {
+    boite.innerHTML = '<div class="apercu"><p class="empty">Aucune ligne exploitable.</p></div>';
+    return;
+  }
+
+  importPret = invites;
+
+  const extrait = invites.slice(0, 6);
+  boite.innerHTML = `<div class="apercu">
+    <h3>Aperçu · ${origine}</h3>
+    ${resumerColonnes(colonnes, entete)}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Prénom</th><th>Nom</th><th>Groupe</th><th>Message</th></tr></thead>
+      <tbody>${extrait.map((i) => `<tr>
+        <td>${esc(i.prenom)}</td><td>${esc(i.nom) || '<span class="muted">—</span>'}</td>
+        <td>${esc(i.groupe) || '<span class="muted">—</span>'}</td>
+        <td class="note">${esc(i.message) || '<span class="muted">—</span>'}</td></tr>`).join('')}
+      </tbody></table></div>
+    ${invites.length > extrait.length ? `<p class="aide">… et ${invites.length - extrait.length} autres.</p>` : ''}
+    ${alertes.length ? `<ul class="alertes">${alertes.slice(0, 8).map((a) => `<li>${esc(a)}</li>`).join('')}
+      ${alertes.length > 8 ? `<li>… et ${alertes.length - 8} autres remarques</li>` : ''}</ul>` : ''}
+    <p class="bilan"><b>${nouveaux.length}</b> ${nouveaux.length > 1 ? 'nouveaux invités' : 'nouvel invité'} à ajouter${
+      dejaLa ? `, <b>${dejaLa}</b> déjà dans votre liste — leurs liens sont conservés` : ''}.</p>
+    <button class="small valider" type="button" id="btn-valider"${nouveaux.length ? '' : ' disabled'}>
+      Ajouter ${nouveaux.length} invité${nouveaux.length > 1 ? 's' : ''}</button>
+  </div>`;
+
+  if (nouveaux.length) $('btn-valider').addEventListener('click', envoyerImport);
+}
+
+async function envoyerImport(invites) {
+  const liste = Array.isArray(invites) ? invites : importPret;
+  if (!liste || !liste.length) return;
+  const etat = $('import-etat');
+  etat.textContent = 'Ajout…';
+  etat.className = 'etat';
+
+  try {
+    const res = await fetch('/api/tableau/convives/import', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ invites: liste }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.erreur || 'Le serveur a répondu ' + res.status);
+
+    etat.textContent = `${data.ajoutes} ajouté${data.ajoutes > 1 ? 's' : ''}` +
+      (data.existants ? `, ${data.existants} déjà présent${data.existants > 1 ? 's' : ''}` : '');
+    etat.className = 'etat ok';
+    $('import-coller').value = '';
+    $('import-apercu').innerHTML = '';
+    importPret = null;
+    await charger();   // la liste, les compteurs et les groupes changent
+  } catch (e) {
+    etat.textContent = e.message;
+    etat.className = 'etat ko';
+  }
+}
+
+/* Un fichier apporte deux pièges que le collage n'a pas : Excel français
+   exporte en Windows-1252 et non en UTF-8. On lit en UTF-8, et si des
+   caractères de remplacement apparaissent, on relit dans l'autre encodage. */
+async function lireFichier(fichier) {
+  const octets = await fichier.arrayBuffer();
+  let texte = new TextDecoder('utf-8').decode(octets);
+  if (texte.includes('\uFFFD')) texte = new TextDecoder('windows-1252').decode(octets);
+  return texte;
+}
+
+$('import-coller').addEventListener('input', (e) => analyserImport(e.target.value));
+
+$('btn-fichier').addEventListener('click', () => $('import-fichier').click());
+$('import-fichier').addEventListener('change', async (e) => {
+  const fichier = e.target.files?.[0];
+  if (!fichier) return;
+  e.target.value = '';
+  $('import-coller').value = await lireFichier(fichier);
+  analyserImport($('import-coller').value);
+});
+
+// Déposer le fichier directement sur la zone de collage.
+['dragover', 'dragleave', 'drop'].forEach((type) => {
+  $('import-coller').addEventListener(type, async (e) => {
+    e.preventDefault();
+    $('import-coller').classList.toggle('zone-survol', type === 'dragover');
+    if (type !== 'drop') return;
+    const fichier = e.dataTransfer?.files?.[0];
+    if (!fichier) return;
+    $('import-coller').value = await lireFichier(fichier);
+    analyserImport($('import-coller').value);
+  });
+});
+
+$('btn-un').addEventListener('click', () => {
+  const f = $('import-un');
+  f.hidden = !f.hidden;
+  if (!f.hidden) $('un-prenom').focus();
+});
+
+$('import-un').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const prenom = $('un-prenom').value.trim();
+  if (!prenom) return;
+  await envoyerImport([{
+    prenom,
+    nom: $('un-nom').value.trim(),
+    message: '',
+    groupe: $('un-groupe').value.trim(),
+  }]);
+  ['un-prenom', 'un-nom', 'un-groupe'].forEach((id) => ($(id).value = ''));
+  $('un-prenom').focus();
+});
+
+$('btn-modele').addEventListener('click', () => {
+  // \uFEFF : sans ce BOM, Excel lit le modèle en latin-1 et abîme les accents.
+  const csv = '\uFEFF' + [
+    'Prénom,Nom,Message,Groupe',
+    'Héloïse,Martin,"Hâte de te voir danser, comme à Reims !",Témoins',
+    'Paul,Durand,,Collègues',
+    'Zoé,Leroy,,',
+  ].join('\r\n') + '\r\n';
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'modele-invites.csv';
+  a.click();
+});
+
+/* ---------- Onglets ----------
+   Par défaut on ouvre sur le travail qui reste : tant qu'un invité n'a pas de
+   mot, c'est l'onglet Messages. Une fois tout écrit, le suivi devient le sujet. */
+let vue = 'messages';
+
+function changerVue(nom) {
+  vue = nom;
+  $('vue-messages').hidden = nom !== 'messages';
+  $('vue-reponses').hidden = nom !== 'reponses';
+  document.querySelectorAll('#onglets button').forEach((b) =>
+    b.classList.toggle('on', b.dataset.vue === nom));
+  $('btn-export').hidden = nom !== 'reponses';
+}
+
+/* ---------- Fiches d'écriture ---------- */
+let filtreFiches = 'a-ecrire';
+let rechercheFiches = '';
+
+// Le compteur seul, sans redessiner : pendant la frappe, refaire la liste
+// emporterait le curseur en pleine phrase.
+function majCompteFiches() {
+  const invites = CONVIVES.filter((c) => !c.accompagnant_de);
+  const aEcrire = invites.filter((c) => retourPrevu(c) === 'generique').length;
+  $('fiches-compte').textContent = aEcrire
+    ? `· ${aEcrire} sans mot à eux`
+    : invites.length ? '· tous ont leur mot' : '';
+}
+
+function fiches() {
+  const invites = CONVIVES.filter((c) => !c.accompagnant_de);
+  const aEcrire = invites.filter((c) => retourPrevu(c) === 'generique');
+
+  // Le filtre par défaut n'a de sens que tant qu'il reste du travail : une fois
+  // tout écrit, « à écrire » afficherait une page vide sans rien expliquer.
+  if (filtreFiches === 'a-ecrire' && !aEcrire.length && invites.length) filtreFiches = 'tous';
+
+  const visibles = invites.filter((c) => {
+    const etat = retourPrevu(c);
+    if (filtreFiches === 'a-ecrire' && etat !== 'generique') return false;
+    if (filtreFiches === 'ecrits' && etat === 'generique') return false;
+    if (filtreFiches.startsWith('groupe:') && c.groupe !== filtreFiches.slice(7)) return false;
+    if (rechercheFiches && !nomComplet(c).toLowerCase().includes(rechercheFiches)) return false;
+    return true;
+  });
+
+  majCompteFiches();
+
+  document.querySelectorAll('[data-fiches]').forEach((b) =>
+    b.classList.toggle('on', b.dataset.fiches === filtreFiches));
+  $('fiches-groupe').value = filtreFiches.startsWith('groupe:') ? filtreFiches : '';
+
+  const boite = $('fiches');
+  if (!visibles.length) {
+    boite.innerHTML = `<p class="empty">${invites.length
+      ? 'Aucun invité ne correspond.'
+      : "Aucun invité pour le moment — importez votre liste pour commencer."}</p>`;
+    return;
+  }
+
+  // Le message d'un groupe s'écrit à l'endroit où l'on regarde ses invités :
+  // en tête de leur liste, pas dans un coin de la page.
+  const nomGroupe = filtreFiches.startsWith('groupe:') ? filtreFiches.slice(7) : null;
+  const groupe = nomGroupe ? GROUPES.find((g) => g.nom === nomGroupe) : null;
+
+  boite.innerHTML = (groupe ? `
+    <article class="fiche fiche-groupe" data-fiche-groupe="${esc(groupe.nom)}">
+      <div class="fiche-tete">
+        <span class="nom">Message commun aux ${groupe.invites} invité${groupe.invites > 1 ? 's' : ''} du groupe « ${esc(groupe.nom)} »</span>
+        <span class="etat-fiche"><span class="tag ${groupe.a_message ? 'groupe' : 'warn'}">${
+          groupe.a_message ? 'écrit' : 'à écrire'}</span></span>
+      </div>
+      <p class="aide">Reçu par ceux d'entre eux qui n'ont pas de message à eux. Un mot
+        individuel, quand il existe, passe toujours devant.</p>
+      ${editeurHtml(groupe.message, '', null)}
+    </article>` : '') + visibles.map((c) => `
+    <article class="fiche" data-fiche="${esc(c.id)}">
+      <div class="fiche-tete">
+        <span class="nom">${esc(nomComplet(c))}</span>
+        ${c.groupe ? `<span class="groupe">${esc(c.groupe)}</span>` : ''}
+        <span class="etat-fiche">${etiquetteRetour(c)}</span>
+      </div>
+      ${editeurHtml(c.message_perso, '', { url: c.photo_url, champId: `fiche-photo-${c.id}` })}
+    </article>`).join('');
+
+  if (groupe) {
+    const article = boite.querySelector(`[data-fiche-groupe="${CSS.escape(groupe.nom)}"]`);
+    brancherEditeur(article, `/api/tableau/groupes/${encodeURIComponent(groupe.nom)}/message`, (aMessage, texte) => {
+      groupe.a_message = aMessage;
+      groupe.message = texte || null;
+      article.querySelector('.etat-fiche').innerHTML =
+        `<span class="tag ${aMessage ? 'groupe' : 'warn'}">${aMessage ? 'écrit' : 'à écrire'}</span>`;
+      // Les invités du groupe changent d'état sans qu'on y touche.
+      boite.querySelectorAll('[data-fiche]').forEach((el) => {
+        const c = CONVIVES.find((x) => x.id === el.dataset.fiche);
+        if (c) el.querySelector('.etat-fiche').innerHTML = etiquetteRetour(c);
+      });
+      majCompteFiches();
+      messages();
+    }, false);
+  }
+
+  for (const c of visibles) {
+    const article = boite.querySelector(`[data-fiche="${CSS.escape(c.id)}"]`);
+    // focus: false — brancher trente champs volerait le curseur trente fois.
+    brancherEditeur(article, `/api/tableau/convives/${encodeURIComponent(c.id)}/message`, (aMessage, texte) => {
+      c.a_message = aMessage;
+      c.message_perso = texte || null;
+      article.querySelector('.etat-fiche').innerHTML = etiquetteRetour(c);
+      majCompteFiches();
+      messages();
+    }, false);
+    brancherPhoto(article, c);
+  }
 }
 
 /* ---------- Liste de récap ---------- */
@@ -784,13 +1590,12 @@ function correspond(c) {
 function etiquetteRetour(c) {
   const tag = ({
     perso: '<span class="tag oui">Message dédié</span>',
-    groupe: '<span class="tag groupe">Son groupe</span>',
+    groupe: '<span class="tag groupe">Message de groupe</span>',
     generique: '<span class="tag warn">Générique</span>',
   })[retourPrevu(c)];
   // Un accompagnant n'a pas d'écran de retour : rien à écrire pour lui.
   if (!tag) return '<span class="muted">—</span>';
-  return `<button class="retour" type="button" data-ecrire="${esc(c.id)}"
-            title="Écrire le message de ${esc(nomComplet(c))}">${tag}<span class="crayon">✎</span></button>`;
+  return tag;
 }
 
 function valeurTri(c, cle) {
@@ -810,7 +1615,6 @@ function valeurTri(c, cle) {
 }
 
 function tableau() {
-  ouvert = null;   // le redessin emporte la ligne d'édition
   const lignes = CONVIVES.filter(correspond).sort((a, b) => {
     const x = valeurTri(a, triCle), y = valeurTri(b, triCle);
     const d = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'fr');
@@ -851,6 +1655,15 @@ function tableau() {
     b.classList.toggle('on', b.dataset.f === filtre));
 }
 
+// Un menu déroulant plutôt qu'un bouton par groupe : un couple peut en avoir
+// dix, et dix boutons sur deux lignes noieraient les trois filtres qui comptent.
+function chipsGroupesFiches() {
+  const menu = $('fiches-groupe');
+  menu.hidden = !GROUPES.length;
+  menu.innerHTML = '<option value="">Tous les groupes</option>' +
+    GROUPES.map((g) => `<option value="groupe:${esc(g.nom)}">${esc(g.nom)} · ${g.invites}</option>`).join('');
+}
+
 function chipsGroupes() {
   const box = $('chips-groupes');
   box.innerHTML = GROUPES.map((g) =>
@@ -873,10 +1686,10 @@ function exportCsv() {
       c.hors_liste ? 'non' : 'oui'].map(q).join(',');
   });
 
-  // ﻿ : sans ce BOM, Excel lit le CSV en latin-1 et abîme les accents.
+  // \uFEFF : sans ce BOM, Excel lit le CSV en latin-1 et abîme les accents.
   // data: plutôt que blob: — les blob: sont bloqués dans le navigateur intégré
   // de WhatsApp, et le couple ouvre parfois son tableau de bord depuis là.
-  const csv = '﻿' + [entete.map(q).join(','), ...corps].join('\r\n') + '\r\n';
+  const csv = '\uFEFF' + [entete.map(q).join(','), ...corps].join('\r\n') + '\r\n';
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = 'traiteur-' + new Date().toISOString().slice(0, 10) + '.csv';
@@ -898,14 +1711,31 @@ document.querySelectorAll('th[data-k]').forEach((th) =>
     tableau();
   }));
 
+document.querySelectorAll('#onglets button').forEach((b) =>
+  b.addEventListener('click', () => changerVue(b.dataset.vue)));
+
+document.querySelectorAll('[data-fiches]').forEach((b) =>
+  b.addEventListener('click', () => { filtreFiches = b.dataset.fiches; fiches(); }));
+
+$('fiches-groupe').addEventListener('change', (e) => {
+  // Le groupe et l'état se combinent mal ici : choisir un groupe remplace le
+  // filtre plutôt que de s'y ajouter, sinon on obtient des listes vides sans
+  // comprendre pourquoi.
+  filtreFiches = e.target.value || 'tous';
+  fiches();
+});
+
+$('fiches-recherche').addEventListener('input', (e) => {
+  rechercheFiches = e.target.value.trim().toLowerCase();
+  fiches();
+});
+
 $('msg-groupes').addEventListener('click', (e) => {
   const chip = e.target.closest('[data-groupe]');
   if (chip) ouvrirEditeurGroupe(chip.dataset.groupe);
 });
 
 $('tbody').addEventListener('click', (e) => {
-  const crayon = e.target.closest('[data-ecrire]');
-  if (crayon) { ouvrirEditeurInvite(crayon.dataset.ecrire); return; }
   const bouton = e.target.closest('[data-lien]');
   if (!bouton) return;
   navigator.clipboard.writeText(bouton.dataset.lien).then(
@@ -927,7 +1757,8 @@ async function charger() {
 
     document.title = `${MARIAGE.prenom_1} & ${MARIAGE.prenom_2} — Tableau de bord`;
     $('titre').textContent = `${MARIAGE.prenom_1} & ${MARIAGE.prenom_2}`;
-    $('sous-titre').textContent = 'Tableau de bord des réponses';
+    $('sous-titre').textContent =
+      `Mariage le ${dateFr(MARIAGE.date_mariage)} · réponses attendues avant le ${dateFr(MARIAGE.date_limite_rsvp)}`;
     $('pied').textContent =
       `${MARIAGE.prenom_1} & ${MARIAGE.prenom_2} · ${dateFr(MARIAGE.date_mariage)} · réponses attendues avant le ${dateFr(MARIAGE.date_limite_rsvp)}`;
 
@@ -936,7 +1767,12 @@ async function charger() {
     regimes();
     messages();
     chipsGroupes();
+    fiches();
+    chipsGroupesFiches();
     tableau();
+    // Ouvrir sur le travail qui reste, pas sur des compteurs à zéro.
+    const resteAEcrire = CONVIVES.some((c) => !c.accompagnant_de && retourPrevu(c) === 'generique');
+    changerVue(resteAEcrire ? 'messages' : 'reponses');
 
     $('loader').style.display = 'none';
     $('content').style.display = 'block';

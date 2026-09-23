@@ -1,7 +1,7 @@
 # SaaS Faire-part
 
 Moteur de faire-part de mariage digital avec RSVP personnalisé, vendu à des couples.
-Dépôt **privé**. Dernière mise à jour du contexte : 21 septembre 2026.
+Dépôt **privé**. Dernière mise à jour du contexte : 23 septembre 2026.
 
 ---
 
@@ -160,11 +160,29 @@ Elles viennent d'arbitrages déjà faits. Les changer change le produit.
 - **Les photos sont redimensionnées dans le navigateur (API Canvas) avant l'envoi**,
   jamais côté serveur. Un couple téléverse depuis son téléphone une photo de 4 Mo en
   4032 × 3024 : servie telle quelle, elle tue la promesse « se charge sur la 4G
-  d'une invitée dans le métro ». Cloudflare Images est payant et Workers n'a pas de
-  bibliothèque d'image viable, donc le navigateur est le seul endroit gratuit. Effet
-  de bord précieux : le réencodage impose le JPEG quelle que soit la source (règle le
-  HEIC des iPhone) et **efface les EXIF**, donc les coordonnées GPS — des données de
-  tiers qu'on n'a aucune raison de stocker. Dimensions cibles : cf. §7.
+  d'une invitée dans le métro ».
+
+  **Ce n'est pas une question de prix** — l'erreur a été faite une fois ici. Les
+  transformations Cloudflare Images offrent 5 000 transformations uniques par mois,
+  puis 0,50 $ les 1 000 ; à raison d'environ 100 par mariage, ce serait gratuit à
+  notre échelle. Ce qui tranche, c'est **de ne jamais détenir l'original** : 4 Mo
+  porteurs des EXIF, donc des coordonnées GPS du domicile d'un tiers. Nous sommes
+  sous-traitant (§5) et la donnée qu'on n'a pas est la seule qu'on ne puisse ni
+  perdre ni devoir effacer. S'y ajoute le poids de l'envoi : trente photos de 4 Mo
+  depuis un téléphone, c'est la séance de saisie abandonnée en cours. Redimensionner
+  d'abord règle les deux, et comme Workers n'a pas de bibliothèque d'image viable,
+  le navigateur est alors le seul endroit possible.
+
+  Effet de bord précieux : le réencodage **efface les EXIF** et impose le JPEG quelle
+  que soit la source. **Attention, le HEIC n'est réglé qu'à moitié** : le canvas ne
+  peut réencoder que ce que le navigateur sait décoder. Safari décode le HEIC, Chrome
+  et Firefox sur ordinateur non — une photo d'iPhone déposée depuis un PC échoue donc
+  silencieusement si on ne détecte pas le cas. Détecter l'échec de décodage et le dire
+  (« exportez-la en JPEG »), jamais un bouton qui ne réagit pas. Si ce cas se révèle
+  fréquent chez de vrais couples, le repli serait une transformation Cloudflare Images
+  pour ces fichiers-là seulement, l'original supprimé dans la foulée.
+
+  Dimensions cibles : cf. §7.
 - **`mariages.messager` est toujours renseigné explicitement à la création**, et
   `''` signifie « pas d'animation » (choix valide, pas un oubli). La valeur par
   défaut `'pigeon'` du schéma est historique et pointe vers un messager qui
@@ -221,6 +239,22 @@ pour 6 choses à construire. Ne jamais coder un messager en dur dans un thème.
 
 - Front en HTML / CSS / JS natif. Pas de framework — les pages doivent s'ouvrir seules
   dans dix ans et se charger sur la 4G d'une invitée dans le métro.
+- **Aucune couleur de texte sous 4,5:1**, mesurée sur le fond réel. Le tableau de
+  bord a quatre niveaux, un par rôle, et c'est la saisie du couple qui reçoit le
+  plus fort contraste — c'est le contenu, il doit dominer l'interface :
+
+  | Jeton | Rôle | Contraste sur crème |
+  |---|---|---|
+  | `--ink` | ce que le couple a saisi | 12,9:1 |
+  | `--ink-2` | infos du mariage, valeurs, dates | 7,3:1 |
+  | `--aide` | consignes et explications | 5,3:1 |
+  | `--sage` | libellés en petites majuscules | 4,6:1 |
+
+  L'or et le rose ne sont **jamais** une couleur de texte : ils restent aux aplats
+  et aux marques, et ont chacun leur variante lisible (`--gold-texte`,
+  `--rose-texte`). Le corps est en graisse 400, pas 300 : en petit corps une
+  graisse fine grise le texte autant qu'une couleur trop claire. Les titres, eux,
+  gardent leur légèreté parce qu'ils sont grands.
 - Worker en TypeScript.
 - Secrets : `.dev.vars` dans le `.gitignore`, `wrangler secret put` en production.
   Un token commité reste dans l'historique git pour toujours, même en dépôt privé.
@@ -278,14 +312,32 @@ Repris du projet `Mon-Mariage`. Ils ont tous coûté du temps une première fois
   | `og:image` WhatsApp | — | 1200 × 630, < 600 Ko | — |
 
 - **HEIC** : format par défaut des iPhone, illisible par Chrome sur Android. Une
-  photo déposée telle quelle casse l'affichage pour une partie des invités.
+  photo déposée telle quelle casse l'affichage pour une partie des invités — et le
+  canvas ne sait pas la convertir non plus, puisqu'il ne réencode que ce que le
+  navigateur a su décoder (cf. §4).
 - **Orientation EXIF** : une photo de téléphone redessinée dans un canvas sans
   tenir compte de son orientation ressort pivotée.
 
-**CSV** (import de liste)
+**Listes d'invités** (import)
 - Ne jamais ouvrir un CSV de production dans un tableur : Excel, Numbers et Sheets
   réécrivent silencieusement le fichier (virgules fantômes, retours à la ligne perdus).
 - Les `\r` de Windows cassent la correspondance des emails : `sed -i 's/\r//'`.
+- **Excel français exporte en point-virgule et en Windows-1252**, pas en virgule ni
+  en UTF-8. « Héloïse » revient en « HÃ©loÃ¯se ». Le séparateur se détecte, et une
+  lecture UTF-8 qui produit des caractères de remplacement se relit en 1252.
+- **Le collage vaut mieux que le fichier** : sélectionner des cellules et les coller
+  donne du texte tabulé, sans export, sans encodage et sans séparateur à deviner.
+  « Exportez en CSV » est l'étape où les couples décrochent.
+- Les listes de couples contiennent presque toujours une colonne **email** et une
+  colonne **téléphone**. Le produit n'en a pas besoin — les liens partent par
+  WhatsApp — mais il faut **dire** qu'elles ont été reconnues et écartées, sinon on
+  croit à une perte de données.
+- Sans ligne d'en-tête, **ne jamais proposer la même colonne par défaut pour tous les
+  champs** : l'erreur est alors offerte en premier. On profile chaque colonne (emails,
+  téléphones, longueur moyenne, taux de répétition) et on propose ce qu'on a deviné.
+- **Réimporter ne doit jamais régénérer un token** : un couple qui ajoute dix
+  personnes en mars redépose sa liste entière, et recréer les lignes existantes
+  invaliderait autant de liens déjà envoyés (§3, règle 3).
 
 ---
 
@@ -297,10 +349,21 @@ RSVP), premier thème (`botanique`) branché dessus, deux messagers (`montgolfie
 `dev.faire-part.hasakistudio.fr`, tableau de bord couple **en lecture seule**
 (liste, réponses, avancement des messages, export traiteur), écriture des
 messages au fil de l'eau depuis le tableau de bord, réponses de groupe, aperçu
-WhatsApp (Open Graph rendu côté serveur). Pas encore construit : upload photos
-vers R2, cron de suppression RGPD, limitation de débit sur le lookup. Le tableau de bord existe
-mais n'est déployé nulle part : il lui manque son projet Pages et son
-application Access (cf. `docs/tableau-de-bord.md`).
+WhatsApp (Open Graph rendu côté serveur), photo par invité téléversée vers R2
+après redimensionnement dans le navigateur, déploiement du Worker depuis GitHub
+Actions, import de la liste par le couple lui-même depuis le tableau de bord
+(collage depuis un tableur ou fichier CSV). Pas encore construit : photos du
+couple et du lieu, cron de suppression RGPD, limitation de débit sur le lookup.
+
+**Attention à ne pas confondre deux tableaux de bord.** Celui qui est en ligne
+aujourd'hui vient du projet `Mon-Mariage` (n8n + NAS) et ne sert qu'au suivi du
+mariage de l'auteur : il ne fait pas partie du produit, ne connaît pas
+`mariage_id`, et n'a pas vocation à être livré à un client. Celui de cette
+solution est `dashboard/`, défini et construit ici — lecture, écriture des
+messages, réponses de groupe — et **n'est encore déployé nulle part** : il lui
+manque son projet Pages, son sous-domaine et son application Access
+(cf. `docs/tableau-de-bord.md`). Ne pas prendre l'un pour l'autre en lisant une
+capture d'écran.
 
 | Phase | Période | État |
 |---|---|---|

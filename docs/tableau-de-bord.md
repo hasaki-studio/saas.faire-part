@@ -1,5 +1,9 @@
 # Tableau de bord du couple — mise en service
 
+> À ne pas confondre avec le tableau de bord n8n du projet `Mon-Mariage`, qui
+> est en ligne et ne sert qu'au suivi du mariage de l'auteur. Celui-ci est
+> celui du produit, multi-tenant, et n'est pas encore déployé.
+
 Le tableau de bord est la deuxième surface du produit. Il ne partage **ni son
 hôte ni son régime d'authentification** avec la page des invités :
 
@@ -126,6 +130,61 @@ demanderait d'abord de décider ce qu'on enregistre — date d'envoi du lien, da
 de chaque relance — et où. À trancher quand le besoin se posera pour de vrai,
 c'est-à-dire en avril.
 
+**Le couple dépose sa liste lui-même**, comme l'exige §5 — ne jamais la
+recevoir par mail ou WhatsApp, ce serait en détenir une copie non maîtrisée.
+
+Le chemin principal est **le collage** : la liste vit dans un tableur, et
+« exportez en CSV » est l'étape où les gens décrochent. Coller des cellules
+donne du texte séparé par des tabulations, sans fichier, sans encodage, sans
+séparateur à deviner. Le fichier reste en secours, avec ses deux pièges :
+Excel français exporte en **point-virgule** et en **Windows-1252**, tous deux
+détectés — on lit en UTF-8, et des caractères de remplacement font relire dans
+l'autre encodage.
+
+L'ordre des colonnes n'est jamais imposé : on lit la ligne d'en-tête, avec des
+variantes tolérées (`prénom`/`prenom`/`first name`…). Sans en-tête reconnu, la
+page demande quelle colonne est quoi, plutôt que de deviner — imposer l'ordre
+garantirait l'inversion prénom / nom un jour ou l'autre.
+
+**Rien n'entre en base sans aperçu** : les premières lignes, les alertes
+(prénom manquant, doublon, étiquettes de groupe voisines) et le bilan. L'aperçu
+dit aussi **quelles colonnes ont été lues et lesquelles ont été écartées** —
+sans ça, on ne sait pas si une colonne a été comprise puis ignorée ou
+simplement perdue, et dans un champ de collage les tabulations ne s'alignent
+pas, ce qui donne l'impression d'un décalage qui n'existe pas.
+
+Les colonnes `email` et `telephone` sont couramment présentes dans les listes
+des couples : elles sont reconnues et écartées. Le produit n'a pas de champ
+email — les liens partent par WhatsApp, à l'initiative du couple.
+
+Et le contrôle qui compte vraiment : **réimporter ne régénère jamais un
+token**. Un couple qui ajoute dix personnes en mars redépose souvent sa liste
+entière ; recréer les lignes existantes invaliderait autant de liens déjà
+envoyés, parfois imprimés (§3, règle 3). La comparaison se fait sur
+prénom + nom sans accent ni casse, côté serveur, et vaut aussi à l'intérieur du
+fichier déposé. L'aperçu l'annonce : « 10 nouveaux, 97 déjà dans votre liste —
+leurs liens sont conservés ».
+
+**Deux onglets, parce que le couple a deux métiers séparés dans le temps.** En
+novembre il écrit cent messages, sans aucune réponse à suivre ; en avril il suit
+les réponses et prépare le traiteur. Une page qui fait les deux à la fois ne
+fait bien ni l'un ni l'autre : elle accueillait le couple avec des compteurs à
+zéro, un anneau vide et un tableau de dix colonnes dont huit étaient des tirets,
+en cachant l'écriture derrière un clic sur une cellule que personne ne devine.
+
+- **Messages** — une fiche par invité : le prénom, son groupe, un grand champ de
+  texte, la photo à côté. Filtre par défaut « à écrire », donc la page s'ouvre
+  sur le travail qui reste. Dans cet onglet, les invités ne sont pas à trouver,
+  ils *sont* la page. **Filtrer sur un groupe place son message commun en tête
+  de la liste** : on écrit le message du groupe là où l'on regarde ses invités,
+  et l'on voit aussitôt lesquels basculent de « générique » à « message de
+  groupe ».
+- **Réponses** — le tableau de suivi, ses filtres, ses graphiques et l'export
+  traiteur.
+
+L'onglet ouvert au chargement dépend de l'état : tant qu'un invité n'a pas son
+mot, c'est Messages ; une fois tout écrit, le suivi devient le sujet.
+
 **L'écriture des messages**, au fil de l'eau : on clique sur ce que la cellule
 « Retour prévu » annonce, l'éditeur se déplie sous la ligne, et le texte part
 tout seul 700 ms après la dernière frappe — ainsi qu'à la sortie du champ, pour
@@ -146,5 +205,15 @@ Trois contrôles sur les routes d'écriture, chacun pour une raison distincte :
 - un groupe doit déjà compter au moins un invité, sinon la route permettrait de
   remplir la table de groupes fantômes.
 
-Pas encore fait : **les photos**. Elles se renseignent encore en base, en
-attendant l'upload R2 avec redimensionnement dans le navigateur (§4).
+**Les photos par invité**, dans le même éditeur : le navigateur décode, recadre
+en carré (centré, décalé vers le haut comme le médaillon du faire-part),
+redimensionne en 400 × 400 et réencode en JPEG 82 avant d'envoyer. Une photo de
+3000 × 2000 part ainsi en 3 Ko. Le Worker ne fait que ranger dans R2 sous une
+clé qu'il calcule lui-même — `invite/<token>-<suffixe>.jpg`, dérivée du token et
+jamais séquentielle (§4) ; laisser le navigateur choisir la clé, ce serait lui
+laisser écraser la photo d'un autre. Le suffixe aléatoire donne une URL neuve à
+chaque remplacement, sinon les caches serviraient l'ancienne image, et l'objet
+précédent est supprimé dans la foulée.
+
+Pas encore fait : les photos du couple et du lieu, qui suivront le même chemin
+avec d'autres dimensions.
