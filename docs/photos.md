@@ -29,6 +29,17 @@ petite** sera floue à l'affichage : c'est la seule contrainte vraiment bloquant
 - **Suppression des données cachées du fichier**, notamment les coordonnées GPS que
   les téléphones enregistrent dans les photos.
 
+Tout cela se passe **dans votre navigateur, avant l'envoi** : la photo d'origine ne
+quitte jamais votre appareil. Seule la version réduite et nettoyée nous parvient.
+
+### Une exception à connaître : le HEIC
+
+Les iPhone enregistrent par défaut dans un format appelé HEIC. Safari sait le lire,
+mais **Chrome et Firefox sur ordinateur ne le savent pas**. Si vous déposez une photo
+`.heic` depuis un PC, la page vous le dira et refusera le fichier — ce n'est pas une
+panne. Deux solutions : l'envoyer depuis votre iPhone, ou l'exporter en JPEG avant
+(sur iPhone : Réglages → Appareil photo → Formats → « Le plus compatible »).
+
 ## Ce que nous ne faisons pas
 
 - Aucune retouche : ni éclaircissement, ni correction de couleurs, ni détourage, ni

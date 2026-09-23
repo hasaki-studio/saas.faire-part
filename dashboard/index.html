@@ -260,6 +260,27 @@
     background: #fff; color: var(--ink);
   }
   .editeur textarea:focus { outline: none; border-color: var(--gold); }
+  /* Texte et photo côte à côte : ensemble ils forment le retour personnalisé,
+     ils se préparent au même endroit. */
+  .editeur .deux { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+  .editeur .texte { flex: 1 1 320px; min-width: 0; }
+  .editeur .photo { flex: 0 0 150px; text-align: center; }
+  .editeur .photo .cadre {
+    width: 110px; height: 110px; border-radius: 50%; margin: 0 auto 10px;
+    background: var(--cream-dark); overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(201, 169, 110, 0.4);
+  }
+  /* Même cadrage que le médaillon du faire-part : le couple voit ce que
+     l'invité verra, pas une vignette approximative. */
+  .editeur .photo .cadre img { width: 100%; height: 100%; object-fit: cover; object-position: center 25%; }
+  .editeur .photo .cadre .vide { font-size: 0.68rem; color: #9a938a; padding: 0 10px; line-height: 1.4; }
+  .editeur .photo input[type="file"] { display: none; }
+  .editeur .photo .actions { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+  .editeur .photo .etat-photo { font-size: 0.7rem; margin-top: 8px; color: #9a938a; line-height: 1.5; }
+  .editeur .photo .etat-photo.ok { color: var(--sage-dark); }
+  .editeur .photo .etat-photo.ko { color: #a86a6a; }
+
   .editeur .pied {
     display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
     margin-top: 10px; font-size: 0.74rem; color: #9a938a;
@@ -657,13 +678,32 @@ function fermerEditeur() {
   ouvert = null;
 }
 
-function editeurHtml(valeur, titre) {
+function editeurHtml(valeur, titre, photo) {
+  const colonnePhoto = !photo ? '' : `
+    <div class="photo">
+      <div class="titre">Photo</div>
+      <div class="cadre">${photo.url
+        ? `<img src="${esc(photo.url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'), { className: 'vide', textContent: 'Photo introuvable' }))">`
+        : '<span class="vide">Aucune photo</span>'}</div>
+      <div class="actions">
+        <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" id="${photo.champId}">
+        <button class="small" type="button" data-choisir="${photo.champId}">${photo.url ? 'Remplacer' : 'Choisir'}</button>
+        <button class="small" type="button" data-retirer hidden>Retirer</button>
+      </div>
+      <p class="etat-photo"></p>
+    </div>`;
+
   return `<div class="editeur">
-    <div class="titre">${esc(titre)}</div>
-    <textarea maxlength="${MAX_MESSAGE}" placeholder="Ce mot s'affichera après un « oui ». Laissez vide pour la réponse générique.">${esc(valeur || '')}</textarea>
-    <div class="pied">
-      <span class="compteur"></span>
-      <span class="etat"></span>
+    <div class="deux">
+      <div class="texte">
+        <div class="titre">${esc(titre)}</div>
+        <textarea maxlength="${MAX_MESSAGE}" placeholder="Ce mot s'affichera après un « oui ». Laissez vide pour la réponse générique.">${esc(valeur || '')}</textarea>
+        <div class="pied">
+          <span class="compteur"></span>
+          <span class="etat"></span>
+        </div>
+      </div>
+      ${colonnePhoto}
     </div>
   </div>`;
 }
@@ -726,6 +766,122 @@ function brancherEditeur(zone, chemin, onEnregistre) {
   champ.setSelectionRange(champ.value.length, champ.value.length);
 }
 
+
+/* ---------- Photo d'un invité ----------
+   Le redimensionnement se fait ici, dans le navigateur, et pas côté serveur.
+   Ce n'est pas une question de coût (cf. CLAUDE.md §4) : c'est pour ne jamais
+   détenir l'original — 4 Mo porteurs des EXIF, donc des coordonnées GPS du
+   domicile d'un tiers — et pour ne pas faire monter trente fois 4 Mo depuis un
+   téléphone, ce qui fait abandonner la séance de saisie. */
+const PHOTO_COTE = 400;      // fichier, pour un affichage 180 × 180 (cf. §7)
+const PHOTO_QUALITE = 0.82;
+const PHOTO_CADRAGE = 0.25;  // 0 = haut, 1 = bas — le visage un peu vers le haut
+
+/**
+ * Décode, recadre en carré et réencode en JPEG. Retourne un Blob.
+ * `imageOrientation: 'from-image'` est ce qui évite la photo couchée : une image
+ * de téléphone dessinée dans un canvas sans tenir compte de son EXIF ressort
+ * pivotée (§7).
+ */
+async function preparerPhoto(fichier) {
+  let source;
+  try {
+    source = await createImageBitmap(fichier, { imageOrientation: 'from-image' });
+  } catch {
+    // Le canvas ne réencode que ce que le navigateur sait décoder. Safari décode
+    // le HEIC, Chrome et Firefox sur ordinateur non : sans ce message, le bouton
+    // semblerait simplement ne rien faire.
+    const heic = /heic|heif/i.test(fichier.type) || /\.hei[cf]$/i.test(fichier.name);
+    throw new Error(heic
+      ? "Ce navigateur ne sait pas lire les photos HEIC de l'iPhone. Exportez-la en JPEG, ou envoyez-la depuis un iPhone."
+      : "Ce fichier n'a pas pu être lu comme une image.");
+  }
+
+  // Carré centré horizontalement, décalé vers le haut : même cadrage que le
+  // médaillon du faire-part, pour que le couple voie ce que l'invité verra.
+  const cote = Math.min(source.width, source.height);
+  const sx = (source.width - cote) / 2;
+  const sy = (source.height - cote) * PHOTO_CADRAGE;
+
+  const toile = document.createElement('canvas');
+  toile.width = PHOTO_COTE;
+  toile.height = PHOTO_COTE;
+  toile.getContext('2d').drawImage(source, sx, sy, cote, cote, 0, 0, PHOTO_COTE, PHOTO_COTE);
+  source.close();
+
+  const blob = await new Promise((r) => toile.toBlob(r, 'image/jpeg', PHOTO_QUALITE));
+  if (!blob) throw new Error("La photo n'a pas pu être convertie.");
+  return blob;
+}
+
+function brancherPhoto(zone, convive) {
+  const champ = zone.querySelector('input[type="file"]');
+  const cadre = zone.querySelector('.cadre');
+  const etat = zone.querySelector('.etat-photo');
+  const choisir = zone.querySelector('[data-choisir]');
+  const retirer = zone.querySelector('[data-retirer]');
+  if (!champ) return;
+
+  const majAffichage = () => {
+    cadre.innerHTML = convive.photo_url
+      ? `<img src="${esc(convive.photo_url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'), { className: 'vide', textContent: 'Photo introuvable' }))">`
+      : '<span class="vide">Aucune photo</span>';
+    choisir.textContent = convive.photo_url ? 'Remplacer' : 'Choisir';
+    retirer.hidden = !convive.photo_url;
+  };
+
+  const dire = (texte, classe) => {
+    etat.textContent = texte;
+    etat.className = 'etat-photo' + (classe ? ' ' + classe : '');
+  };
+
+  choisir.addEventListener('click', () => champ.click());
+
+  champ.addEventListener('change', async () => {
+    const fichier = champ.files?.[0];
+    if (!fichier) return;
+    champ.value = '';   // pour que redéposer le même fichier redéclenche
+
+    try {
+      dire('Préparation…');
+      const blob = await preparerPhoto(fichier);
+      dire('Envoi…');
+      const res = await fetch(`/api/tableau/convives/${encodeURIComponent(convive.id)}/photo`, {
+        method: 'PUT',
+        headers: { 'content-type': 'image/jpeg' },
+        body: blob,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.erreur || 'Le serveur a répondu ' + res.status);
+
+      convive.photo_url = data.photo_url;
+      convive.a_photo = Boolean(data.photo_url);
+      majAffichage();
+      dire(`Enregistrée · ${Math.round(blob.size / 1024)} Ko`, 'ok');
+    } catch (e) {
+      dire(e.message, 'ko');
+    }
+  });
+
+  retirer.addEventListener('click', async () => {
+    dire('Suppression…');
+    try {
+      const res = await fetch(`/api/tableau/convives/${encodeURIComponent(convive.id)}/photo`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Le serveur a répondu ' + res.status);
+      convive.photo_url = null;
+      convive.a_photo = false;
+      majAffichage();
+      dire('Photo retirée', 'ok');
+    } catch (e) {
+      dire(e.message, 'ko');
+    }
+  });
+
+  majAffichage();
+}
+
 function ouvrirEditeurInvite(id) {
   if (ouvert === id) { fermerEditeur(); return; }
   fermerEditeur();
@@ -736,9 +892,14 @@ function ouvrirEditeurInvite(id) {
 
   const tr = document.createElement('tr');
   tr.className = 'edition';
-  tr.innerHTML = `<td colspan="10">${editeurHtml(convive.message_perso, `Message pour ${nomComplet(convive)}`)}</td>`;
+  tr.innerHTML = `<td colspan="10">${editeurHtml(
+    convive.message_perso,
+    `Message pour ${nomComplet(convive)}`,
+    { url: convive.photo_url, champId: `photo-${id}` },
+  )}</td>`;
   ligne.after(tr);
   ouvert = id;
+  brancherPhoto(tr, convive);
 
   brancherEditeur(tr, `/api/tableau/convives/${encodeURIComponent(id)}/message`, (aMessage, texte) => {
     convive.a_message = aMessage;
@@ -757,7 +918,7 @@ function ouvrirEditeurGroupe(nom) {
   fermerEditeur();
 
   const boite = $('msg-editeur');
-  boite.innerHTML = editeurHtml(groupe.message, `Message du groupe « ${nom} »`);
+  boite.innerHTML = editeurHtml(groupe.message, `Message du groupe « ${nom} »`, null);
   brancherEditeur(boite, `/api/tableau/groupes/${encodeURIComponent(nom)}/message`, (aMessage, texte) => {
     groupe.a_message = aMessage;
     groupe.message = texte || null;

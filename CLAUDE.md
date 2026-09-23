@@ -317,8 +317,10 @@ RSVP), premier thème (`botanique`) branché dessus, deux messagers (`montgolfie
 `dev.faire-part.hasakistudio.fr`, tableau de bord couple **en lecture seule**
 (liste, réponses, avancement des messages, export traiteur), écriture des
 messages au fil de l'eau depuis le tableau de bord, réponses de groupe, aperçu
-WhatsApp (Open Graph rendu côté serveur). Pas encore construit : upload photos
-vers R2, cron de suppression RGPD, limitation de débit sur le lookup.
+WhatsApp (Open Graph rendu côté serveur), photo par invité téléversée vers R2
+après redimensionnement dans le navigateur, déploiement du Worker depuis GitHub
+Actions. Pas encore construit : photos du couple et du lieu, cron de suppression
+RGPD, limitation de débit sur le lookup.
 
 **Attention à ne pas confondre deux tableaux de bord.** Celui qui est en ligne
 aujourd'hui vient du projet `Mon-Mariage` (n8n + NAS) et ne sert qu'au suivi du

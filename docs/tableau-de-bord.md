@@ -150,5 +150,15 @@ Trois contrôles sur les routes d'écriture, chacun pour une raison distincte :
 - un groupe doit déjà compter au moins un invité, sinon la route permettrait de
   remplir la table de groupes fantômes.
 
-Pas encore fait : **les photos**. Elles se renseignent encore en base, en
-attendant l'upload R2 avec redimensionnement dans le navigateur (§4).
+**Les photos par invité**, dans le même éditeur : le navigateur décode, recadre
+en carré (centré, décalé vers le haut comme le médaillon du faire-part),
+redimensionne en 400 × 400 et réencode en JPEG 82 avant d'envoyer. Une photo de
+3000 × 2000 part ainsi en 3 Ko. Le Worker ne fait que ranger dans R2 sous une
+clé qu'il calcule lui-même — `invite/<token>-<suffixe>.jpg`, dérivée du token et
+jamais séquentielle (§4) ; laisser le navigateur choisir la clé, ce serait lui
+laisser écraser la photo d'un autre. Le suffixe aléatoire donne une URL neuve à
+chaque remplacement, sinon les caches serviraient l'ancienne image, et l'objet
+précédent est supprimé dans la foulée.
+
+Pas encore fait : les photos du couple et du lieu, qui suivront le même chemin
+avec d'autres dimensions.

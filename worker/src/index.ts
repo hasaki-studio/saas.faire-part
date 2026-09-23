@@ -4,7 +4,9 @@ import {
   getAccompagnants,
   getConviveByToken,
   ecrireMessagePerso,
+  ecrirePhotoKey,
   ecrireReponseGroupe,
+  getConviveParId,
   getMariageByEmail,
   getReponseGroupe,
   listerConvives,
@@ -318,6 +320,63 @@ async function handleEcrireGroupe(request: Request, env: Env, groupe: string): P
   return json({ enregistre: true, a_message: true });
 }
 
+// Poids maximal accepté. Le navigateur envoie un médaillon 400 × 400 en JPEG 82,
+// soit ~40 Ko : ce plafond n'est pas une cible, c'est un garde-fou contre un
+// envoi qui ne viendrait pas de notre page.
+const MAX_PHOTO_OCTETS = 2 * 1024 * 1024;
+
+async function handlePhoto(request: Request, env: Env, conviveId: string): Promise<Response> {
+  const mariage = await mariageDuCouple(request, env);
+  if (mariage instanceof Response) return mariage;
+  if (!origineLegitime(request, env)) return json({ erreur: "Origine refusée" }, 403);
+
+  const convive = await getConviveParId(env.DB, mariage.id, conviveId);
+  if (!convive) return json({ erreur: "Invité introuvable" }, 404);
+  // Même raison que pour le message : un accompagnant n'a pas de lien, donc pas
+  // d'écran de retour où la photo s'afficherait.
+  if (convive.accompagnant_de) return json({ erreur: "Invité introuvable" }, 404);
+
+  const ancienne = convive.photo_key;
+
+  if (request.method === "DELETE") {
+    await ecrirePhotoKey(env.DB, mariage.id, conviveId, null);
+    if (ancienne) await env.PHOTOS.delete(ancienne);
+    return json({ enregistre: true, photo_url: null });
+  }
+
+  if (request.headers.get("content-type") !== "image/jpeg") {
+    return json({ erreur: "Seul le JPEG est accepté." }, 400);
+  }
+
+  const octets = await request.arrayBuffer();
+  if (octets.byteLength === 0) return json({ erreur: "Image vide" }, 400);
+  if (octets.byteLength > MAX_PHOTO_OCTETS) {
+    return json({ erreur: "Image trop lourde." }, 400);
+  }
+
+  // La clé est calculée ici, jamais envoyée par le navigateur : lui laisser
+  // choisir où écrire, c'est lui laisser écraser la photo d'un autre. Dérivée du
+  // token et non séquentielle (cf. CLAUDE.md §4) ; le suffixe aléatoire fait une
+  // URL neuve à chaque remplacement, sinon les caches serviraient l'ancienne.
+  const cle = `invite/${convive.token}-${genToken(6)}.jpg`;
+
+  await env.PHOTOS.put(cle, octets, {
+    httpMetadata: {
+      contentType: "image/jpeg",
+      // Immuable : l'URL change quand la photo change, donc rien n'a besoin
+      // d'être revalidé.
+      cacheControl: "public, max-age=31536000, immutable",
+    },
+  });
+  await ecrirePhotoKey(env.DB, mariage.id, conviveId, cle);
+
+  // Après l'enregistrement : un échec ici laisse un objet orphelin, ce qui est
+  // moins grave qu'une ligne pointant vers un objet supprimé.
+  if (ancienne && ancienne !== cle) await env.PHOTOS.delete(ancienne);
+
+  return json({ enregistre: true, photo_url: photoUrl(env, cle) });
+}
+
 // ── Aperçu WhatsApp ───────────────────────────────────────────────
 //
 // Le robot de WhatsApp n'exécute pas de JavaScript : il ne voit que le HTML
@@ -450,6 +509,7 @@ async function handleTableauConvives(request: Request, env: Env): Promise<Respon
       // donnée du couple, sur une surface authentifiée et bornée à son mariage.
       message_perso: c.message_perso,
       a_photo: Boolean(c.photo_key),
+      photo_url: photoUrl(env, c.photo_key),
       hors_liste: c.origine === "hors_liste",
       groupe: c.groupe,
       presence: c.presence,
@@ -511,6 +571,11 @@ export default {
       const message = url.pathname.match(/^\/api\/tableau\/convives\/([^/]+)\/message$/);
       if (message && request.method === "PUT") {
         return handleEcrireMessage(request, env, decodeURIComponent(message[1]!));
+      }
+
+      const photo = url.pathname.match(/^\/api\/tableau\/convives\/([^/]+)\/photo$/);
+      if (photo && (request.method === "PUT" || request.method === "DELETE")) {
+        return handlePhoto(request, env, decodeURIComponent(photo[1]!));
       }
 
       const groupe = url.pathname.match(/^\/api\/tableau\/groupes\/([^/]+)\/message$/);

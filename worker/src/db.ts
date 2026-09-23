@@ -220,3 +220,28 @@ export async function supprimerReponseGroupe(
     .bind(mariageId, groupe)
     .run();
 }
+
+export async function getConviveParId(
+  db: D1Database,
+  mariageId: string,
+  conviveId: string,
+): Promise<Convive | null> {
+  // mariage_id répété dans la clause : connaître l'id d'un convive ne doit
+  // jamais suffire à l'atteindre depuis le compte d'un autre couple.
+  return db
+    .prepare("SELECT * FROM convives WHERE id = ?1 AND mariage_id = ?2")
+    .bind(conviveId, mariageId)
+    .first<Convive>();
+}
+
+export async function ecrirePhotoKey(
+  db: D1Database,
+  mariageId: string,
+  conviveId: string,
+  photoKey: string | null,
+): Promise<void> {
+  await db
+    .prepare("UPDATE convives SET photo_key = ?1 WHERE id = ?2 AND mariage_id = ?3")
+    .bind(photoKey, conviveId, mariageId)
+    .run();
+}
