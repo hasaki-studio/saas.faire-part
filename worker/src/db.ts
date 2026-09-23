@@ -17,6 +17,8 @@ export interface Mariage {
   og_image_key: string | null;
   reponse_generique_oui: string;
   reponse_generique_non: string;
+  contact_rgpd: string | null;
+  supprimer_le: string;
 }
 
 export type Presence = "oui" | "non";
@@ -303,4 +305,91 @@ export async function importerConvives(
   }
 
   return { ajoutes: nouveaux.length, existants: invites.length - nouveaux.length };
+}
+
+// ── Effacement à J+90 ─────────────────────────────────────────────
+//
+// Obligation (CLAUDE.md §5) autant qu'argument commercial : les invités sont
+// des tiers dont le couple nous a confié les données, et rien ne justifie de
+// les garder trois mois après la fête.
+//
+// Le compte se fait sur `date_mariage`, jamais sur la date de réponse : un
+// invité qui répond en janvier pour un mariage de juin n'a pas à être effacé
+// en avril.
+
+export interface MariageAPurger {
+  id: string;
+  slug: string;
+  date_mariage: string;
+}
+
+/**
+ * Mariages à purger : `supprimer_le` est dépassé et il reste des convives.
+ *
+ * Deux conditions sur la date plutôt qu'une. `supprimer_le` est calculé à
+ * l'insertion et indexé (schema/001_init.sql), c'est donc lui qui porte la
+ * requête ; mais il ne se recalcule pas tout seul si la date du mariage bouge.
+ * Un mariage repoussé de six mois garderait un `supprimer_le` ancien, et
+ * l'effacement tomberait avant la fête — le pire échec possible pour cette
+ * tâche. La seconde condition rend ce cas impossible, au prix d'un calcul sur
+ * les seules lignes déjà retenues par l'index.
+ *
+ * L'existence de convives rend la tâche idempotente : une fois purgé, un
+ * mariage ne remonte plus, donc le cron quotidien ne rejoue pas indéfiniment
+ * des suppressions vides.
+ */
+export async function mariagesAPurger(db: D1Database): Promise<MariageAPurger[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT m.id, m.slug, m.date_mariage
+         FROM mariages m
+        WHERE m.supprimer_le <= date('now')
+          AND date(m.date_mariage, '+90 days') <= date('now')
+          AND EXISTS (SELECT 1 FROM convives c WHERE c.mariage_id = m.id)`,
+    )
+    .all<MariageAPurger>();
+  return results;
+}
+
+/**
+ * Efface les données d'invités d'un mariage et rend les clés R2 à supprimer.
+ *
+ * Ce qui part : les lignes `convives` (nom, prénom, présence, régime
+ * alimentaire, message, et le message que le couple avait écrit pour chacun)
+ * et les réponses de groupe, qui sont elles aussi des textes écrits pour des
+ * invités.
+ *
+ * Ce qui reste : la ligne `mariages`. Le couple est notre client, pas un tiers ;
+ * ses données vivent sous le contrat de sous-traitance et s'effacent à la fin
+ * de celui-ci, pas au calendrier des invités. Mélanger les deux effacerait un
+ * dossier client au bout de trois mois.
+ *
+ * Les clés R2 sont retournées plutôt que supprimées ici : la base et le bucket
+ * sont deux systèmes sans transaction commune, et l'appelant supprime les
+ * objets *après* que les lignes sont parties. Dans l'autre sens, un échec à
+ * mi-chemin laisserait des lignes pointant vers des photos disparues.
+ */
+export async function purgerConvives(
+  db: D1Database,
+  mariageId: string,
+): Promise<{ convives: number; groupes: number; clesPhotos: string[] }> {
+  const { results: photos } = await db
+    .prepare(
+      `SELECT photo_key FROM convives WHERE mariage_id = ?1 AND photo_key IS NOT NULL
+       UNION
+       SELECT photo_key FROM reponses_groupe WHERE mariage_id = ?1 AND photo_key IS NOT NULL`,
+    )
+    .bind(mariageId)
+    .all<{ photo_key: string }>();
+
+  const [convives, groupes] = await db.batch([
+    db.prepare("DELETE FROM convives WHERE mariage_id = ?1").bind(mariageId),
+    db.prepare("DELETE FROM reponses_groupe WHERE mariage_id = ?1").bind(mariageId),
+  ]);
+
+  return {
+    convives: convives?.meta.changes ?? 0,
+    groupes: groupes?.meta.changes ?? 0,
+    clesPhotos: photos.map((p) => p.photo_key),
+  };
 }

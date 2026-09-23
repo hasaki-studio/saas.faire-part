@@ -29,6 +29,10 @@
  :root {
     --sage: #7d9b76;
      --sage-light: #a8c4a2;
+    /* Texte sur le vert sombre du RSVP. --sage-light n'y tient que 3,1:1 et
+       --sage 1,9:1, sous le minimum de 4,5:1 (CLAUDE.md §6) ; celui-ci tient
+       4,8:1 au point le plus clair du dégradé. Mesuré, pas estimé. */
+    --sage-lisible: #dcebd8;
     --sage-dark: #4f6b4a;
    --cream: #f7f3ec;
     --cream-dark: #ede6d8;
@@ -433,13 +437,13 @@ nav {
     text-align: center;
   }
 
-  .rsvp-section .section-label { color: var(--sage-light); }
+  .rsvp-section .section-label { color: var(--sage-lisible); }
   .rsvp-section .section-title { color: var(--cream); margin-bottom: 10px; }
 
   .rsvp-deadline {
     font-size: 0.8rem;
     letter-spacing: 0.15em;
-    color: var(--sage-light);
+    color: var(--sage-lisible);
     margin-bottom: 40px;
     text-transform: uppercase;
   }
@@ -458,7 +462,7 @@ nav {
     font-size: 0.65rem;
     letter-spacing: 0.3em;
     text-transform: uppercase;
-    color: var(--sage-light);
+    color: var(--sage-lisible);
     font-family: 'Jost', sans-serif;
   }
 
@@ -521,7 +525,7 @@ nav {
     align-self: flex-start;
     background: transparent;
     border: none;
-    color: var(--sage-light);
+    color: var(--sage-lisible);
     font-family: 'Jost', sans-serif;
     font-size: 0.7rem;
     letter-spacing: 0.2em;
@@ -533,10 +537,30 @@ nav {
 
   .accompagnants-note {
     font-size: 0.82rem;
-    color: var(--sage);
+    color: var(--sage-lisible);
     margin-top: 6px;
     font-style: italic;
   }
+
+  /* Mention d'information RGPD (art. 13). Le couple est responsable de
+     traitement, nous sommes sous-traitant (CLAUDE.md §5). Discrète mais
+     lisible : 4,8:1 sur le fond réel, jamais un gris décoratif. */
+  .mention-rgpd {
+    margin-top: 18px;
+    font-size: 0.78rem;
+    line-height: 1.6;
+    color: var(--sage-lisible);
+    text-align: left;
+  }
+  .mention-rgpd summary {
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    margin-top: 6px;
+  }
+  .mention-rgpd summary::marker { content: ''; }
+  .mention-rgpd .detail { margin-top: 10px; }
+  .mention-rgpd .detail p + p { margin-top: 8px; }
 
   .rsvp-submit {
     margin-top: 10px;
@@ -976,6 +1000,29 @@ nav {
         <textarea id="rsvp-message" placeholder="Un mot doux, une musique à suggérer pour la playlist..."></textarea>
       </div>
       <button class="rsvp-submit" onclick="submitRSVP()">Envoyer ma réponse</button>
+
+      <div class="mention-rgpd">
+        <span id="rgpd-resume">Vos réponses ne servent qu'à organiser ce mariage et
+        sont effacées automatiquement quatre-vingt-dix jours après.</span>
+        <details>
+          <summary>En savoir plus sur vos informations</summary>
+          <div class="detail">
+            <p id="rgpd-qui">Les mariés sont responsables de ces informations ; la
+            page est fournie par un prestataire qui les héberge pour eux et n'en fait
+            aucun autre usage. Elles servent à préparer le plan de table, le nombre de
+            couverts et les menus, rien d'autre — jamais de publicité, jamais de
+            revente.</p>
+            <p id="rgpd-duree">Tout est effacé automatiquement quatre-vingt-dix jours
+            après le mariage, sans démarche de votre part.</p>
+            <p id="rgpd-droits">Pour consulter, corriger ou faire effacer vos
+            informations avant cette date, répondez au message par lequel vous avez
+            reçu ce lien : il vous met en relation avec les mariés.</p>
+            <p>Le champ « régime alimentaire » est facultatif et ne propose que
+            des choix de menu. N'y indiquez rien d'autre : une allergie ou un
+            traitement n'ont pas à figurer ici, dites-le directement aux mariés.</p>
+          </div>
+        </details>
+      </div>
     </div>
 
     <div class="rsvp-success" id="rsvp-success">
@@ -1341,6 +1388,35 @@ function formatDate(iso) {
   return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+/**
+ * Complète la mention d'information avec les prénoms du couple et la date
+ * d'effacement (CLAUDE.md §5). Les textes par défaut du HTML disent déjà
+ * l'essentiel : cette fonction ne fait que les rendre vérifiables. Si elle
+ * n'est jamais appelée — pas de token, pas de réseau — la page reste conforme.
+ */
+function remplirMentionRgpd(m) {
+  const couple = `${m.prenom_1} et ${m.prenom_2}`;
+
+  const efface = new Date(m.date_mariage + 'T00:00:00');
+  efface.setDate(efface.getDate() + 90);
+  const leJour = efface.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  document.getElementById('rgpd-resume').textContent =
+    `Vos réponses ne servent qu'à organiser le mariage de ${couple} et sont effacées automatiquement le ${leJour}.`;
+
+  document.getElementById('rgpd-qui').textContent =
+    `${couple} sont responsables de ces informations ; la page est fournie par un prestataire qui les héberge pour eux et n'en fait aucun autre usage. Elles servent à préparer le plan de table, le nombre de couverts et les menus, rien d'autre — jamais de publicité, jamais de revente.`;
+
+  document.getElementById('rgpd-duree').textContent =
+    `Tout est effacé le ${leJour}, quatre-vingt-dix jours après le mariage, sans démarche de votre part.`;
+
+  // Sans contact explicite, on renvoie vers le canal qui a porté le lien : il
+  // existe forcément, puisque les liens partent par message (CLAUDE.md §3).
+  document.getElementById('rgpd-droits').textContent = m.contact_rgpd
+    ? `Pour consulter, corriger ou faire effacer vos informations avant cette date, écrivez à ${m.contact_rgpd}.`
+    : `Pour consulter, corriger ou faire effacer vos informations avant cette date, répondez au message par lequel vous avez reçu ce lien : il vous met en relation avec ${couple}.`;
+}
+
 // Doit rester aligné sur MAX_ACCOMPAGNANTS dans worker/src/index.ts : ici c'est
 // du confort, le Worker reste seul juge — le formulaire se contourne.
 const MAX_ACCOMPAGNANTS = 4;
@@ -1428,6 +1504,7 @@ async function chargerFaireArt() {
   document.getElementById('prenom-2').textContent = m.prenom_2;
   document.getElementById('hero-date').textContent = `Le ${formatDate(m.date_mariage)}`;
   document.getElementById('rsvp-deadline').textContent = `Merci de répondre avant le ${formatDate(m.date_limite_rsvp)}`;
+  remplirMentionRgpd(m);
 
   const photoCouple = document.getElementById('photo-couple');
   if (m.photo_couple_url) {

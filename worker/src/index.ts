@@ -13,6 +13,8 @@ import {
   getReponseGroupe,
   listerConvives,
   listerGroupes,
+  mariagesAPurger,
+  purgerConvives,
   resolveMariageByHost,
   supprimerReponseGroupe,
   type Mariage,
@@ -69,6 +71,11 @@ function contenuPublic(env: Env, mariage: Mariage) {
     cocktail_adresse: mariage.cocktail_adresse,
     cocktail_photo_url: photoUrl(env, mariage.cocktail_photo_key),
     photo_couple_url: photoUrl(env, mariage.photo_couple_key),
+    // Mention d'information du formulaire RSVP (CLAUDE.md §5) : le responsable
+    // de traitement, c'est le couple, et l'article 13 veut de quoi le joindre.
+    // Null accepté — le thème dit alors de répondre au message qui portait le
+    // lien, ce qui est vrai puisqu'ils partent par WhatsApp.
+    contact_rgpd: mariage.contact_rgpd,
   };
 }
 
@@ -589,7 +596,59 @@ function slugPrenom(prenom: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+// ── Effacement automatique à J+90 ─────────────────────────────────
+
+// Un journal se relit : « 1 réponses de groupe » fait douter du reste de la ligne.
+function pluriel(n: number, singulier: string, plur = `${singulier}s`): string {
+  return `${n} ${n > 1 ? plur : singulier}`;
+}
+
+// R2 accepte au plus 1000 clés par appel de suppression.
+const MAX_SUPPRESSIONS_R2 = 1000;
+
+/**
+ * Efface les données d'invités des mariages passés depuis plus de 90 jours.
+ *
+ * Déclenché par le Cron Trigger de wrangler.toml, une fois par nuit. La tâche
+ * est idempotente : `mariagesAPurger` ne retourne que les mariages qui ont
+ * encore des convives, donc une nuit sans rien à faire ne fait rien.
+ *
+ * Chaque mariage est traité séparément et les erreurs ne se propagent pas : un
+ * mariage dont la purge échoue ne doit pas empêcher celle des autres, et il
+ * repassera de toute façon dans la sélection la nuit suivante.
+ */
+async function purgeJ90(env: Env): Promise<void> {
+  const mariages = await mariagesAPurger(env.DB);
+  if (!mariages.length) return;
+
+  for (const mariage of mariages) {
+    try {
+      const { convives, groupes, clesPhotos } = await purgerConvives(env.DB, mariage.id);
+
+      // Après la base, jamais avant : un échec ici laisse des objets orphelins
+      // dans R2, que la nuit suivante ne rattrapera pas — mais des photos sans
+      // ligne pour les désigner ne sont plus reliées à personne, alors qu'une
+      // ligne sans photo casserait une page.
+      for (let i = 0; i < clesPhotos.length; i += MAX_SUPPRESSIONS_R2) {
+        await env.PHOTOS.delete(clesPhotos.slice(i, i + MAX_SUPPRESSIONS_R2));
+      }
+
+      // Volontairement sans aucun nom ni token : un journal d'exécution n'est
+      // pas l'endroit où faire survivre ce qu'on vient d'effacer.
+      console.log(
+        `purge J+90 · ${mariage.slug} (${mariage.date_mariage}) · ${pluriel(convives, "convive")}, ${pluriel(groupes, "réponse de groupe", "réponses de groupe")}, ${pluriel(clesPhotos.length, "photo")}`,
+      );
+    } catch (e) {
+      console.error(`purge J+90 · échec sur ${mariage.slug} :`, e);
+    }
+  }
+}
+
 export default {
+  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(purgeJ90(env));
+  },
+
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
