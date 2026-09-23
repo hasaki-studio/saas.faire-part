@@ -32,7 +32,15 @@ DASHBOARD_HOSTNAME = "tableau.dev.faire-part.hasakistudio.fr"
 # 36 caractères avec tirets. Se tromper ne casse rien au déploiement — le
 # Worker part, puis rejette chaque requête du tableau de bord en 403 et la page
 # reste vide sans message utile. L'erreur a été faite une fois ici.
-ACCESS_TEAM_DOMAIN = "hasakistudio.cloudflareaccess.com"
+#
+# Le team domain n'a rien à voir avec nos noms de domaine : Cloudflare l'attribue
+# à l'inscription à Zero Trust, souvent sous une forme tirée au sort du genre
+# « small-bird-358e ». Il se lit dans Zero Trust > Settings > Custom Pages, ligne
+# « Team domain », et c'est aussi l'hôte de la page qui demande le code à six
+# chiffres. Le deviner d'après la marque ne marche pas — essayé, raté : le Worker
+# ne trouve alors pas les clés publiques d'Access, aucune signature ne se vérifie,
+# et tout repart en 403 « Non authentifié » sans rien dire de plus.
+ACCESS_TEAM_DOMAIN = "small-bird-358e.cloudflareaccess.com"
 ACCESS_AUD = "3f1b10304ccb380a17175c4237ee8f875381e8447f97329eb172548cacd76b87"
 # Connexion simulée pour `wrangler dev` : sans Access devant le Worker en local,
 # il n'y a pas de jeton à vérifier. N'a d'effet que sur localhost, et n'existe
@@ -55,6 +63,6 @@ bucket_name = "faire-part-photos-prod"
 SHARED_DOMAIN = "faire-part.hasakistudio.fr"
 PHOTOS_PUBLIC_URL = "https://photos.hasakistudio.fr"
 DASHBOARD_HOSTNAME = "tableau.faire-part.hasakistudio.fr"
-ACCESS_TEAM_DOMAIN = "hasakistudio.cloudflareaccess.com"
+ACCESS_TEAM_DOMAIN = "small-bird-358e.cloudflareaccess.com"
 ACCESS_AUD = "REMPLACER_PAR_L_AUD_DE_L_APPLICATION_ACCESS_PROD"
 # Pas de DEV_EMAIL ici : volontaire.

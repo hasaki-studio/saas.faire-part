@@ -48,7 +48,10 @@ curl -s -H "Host: tableau.faire-part.hasakistudio.fr" \
    tableau de bord ; c'est l'état par défaut, et c'est le bon.
 3. **DNS** — enregistrement `tableau.dev.faire-part` (proxifié, orange).
 4. **Pages** — un projet servant `dashboard/`, avec ce sous-domaine en domaine
-   personnalisé.
+   personnalisé. Commande de build **vide** (pas de framework, c'est du HTML
+   natif) et **Build output directory = `dashboard`**. Laisser ce champ vide
+   publie la racine du dépôt, où il n'y a pas d'`index.html` : la racine du
+   domaine répond 404 alors que `/dashboard/index.html` fonctionne.
 5. **Access** — une application self-hosted sur `tableau.dev.faire-part.hasakistudio.fr`,
    politique *Allow* limitée aux emails des couples (un email par mariage, ajouté
    à la main : **il n'y a pas d'inscription libre**, et il ne doit pas y en avoir
@@ -59,6 +62,13 @@ curl -s -H "Host: tableau.faire-part.hasakistudio.fr" \
    36 caractères avec tirets. Prendre l'un pour l'autre donne un déploiement qui
    réussit et un tableau de bord qui répond 403 à chaque requête, page vide et
    sans message utile.
+
+   Relever au passage le **Team domain** (Settings > Custom Pages) et le reporter
+   dans `ACCESS_TEAM_DOMAIN`. Cloudflare l'attribue à l'inscription et il ne
+   ressemble à rien de connu — `small-bird-358e.cloudflareaccess.com` chez nous.
+   Le déduire du nom de la marque ne marche pas : sans lui, le Worker ne peut pas
+   télécharger les clés publiques d'Access et répond 403 à tout, exactement comme
+   si l'AUD était faux.
 6. **Route Worker** — `tableau.dev.faire-part.hasakistudio.fr/api/*` vers
    `faire-part-worker`. Ne **jamais** utiliser `*.hasakistudio.fr/*` : ce motif
    capterait tous les sous-domaines du compte.
