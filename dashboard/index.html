@@ -200,6 +200,12 @@
     background: #fff; color: var(--ink); flex: 1 1 180px; min-width: 140px;
   }
   .filtres input[type="search"]:focus { outline: none; border-color: var(--gold); }
+  .filtres select {
+    font-family: 'Jost', sans-serif; font-size: 0.8rem; font-weight: 300;
+    padding: 8px 12px; border: 1px solid rgba(201, 169, 110, 0.5);
+    background: #fff; color: var(--ink);
+  }
+  .filtres select:focus { outline: none; border-color: var(--gold); }
   /* Les trois niveaux sont ordonnés (du plus personnel au moins personnel), pas
      trois catégories sans rapport : un dégradé d'une seule teinte, du foncé au
      clair, dit cet ordre. Clartés 0,47 / 0,63 / 0,79 — monotones et régulières.
@@ -392,7 +398,7 @@
         </div>
         <div class="filtres">
           <input type="search" id="fiches-recherche" placeholder="Rechercher un invité" aria-label="Rechercher un invité">
-          <span id="fiches-groupes" style="display:flex;gap:8px;flex-wrap:wrap"></span>
+          <select id="fiches-groupe" aria-label="Filtrer par groupe"></select>
         </div>
         <div id="fiches"></div>
       </div>
@@ -994,6 +1000,7 @@ function fiches() {
 
   document.querySelectorAll('[data-fiches]').forEach((b) =>
     b.classList.toggle('on', b.dataset.fiches === filtreFiches));
+  $('fiches-groupe').value = filtreFiches.startsWith('groupe:') ? filtreFiches : '';
 
   const boite = $('fiches');
   if (!visibles.length) {
@@ -1046,7 +1053,7 @@ function correspond(c) {
 function etiquetteRetour(c) {
   const tag = ({
     perso: '<span class="tag oui">Message dédié</span>',
-    groupe: '<span class="tag groupe">Son groupe</span>',
+    groupe: '<span class="tag groupe">Message de groupe</span>',
     generique: '<span class="tag warn">Générique</span>',
   })[retourPrevu(c)];
   // Un accompagnant n'a pas d'écran de retour : rien à écrire pour lui.
@@ -1111,12 +1118,13 @@ function tableau() {
     b.classList.toggle('on', b.dataset.f === filtre));
 }
 
+// Un menu déroulant plutôt qu'un bouton par groupe : un couple peut en avoir
+// dix, et dix boutons sur deux lignes noieraient les trois filtres qui comptent.
 function chipsGroupesFiches() {
-  const box = $('fiches-groupes');
-  box.innerHTML = GROUPES.map((g) =>
-    `<button class="small" type="button" data-fiches="groupe:${esc(g.nom)}">${esc(g.nom)}</button>`).join('');
-  box.querySelectorAll('[data-fiches]').forEach((b) =>
-    b.addEventListener('click', () => { filtreFiches = b.dataset.fiches; fiches(); }));
+  const menu = $('fiches-groupe');
+  menu.hidden = !GROUPES.length;
+  menu.innerHTML = '<option value="">Tous les groupes</option>' +
+    GROUPES.map((g) => `<option value="groupe:${esc(g.nom)}">${esc(g.nom)} · ${g.invites}</option>`).join('');
 }
 
 function chipsGroupes() {
@@ -1171,6 +1179,14 @@ document.querySelectorAll('#onglets button').forEach((b) =>
 
 document.querySelectorAll('[data-fiches]').forEach((b) =>
   b.addEventListener('click', () => { filtreFiches = b.dataset.fiches; fiches(); }));
+
+$('fiches-groupe').addEventListener('change', (e) => {
+  // Le groupe et l'état se combinent mal ici : choisir un groupe remplace le
+  // filtre plutôt que de s'y ajouter, sinon on obtient des listes vides sans
+  // comprendre pourquoi.
+  filtreFiches = e.target.value || 'tous';
+  fiches();
+});
 
 $('fiches-recherche').addEventListener('input', (e) => {
   rechercheFiches = e.target.value.trim().toLowerCase();
