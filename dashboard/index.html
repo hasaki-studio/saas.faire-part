@@ -14,14 +14,26 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --sage: #7d9b76;
+    /* Quatre niveaux de texte, un par rôle, tous au-dessus de 4,5:1 sur le
+       crème comme sur le blanc — mesuré, pas estimé. Le plus foncé va à ce que
+       le couple a écrit : c'est le contenu, il doit dominer l'interface.
+         --ink      12,9:1   ce que le couple a saisi
+         --ink-2     7,3:1   infos du mariage, valeurs, dates
+         --aide      5,3:1   consignes et explications
+         --sage      4,6:1   libellés en petites majuscules */
+    --ink: #2e2a25;
+    --ink-2: #554f47;
+    --aide: #6b645a;
+    --sage: #5b7555;
+    --sage-dark: #446042;
     --sage-light: #a8c4a2;
-    --sage-dark: #4f6b4a;
     --cream: #f7f3ec;
     --cream-dark: #ede6d8;
     --gold: #c9a96e;
-    --ink: #3a3530;
-    --rose: #c98f8f;
+    --gold-texte: #7d6a3c;   /* l'or est lisible en aplat, pas en texte */
+    --ambre: #8a6a2c;        /* avertissements */
+    --rose: #c98f8f;          /* aplats et marques */
+    --rose-texte: #9c5a5a;    /* le même rôle, en texte lisible */
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -30,7 +42,9 @@
     background: var(--cream);
     color: var(--ink);
     font-family: 'Jost', sans-serif;
-    font-weight: 300;
+    /* 400 et non 300 : en petit corps, une graisse fine grise le texte autant
+       qu'une couleur trop claire. Les titres gardent leur légèreté. */
+    font-weight: 400;
     line-height: 1.6;
     padding: 32px 20px 80px;
   }
@@ -65,8 +79,8 @@
 
   button {
     font-family: 'Jost', sans-serif;
-    font-size: 0.66rem;
-    font-weight: 300;
+    font-size: 0.68rem;
+    font-weight: 400;
     letter-spacing: 0.22em;
     text-transform: uppercase;
     padding: 11px 22px;
@@ -87,22 +101,22 @@
      séparés dans le temps — écrire ses messages en novembre, suivre les réponses
      en avril — et une page qui fait les deux à la fois ne fait bien ni l'un ni
      l'autre. */
-  .aide { font-size: 0.8rem; color: #8a837a; margin-bottom: 14px; line-height: 1.6; }
+  .aide { font-size: 0.8rem; color: var(--ink-2); margin-bottom: 14px; line-height: 1.6; }
   #import-coller {
     width: 100%; resize: vertical; font-family: 'Jost', sans-serif;
-    font-size: 0.85rem; font-weight: 300; line-height: 1.6;
+    font-size: 0.88rem; font-weight: 400; line-height: 1.65;
     padding: 11px 13px; border: 1px solid rgba(201, 169, 110, 0.5); background: #fff; color: var(--ink);
   }
   #import-coller:focus { outline: none; border-color: var(--gold); }
   .import-pied { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
-  .import-pied .etat { font-size: 0.76rem; color: #9a938a; }
+  .import-pied .etat { font-size: 0.76rem; color: var(--aide); }
   .import-pied .etat.ok { color: var(--sage-dark); }
-  .import-pied .etat.ko { color: #a86a6a; }
+  .import-pied .etat.ko { color: var(--rose-texte); }
   .zone-survol { border-color: var(--gold) !important; background: var(--cream) !important; }
 
   #import-un { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
   #import-un input {
-    font-family: 'Jost', sans-serif; font-size: 0.85rem; font-weight: 300; flex: 1 1 150px;
+    font-family: 'Jost', sans-serif; font-size: 0.88rem; font-weight: 400; flex: 1 1 150px;
     padding: 9px 12px; border: 1px solid rgba(201, 169, 110, 0.5); background: #fff; color: var(--ink);
   }
   #import-un input:focus { outline: none; border-color: var(--gold); }
@@ -114,10 +128,10 @@
   }
   .apercu table { min-width: 0; font-size: 0.8rem; }
   .apercu td, .apercu th { padding: 7px 10px; }
-  .apercu .colonnes-lues { font-size: 0.78rem; color: #8a837a; margin-bottom: 12px; line-height: 1.7; }
+  .apercu .colonnes-lues { font-size: 0.78rem; color: var(--ink-2); margin-bottom: 12px; line-height: 1.7; }
   .apercu .colonnes-lues b { font-weight: 400; color: var(--sage-dark); }
-  .apercu .colonnes-lues .ignorees { color: #9a7b3f; }
-  .apercu .alertes { list-style: none; margin: 12px 0 0; font-size: 0.78rem; color: #9a7b3f; }
+  .apercu .colonnes-lues .ignorees { color: var(--ambre); }
+  .apercu .alertes { list-style: none; margin: 12px 0 0; font-size: 0.78rem; color: var(--ambre); }
   .apercu .alertes li { padding: 3px 0 3px 16px; position: relative; }
   .apercu .alertes li::before { content: "·"; position: absolute; left: 4px; }
   .apercu .bilan { font-size: 0.86rem; margin-top: 14px; }
@@ -126,7 +140,7 @@
   .correspondance { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
   .correspondance label { font-size: 0.72rem; color: var(--sage); display: flex; flex-direction: column; gap: 5px; }
   .correspondance select {
-    font-family: 'Jost', sans-serif; font-size: 0.82rem; font-weight: 300;
+    font-family: 'Jost', sans-serif; font-size: 0.84rem; font-weight: 400;
     padding: 7px 10px; border: 1px solid rgba(201, 169, 110, 0.5); background: #fff; color: var(--ink);
   }
 
@@ -149,8 +163,8 @@
   .fiche:first-child { padding-top: 4px; }
   .fiche:last-child { border-bottom: none; padding-bottom: 4px; }
   .fiche-tete { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
-  .fiche-tete .nom { font-size: 1rem; color: var(--ink); }
-  .fiche-tete .groupe { font-size: 0.75rem; color: #8a837a; }
+  .fiche-tete .nom { font-size: 1.02rem; color: var(--ink); font-weight: 400; }
+  .fiche-tete .groupe { font-size: 0.76rem; color: var(--ink-2); }
   .fiche-tete .etat-fiche { margin-left: auto; }
   .fiche-groupe { background: var(--cream); margin: 0 -26px; padding: 20px 26px; }
   .fiche-groupe .nom { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.1rem; color: var(--sage-dark); }
@@ -175,11 +189,11 @@
   }
   .kpi .lbl .sub {
     display: block; font-size: 0.58rem; letter-spacing: 0.1em;
-    text-transform: none; color: #9a938a; margin-top: 4px;
+    text-transform: none; color: var(--aide); margin-top: 4px;
   }
   .kpi.accent { border-top-color: var(--sage-dark); }
   .kpi.alert { border-top-color: var(--rose); }
-  .kpi.alert .num { color: #a86a6a; }
+  .kpi.alert .num { color: var(--rose-texte); }
 
   .grid {
     display: grid;
@@ -201,7 +215,7 @@
   .card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
   .empty { font-size: 0.8rem; color: var(--sage); font-style: italic; padding: 18px 0; }
-  .muted { color: #9a938a; font-style: italic; }
+  .muted { color: var(--aide); font-style: italic; }
 
   .donut-row { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
   .donut-mid { font-family: 'Cormorant Garamond', serif; font-size: 1.7rem; fill: #4f6b4a; }
@@ -223,17 +237,17 @@
       var(--gold), var(--gold) 4px, rgba(201, 169, 110, 0.45) 4px, rgba(201, 169, 110, 0.45) 8px);
   }
   .hint {
-    font-style: normal; margin-left: 5px; color: #9a7b3f; cursor: help;
+    font-style: normal; margin-left: 5px; color: var(--ambre); cursor: help;
     background: rgba(201, 169, 110, 0.28); border-radius: 50%;
     width: 15px; height: 15px; display: inline-block; text-align: center;
     line-height: 15px; font-size: 0.7rem;
   }
   .reg-foot {
     display: flex; gap: 20px; flex-wrap: wrap; margin-top: 18px; padding-top: 14px;
-    border-top: 1px solid var(--cream-dark); font-size: 0.75rem; color: #8a837a;
+    border-top: 1px solid var(--cream-dark); font-size: 0.75rem; color: var(--ink-2);
   }
   .reg-foot b { font-weight: 400; color: var(--sage-dark); }
-  .reg-warn { font-size: 0.72rem; color: #9a7b3f; margin-top: 12px; line-height: 1.6; }
+  .reg-warn { font-size: 0.72rem; color: var(--ambre); margin-top: 12px; line-height: 1.6; }
 
   .filtres {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -241,13 +255,13 @@
     border-left: 2px solid var(--gold);
   }
   .filtres input[type="search"] {
-    font-family: 'Jost', sans-serif; font-size: 0.8rem; font-weight: 300;
+    font-family: 'Jost', sans-serif; font-size: 0.82rem; font-weight: 400;
     padding: 8px 12px; border: 1px solid rgba(201, 169, 110, 0.5);
     background: #fff; color: var(--ink); flex: 1 1 180px; min-width: 140px;
   }
   .filtres input[type="search"]:focus { outline: none; border-color: var(--gold); }
   .filtres select {
-    font-family: 'Jost', sans-serif; font-size: 0.8rem; font-weight: 300;
+    font-family: 'Jost', sans-serif; font-size: 0.82rem; font-weight: 400;
     padding: 8px 12px; border: 1px solid rgba(201, 169, 110, 0.5);
     background: #fff; color: var(--ink);
   }
@@ -276,19 +290,19 @@
   .barre.groupe { background: var(--sage); }
   .barre.generique { background: var(--sage-light); }
   .colonne .l { font-size: 0.72rem; color: var(--ink); margin-top: 10px; padding: 0 6px; line-height: 1.35; }
-  .colonne .l small { display: block; font-size: 0.68rem; color: #9a938a; margin-top: 2px; }
+  .colonne .l small { display: block; font-size: 0.68rem; color: var(--aide); margin-top: 2px; }
   .msg-titre { font-size: 0.86rem; }
 
   .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
   .chips-titre {
-    flex: 1 0 100%; font-size: 0.72rem; color: #8a837a; margin-bottom: 2px;
+    flex: 1 0 100%; font-size: 0.72rem; color: var(--ink-2); margin-bottom: 2px;
   }
   .chips .chip {
     font-size: 0.72rem; padding: 5px 12px; background: var(--cream);
     border: 1px solid var(--cream-dark);
   }
   .chips .chip b { font-weight: 400; color: var(--sage-dark); margin-left: 6px; }
-  .chips .chip.manque { border-color: rgba(201, 169, 110, 0.6); color: #9a7b3f; }
+  .chips .chip.manque { border-color: rgba(201, 169, 110, 0.6); color: var(--ambre); }
 
   .filtres .count { font-size: 0.75rem; color: var(--sage-dark); margin-left: auto; }
 
@@ -300,20 +314,20 @@
   th {
     text-align: left; font-size: 0.6rem; font-weight: 400;
     letter-spacing: 0.18em; text-transform: uppercase; color: var(--sage);
-    padding: 0 9px 12px; border-bottom: 1px solid rgba(201, 169, 110, 0.35);
+    padding: 0 8px 12px; border-bottom: 1px solid rgba(201, 169, 110, 0.35);
     white-space: nowrap; user-select: none;
   }
   th.sortable { cursor: pointer; }
   th.sortable:hover { color: var(--gold); }
   th .arrow { opacity: 0.45; font-size: 0.7rem; }
-  td { padding: 13px 9px; border-bottom: 1px solid var(--cream-dark); vertical-align: top; }
+  td { padding: 13px 8px; border-bottom: 1px solid var(--cream-dark); vertical-align: top; }
   tr:hover td { background: rgba(247, 243, 236, 0.7); }
   .note { font-size: 0.78rem; max-width: 210px; overflow-wrap: anywhere; }
   td .nom { display: inline-block; }
 
   /* Un accompagnant n'est pas un invité de plus dans la liste : il est rattaché
      à la personne qui l'a annoncé, sinon le plan de table devient faux. */
-  td .accomp { padding-left: 18px; color: #8a837a; }
+  td .accomp { padding-left: 18px; color: var(--ink-2); }
   td .accomp::before { content: "↳ "; color: var(--gold); }
 
   .tag {
@@ -321,10 +335,10 @@
     text-transform: uppercase; padding: 3px 11px; border-radius: 11px; white-space: nowrap;
   }
   .tag.oui { background: rgba(125, 155, 118, 0.16); color: var(--sage-dark); }
-  .tag.non { background: rgba(201, 143, 143, 0.16); color: #a86a6a; }
-  .tag.warn { background: rgba(201, 169, 110, 0.22); color: #9a7b3f; }
+  .tag.non { background: rgba(201, 143, 143, 0.16); color: var(--rose-texte); }
+  .tag.warn { background: rgba(201, 169, 110, 0.22); color: var(--ambre); }
   .tag.groupe { background: rgba(125, 155, 118, 0.10); color: var(--sage); }
-  td .par { color: #8a837a; }
+  td .par { color: var(--ink-2); }
 
   .editeur { padding: 0; }
   .editeur .titre {
@@ -333,7 +347,7 @@
   }
   .editeur textarea {
     width: 100%; min-height: 90px; resize: vertical;
-    font-family: 'Jost', sans-serif; font-size: 0.88rem; font-weight: 300; line-height: 1.6;
+    font-family: 'Jost', sans-serif; font-size: 0.9rem; font-weight: 400; line-height: 1.65;
     padding: 11px 13px; border: 1px solid rgba(201, 169, 110, 0.5);
     background: #fff; color: var(--ink);
   }
@@ -352,28 +366,28 @@
   /* Même cadrage que le médaillon du faire-part : le couple voit ce que
      l'invité verra, pas une vignette approximative. */
   .editeur .photo .cadre img { width: 100%; height: 100%; object-fit: cover; object-position: center 25%; }
-  .editeur .photo .cadre .vide { font-size: 0.68rem; color: #9a938a; padding: 0 10px; line-height: 1.4; }
+  .editeur .photo .cadre .vide { font-size: 0.68rem; color: var(--aide); padding: 0 10px; line-height: 1.4; }
   .editeur .photo input[type="file"] { display: none; }
   .editeur .photo .actions { display: flex; flex-direction: column; gap: 6px; align-items: center; }
-  .editeur .photo .etat-photo { font-size: 0.7rem; margin-top: 8px; color: #9a938a; line-height: 1.5; }
+  .editeur .photo .etat-photo { font-size: 0.7rem; margin-top: 8px; color: var(--aide); line-height: 1.5; }
   .editeur .photo .etat-photo.ok { color: var(--sage-dark); }
-  .editeur .photo .etat-photo.ko { color: #a86a6a; }
+  .editeur .photo .etat-photo.ko { color: var(--rose-texte); }
 
   .editeur .pied {
     display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-    margin-top: 10px; font-size: 0.74rem; color: #9a938a;
+    margin-top: 10px; font-size: 0.74rem; color: var(--aide);
   }
   .editeur .etat { margin-left: auto; }
   .editeur .etat.ok { color: var(--sage-dark); }
-  .editeur .etat.ko { color: #a86a6a; }
-  .editeur .compteur.trop { color: #a86a6a; }
+  .editeur .etat.ko { color: var(--rose-texte); }
+  .editeur .compteur.trop { color: var(--rose-texte); }
   button.retour {
     border: none; background: none; padding: 0; cursor: pointer;
     display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0;
     text-transform: none; font-size: inherit;
   }
   button.retour:hover { background: none; }
-  .crayon { color: var(--gold); font-size: 0.9rem; opacity: 0; transition: opacity 0.15s; }
+  .crayon { color: var(--gold-texte); font-size: 0.9rem; opacity: 0; transition: opacity 0.15s; }
   tr:hover .crayon, button.retour:focus .crayon { opacity: 1; }
   .chips .chip.modifiable {
     cursor: pointer; font-family: 'Jost', sans-serif; letter-spacing: 0;
@@ -767,7 +781,7 @@ function messages() {
 
   const colonnes = [
     { cls: 'perso', v: compte.perso, l: 'Message dédié', sous: 'écrit pour cette personne' },
-    { cls: 'groupe', v: compte.groupe, l: 'Son groupe', sous: 'un texte pour plusieurs' },
+    { cls: 'groupe', v: compte.groupe, l: 'Message de groupe', sous: 'un texte pour plusieurs' },
     { cls: 'generique', v: compte.generique, l: 'Réponse générique', sous: 'le mot du mariage' },
   ];
   // Échelle sur la plus haute colonne : ce qu'on compare ici, ce sont les trois
