@@ -52,8 +52,13 @@ curl -s -H "Host: tableau.faire-part.hasakistudio.fr" \
 5. **Access** — une application self-hosted sur `tableau.dev.faire-part.hasakistudio.fr`,
    politique *Allow* limitée aux emails des couples (un email par mariage, ajouté
    à la main : **il n'y a pas d'inscription libre**, et il ne doit pas y en avoir
-   tant qu'on vend en direct). Relever l'**Application Audience (AUD)** dans
-   l'onglet Overview et la reporter dans `worker/wrangler.toml` (`ACCESS_AUD`).
+   tant qu'on vend en direct). Relever l'**Application Audience (AUD) Tag** dans
+   l'onglet Overview et le reporter dans `worker/wrangler.toml` (`ACCESS_AUD`).
+   L'**Application ID**, affiché juste à côté, n'est pas la même valeur : l'AUD
+   fait 64 caractères hexadécimaux sans tiret, l'Application ID est un UUID de
+   36 caractères avec tirets. Prendre l'un pour l'autre donne un déploiement qui
+   réussit et un tableau de bord qui répond 403 à chaque requête, page vide et
+   sans message utile.
 6. **Route Worker** — `tableau.dev.faire-part.hasakistudio.fr/api/*` vers
    `faire-part-worker`. Ne **jamais** utiliser `*.hasakistudio.fr/*` : ce motif
    capterait tous les sous-domaines du compte.

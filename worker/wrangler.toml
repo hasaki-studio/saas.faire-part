@@ -23,10 +23,17 @@ PHOTOS_PUBLIC_URL = "https://photos-dev.hasakistudio.fr"
 # invités doit rester ouverte, le tableau de bord doit être derrière Cloudflare
 # Access. Un seul hôte ne peut pas être les deux.
 DASHBOARD_HOSTNAME = "tableau.dev.faire-part.hasakistudio.fr"
-# Identifiants de l'application Access qui protège cet hôte. AUD se lit dans
-# Zero Trust > Access > Applications > (l'application) > Overview.
+# Identifiants de l'application Access qui protège cet hôte. L'AUD se lit dans
+# Zero Trust > Access > Applications > (l'application) > Overview, ligne
+# « Application Audience (AUD) Tag ».
+#
+# Ne pas confondre avec l'« Application ID » affiché sur la même page : l'AUD
+# fait 64 caractères hexadécimaux sans tiret, l'Application ID est un UUID de
+# 36 caractères avec tirets. Se tromper ne casse rien au déploiement — le
+# Worker part, puis rejette chaque requête du tableau de bord en 403 et la page
+# reste vide sans message utile. L'erreur a été faite une fois ici.
 ACCESS_TEAM_DOMAIN = "hasakistudio.cloudflareaccess.com"
-ACCESS_AUD = "REMPLACER_PAR_L_AUD_DE_L_APPLICATION_ACCESS"
+ACCESS_AUD = "3f1b10304ccb380a17175c4237ee8f875381e8447f97329eb172548cacd76b87"
 # Connexion simulée pour `wrangler dev` : sans Access devant le Worker en local,
 # il n'y a pas de jeton à vérifier. N'a d'effet que sur localhost, et n'existe
 # pas dans [env.prod.vars] — deux verrous plutôt qu'un.
