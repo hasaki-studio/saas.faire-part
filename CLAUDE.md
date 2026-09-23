@@ -160,11 +160,29 @@ Elles viennent d'arbitrages déjà faits. Les changer change le produit.
 - **Les photos sont redimensionnées dans le navigateur (API Canvas) avant l'envoi**,
   jamais côté serveur. Un couple téléverse depuis son téléphone une photo de 4 Mo en
   4032 × 3024 : servie telle quelle, elle tue la promesse « se charge sur la 4G
-  d'une invitée dans le métro ». Cloudflare Images est payant et Workers n'a pas de
-  bibliothèque d'image viable, donc le navigateur est le seul endroit gratuit. Effet
-  de bord précieux : le réencodage impose le JPEG quelle que soit la source (règle le
-  HEIC des iPhone) et **efface les EXIF**, donc les coordonnées GPS — des données de
-  tiers qu'on n'a aucune raison de stocker. Dimensions cibles : cf. §7.
+  d'une invitée dans le métro ».
+
+  **Ce n'est pas une question de prix** — l'erreur a été faite une fois ici. Les
+  transformations Cloudflare Images offrent 5 000 transformations uniques par mois,
+  puis 0,50 $ les 1 000 ; à raison d'environ 100 par mariage, ce serait gratuit à
+  notre échelle. Ce qui tranche, c'est **de ne jamais détenir l'original** : 4 Mo
+  porteurs des EXIF, donc des coordonnées GPS du domicile d'un tiers. Nous sommes
+  sous-traitant (§5) et la donnée qu'on n'a pas est la seule qu'on ne puisse ni
+  perdre ni devoir effacer. S'y ajoute le poids de l'envoi : trente photos de 4 Mo
+  depuis un téléphone, c'est la séance de saisie abandonnée en cours. Redimensionner
+  d'abord règle les deux, et comme Workers n'a pas de bibliothèque d'image viable,
+  le navigateur est alors le seul endroit possible.
+
+  Effet de bord précieux : le réencodage **efface les EXIF** et impose le JPEG quelle
+  que soit la source. **Attention, le HEIC n'est réglé qu'à moitié** : le canvas ne
+  peut réencoder que ce que le navigateur sait décoder. Safari décode le HEIC, Chrome
+  et Firefox sur ordinateur non — une photo d'iPhone déposée depuis un PC échoue donc
+  silencieusement si on ne détecte pas le cas. Détecter l'échec de décodage et le dire
+  (« exportez-la en JPEG »), jamais un bouton qui ne réagit pas. Si ce cas se révèle
+  fréquent chez de vrais couples, le repli serait une transformation Cloudflare Images
+  pour ces fichiers-là seulement, l'original supprimé dans la foulée.
+
+  Dimensions cibles : cf. §7.
 - **`mariages.messager` est toujours renseigné explicitement à la création**, et
   `''` signifie « pas d'animation » (choix valide, pas un oubli). La valeur par
   défaut `'pigeon'` du schéma est historique et pointe vers un messager qui
@@ -278,7 +296,9 @@ Repris du projet `Mon-Mariage`. Ils ont tous coûté du temps une première fois
   | `og:image` WhatsApp | — | 1200 × 630, < 600 Ko | — |
 
 - **HEIC** : format par défaut des iPhone, illisible par Chrome sur Android. Une
-  photo déposée telle quelle casse l'affichage pour une partie des invités.
+  photo déposée telle quelle casse l'affichage pour une partie des invités — et le
+  canvas ne sait pas la convertir non plus, puisqu'il ne réencode que ce que le
+  navigateur a su décoder (cf. §4).
 - **Orientation EXIF** : une photo de téléphone redessinée dans un canvas sans
   tenir compte de son orientation ressort pivotée.
 
