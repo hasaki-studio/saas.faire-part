@@ -30,7 +30,10 @@ INSERT INTO mariages (
   reponse_generique_oui, reponse_generique_non,
   email_proprietaire, supprimer_le
 ) VALUES (
-  'mdev', 'test', NULL, 'botanique', 'voiture',
+  -- domaine_personnalise = 'localhost' : le Worker résout le mariage par le
+  -- Host de la requête, et en local tout arrive sur localhost, quel que soit le
+  -- port. Sans ça, le faire-part local répond « Domaine non configuré ».
+  'mdev', 'test', 'localhost', 'botanique', 'voiture',
   'Justine', 'Raphael', '2027-07-17', '2027-01-20',
   'Mairie de Pau', 'Place Royale, 64000 Pau', 'Domaine des Vergers', NULL,
   'Quelle joie de vous compter parmi nous !',
