@@ -242,6 +242,40 @@
   .tag.groupe { background: rgba(125, 155, 118, 0.10); color: var(--sage); }
   td .par { color: #8a837a; }
 
+  /* L'éditeur se déplie sous la ligne plutôt que dans une colonne : à dix
+     colonnes, une cellule de saisie serait large de deux centimètres. */
+  tr.edition td { background: var(--cream); padding: 0; }
+  .editeur { padding: 18px 20px 20px; }
+  .editeur .titre {
+    font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--sage); margin-bottom: 9px;
+  }
+  .editeur textarea {
+    width: 100%; min-height: 90px; resize: vertical;
+    font-family: 'Jost', sans-serif; font-size: 0.88rem; font-weight: 300; line-height: 1.6;
+    padding: 11px 13px; border: 1px solid rgba(201, 169, 110, 0.5);
+    background: #fff; color: var(--ink);
+  }
+  .editeur textarea:focus { outline: none; border-color: var(--gold); }
+  .editeur .pied {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    margin-top: 10px; font-size: 0.74rem; color: #9a938a;
+  }
+  .editeur .etat { margin-left: auto; }
+  .editeur .etat.ok { color: var(--sage-dark); }
+  .editeur .etat.ko { color: #a86a6a; }
+  .editeur .compteur.trop { color: #a86a6a; }
+  button.retour {
+    border: none; background: none; padding: 0; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0;
+    text-transform: none; font-size: inherit;
+  }
+  button.retour:hover { background: none; }
+  .crayon { color: var(--gold); font-size: 0.9rem; opacity: 0; transition: opacity 0.15s; }
+  tr:hover .crayon, button.retour:focus .crayon { opacity: 1; }
+  .chips .chip.modifiable { cursor: pointer; }
+  .chips .chip.modifiable:hover { border-color: var(--gold); }
+
   #err { display: none; padding: 18px 22px; font-size: 0.82rem; margin-bottom: 24px;
     background: rgba(201, 143, 143, 0.12); border-left: 2px solid var(--rose); }
   #loader { text-align: center; padding: 70px 0; color: var(--sage); font-style: italic; }
@@ -307,6 +341,7 @@
       <div class="colonnes" id="msg-colonnes"></div>
       <p class="reg-warn" id="msg-note"></p>
       <div class="chips" id="msg-groupes"></div>
+      <div id="msg-editeur"></div>
     </div>
 
     <div class="card">
@@ -588,9 +623,133 @@ function messages() {
     : "La réponse générique est un choix valide, pas un oubli — le filtre « Réponse générique » ci-dessous liste ces invités si vous voulez leur écrire.";
 
   $('msg-groupes').innerHTML = GROUPES.map((g) =>
-    `<span class="chip${g.a_message ? '' : ' manque'}">${esc(g.nom)}
+    `<span class="chip modifiable${g.a_message ? '' : ' manque'}" data-groupe="${esc(g.nom)}">${esc(g.nom)}
        <b>${g.invites} invité${g.invites > 1 ? 's' : ''}</b>
        · ${g.a_message ? 'message écrit' : 'message à écrire'}${g.a_photo ? ' · photo' : ''}</span>`).join('');
+}
+
+
+/* ---------- Écriture ----------
+   « Le tableau de bord sauvegarde au fil de l'eau » (CLAUDE.md §4) : pas de
+   bouton Enregistrer, pas de formulaire à valider. On écrit, ça part, et l'état
+   le dit. Un couple qui rédige trente messages ne doit jamais se demander s'il
+   a perdu le précédent. */
+const MAX_MESSAGE = 1500;
+const ATTENTE_SAUVEGARDE = 700;   // frappe terminée → envoi
+
+let ouvert = null;   // id du convive dont l'éditeur est déplié
+
+function fermerEditeur() {
+  document.querySelectorAll('tr.edition').forEach((tr) => tr.remove());
+  ouvert = null;
+}
+
+function editeurHtml(valeur, titre) {
+  return `<div class="editeur">
+    <div class="titre">${esc(titre)}</div>
+    <textarea maxlength="${MAX_MESSAGE}" placeholder="Ce mot s'affichera après un « oui ». Laissez vide pour la réponse générique.">${esc(valeur || '')}</textarea>
+    <div class="pied">
+      <span class="compteur"></span>
+      <span class="etat"></span>
+    </div>
+  </div>`;
+}
+
+/**
+ * Branche une zone de saisie sur son point d'enregistrement.
+ * `onEnregistre(aMessage)` permet de rafraîchir les compteurs sans recharger
+ * toute la page — recharger ferait perdre le curseur en pleine phrase.
+ */
+function brancherEditeur(zone, chemin, onEnregistre) {
+  const champ = zone.querySelector('textarea');
+  const etat = zone.querySelector('.etat');
+  const compteur = zone.querySelector('.compteur');
+  let minuteur = null;
+  let dernierEnvoye = champ.value;
+
+  const majCompteur = () => {
+    compteur.textContent = `${champ.value.length} / ${MAX_MESSAGE}`;
+    compteur.classList.toggle('trop', champ.value.length >= MAX_MESSAGE);
+  };
+
+  async function enregistrer() {
+    const valeur = champ.value;
+    if (valeur === dernierEnvoye) return;
+    etat.textContent = 'Enregistrement…';
+    etat.className = 'etat';
+    try {
+      const res = await fetch(chemin, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ message: valeur }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.erreur || 'Le serveur a répondu ' + res.status);
+      dernierEnvoye = valeur;
+      etat.textContent = 'Enregistré';
+      etat.className = 'etat ok';
+      onEnregistre(Boolean(data.a_message), valeur.trim());
+    } catch (e) {
+      // Le texte reste à l'écran : on ne fait jamais disparaître ce que
+      // quelqu'un vient d'écrire.
+      etat.textContent = e.message + ' — votre texte est toujours là, réessayez.';
+      etat.className = 'etat ko';
+    }
+  }
+
+  champ.addEventListener('input', () => {
+    majCompteur();
+    etat.textContent = '';
+    etat.className = 'etat';
+    clearTimeout(minuteur);
+    minuteur = setTimeout(enregistrer, ATTENTE_SAUVEGARDE);
+  });
+  // Quitter le champ envoie tout de suite : attendre le minuteur ferait perdre
+  // la saisie si l'onglet se ferme dans la seconde.
+  champ.addEventListener('blur', () => { clearTimeout(minuteur); enregistrer(); });
+
+  majCompteur();
+  champ.focus();
+  champ.setSelectionRange(champ.value.length, champ.value.length);
+}
+
+function ouvrirEditeurInvite(id) {
+  if (ouvert === id) { fermerEditeur(); return; }
+  fermerEditeur();
+
+  const convive = CONVIVES.find((c) => c.id === id);
+  const ligne = document.querySelector(`[data-ecrire="${CSS.escape(id)}"]`)?.closest('tr');
+  if (!convive || !ligne) return;
+
+  const tr = document.createElement('tr');
+  tr.className = 'edition';
+  tr.innerHTML = `<td colspan="10">${editeurHtml(convive.message_perso, `Message pour ${nomComplet(convive)}`)}</td>`;
+  ligne.after(tr);
+  ouvert = id;
+
+  brancherEditeur(tr, `/api/tableau/convives/${encodeURIComponent(id)}/message`, (aMessage, texte) => {
+    convive.a_message = aMessage;
+    convive.message_perso = texte || null;
+    // Les compteurs bougent, la ligne aussi (« Retour prévu »), mais on ne
+    // redessine pas le tableau : le curseur est encore dans la zone de saisie.
+    messages();
+    const cellule = ligne.querySelector('td:nth-child(8)');
+    if (cellule) cellule.innerHTML = etiquetteRetour(convive);
+  });
+}
+
+function ouvrirEditeurGroupe(nom) {
+  const groupe = GROUPES.find((g) => g.nom === nom);
+  if (!groupe) return;
+  fermerEditeur();
+
+  const boite = $('msg-editeur');
+  boite.innerHTML = editeurHtml(groupe.message, `Message du groupe « ${nom} »`);
+  brancherEditeur(boite, `/api/tableau/groupes/${encodeURIComponent(nom)}/message`, (aMessage, texte) => {
+    groupe.a_message = aMessage;
+    groupe.message = texte || null;
+    messages();
+  });
 }
 
 /* ---------- Liste de récap ---------- */
@@ -607,6 +766,18 @@ function correspond(c) {
   if (filtre.startsWith('groupe:') && c.groupe !== filtre.slice(7)) return false;
   if (recherche && !nomComplet(c).toLowerCase().includes(recherche)) return false;
   return true;
+}
+
+function etiquetteRetour(c) {
+  const tag = ({
+    perso: '<span class="tag oui">Message dédié</span>',
+    groupe: '<span class="tag groupe">Son groupe</span>',
+    generique: '<span class="tag warn">Générique</span>',
+  })[retourPrevu(c)];
+  // Un accompagnant n'a pas d'écran de retour : rien à écrire pour lui.
+  if (!tag) return '<span class="muted">—</span>';
+  return `<button class="retour" type="button" data-ecrire="${esc(c.id)}"
+            title="Écrire le message de ${esc(nomComplet(c))}">${tag}<span class="crayon">✎</span></button>`;
 }
 
 function valeurTri(c, cle) {
@@ -626,6 +797,7 @@ function valeurTri(c, cle) {
 }
 
 function tableau() {
+  ouvert = null;   // le redessin emporte la ligne d'édition
   const lignes = CONVIVES.filter(correspond).sort((a, b) => {
     const x = valeurTri(a, triCle), y = valeurTri(b, triCle);
     const d = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'fr');
@@ -653,10 +825,7 @@ function tableau() {
       <td>${tag}</td>
       <td>${esc(REGIMES[c.regime_alimentaire] || '') || '<span class="muted">—</span>'}</td>
       <td class="note">${esc(c.message_invite) || '<span class="muted">—</span>'}</td>
-      <td>${{ perso: '<span class="tag oui">Message dédié</span>',
-              groupe: '<span class="tag groupe">Son groupe</span>',
-              generique: '<span class="tag warn">Générique</span>' }[retourPrevu(c)]
-            || '<span class="muted">—</span>'}</td>
+      <td>${etiquetteRetour(c)}</td>
       <td style="white-space:nowrap">${c.repondu_le ? dateHeure(c.repondu_le) : '<span class="muted">—</span>'}</td>
       <td>${lien}</td>
     </tr>`;
@@ -716,7 +885,14 @@ document.querySelectorAll('th[data-k]').forEach((th) =>
     tableau();
   }));
 
+$('msg-groupes').addEventListener('click', (e) => {
+  const chip = e.target.closest('[data-groupe]');
+  if (chip) ouvrirEditeurGroupe(chip.dataset.groupe);
+});
+
 $('tbody').addEventListener('click', (e) => {
+  const crayon = e.target.closest('[data-ecrire]');
+  if (crayon) { ouvrirEditeurInvite(crayon.dataset.ecrire); return; }
   const bouton = e.target.closest('[data-lien]');
   if (!bouton) return;
   navigator.clipboard.writeText(bouton.dataset.lien).then(

@@ -158,3 +158,65 @@ export async function listerGroupes(db: D1Database, mariageId: string): Promise<
     .all<ReponseGroupe>();
   return results;
 }
+
+/**
+ * Écrit le message personnel d'un invité. Le `mariageId` vient toujours de
+ * l'identité authentifiée : la clause le répète pour que l'id d'un convive
+ * envoyé par le navigateur ne suffise jamais à écrire chez un autre couple.
+ *
+ * Refuse un accompagnant : il n'a pas de lien, donc pas d'écran de retour où
+ * un message s'afficherait. Lui en écrire un serait un texte que personne ne
+ * lira jamais.
+ */
+export async function ecrireMessagePerso(
+  db: D1Database,
+  mariageId: string,
+  conviveId: string,
+  message: string | null,
+): Promise<boolean> {
+  const { meta } = await db
+    .prepare(
+      "UPDATE convives SET message_perso = ?1 WHERE id = ?2 AND mariage_id = ?3 AND accompagnant_de IS NULL",
+    )
+    .bind(message, conviveId, mariageId)
+    .run();
+  return (meta.changes ?? 0) > 0;
+}
+
+/**
+ * Crée ou remplace la réponse d'un groupe. Le groupe doit déjà exister, au sens
+ * où au moins un invité de ce mariage y est rattaché : sans ce contrôle, la
+ * route permettrait de remplir la table de groupes fantômes.
+ */
+export async function ecrireReponseGroupe(
+  db: D1Database,
+  mariageId: string,
+  groupe: string,
+  message: string,
+): Promise<boolean> {
+  const existe = await db
+    .prepare("SELECT 1 FROM convives WHERE mariage_id = ?1 AND groupe = ?2 LIMIT 1")
+    .bind(mariageId, groupe)
+    .first();
+  if (!existe) return false;
+
+  await db
+    .prepare(
+      `INSERT INTO reponses_groupe (mariage_id, groupe, message) VALUES (?1, ?2, ?3)
+       ON CONFLICT (mariage_id, groupe) DO UPDATE SET message = excluded.message`,
+    )
+    .bind(mariageId, groupe, message)
+    .run();
+  return true;
+}
+
+export async function supprimerReponseGroupe(
+  db: D1Database,
+  mariageId: string,
+  groupe: string,
+): Promise<void> {
+  await db
+    .prepare("DELETE FROM reponses_groupe WHERE mariage_id = ?1 AND groupe = ?2")
+    .bind(mariageId, groupe)
+    .run();
+}
