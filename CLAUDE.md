@@ -203,9 +203,20 @@ C'est l'inverse de l'intuition et ça détermine les obligations.
 - Contrat de sous-traitance écrit avec chaque couple — obligatoire, même gratuit.
 - Hébergement UE.
 - **Suppression automatique à J+90** après la date du mariage (Cron Trigger Cloudflare).
-  Obligation *et* argument commercial.
+  Obligation *et* argument commercial. Ce qui part : les lignes `convives`, les
+  réponses de groupe et les photos R2 associées. Ce qui reste : la ligne
+  `mariages` — le couple est notre client, pas un tiers, et ses données vivent
+  sous le contrat, pas au calendrier de ses invités. La sélection croise
+  `supprimer_le` (indexé, calculé à l'insertion) **et** `date_mariage + 90 j` :
+  un mariage repoussé garde un `supprimer_le` ancien, et effacer avant la fête
+  serait le pire échec possible de cette tâche.
 - Mention d'information sur le formulaire RSVP : qui, pourquoi, combien de temps,
-  comment demander l'effacement.
+  comment demander l'effacement. Elle vit dans le thème, pas dans une page à
+  part que personne n'ouvre, et ses textes par défaut sont dans le HTML : sans
+  réseau, sans token ou avant la réponse de l'API, la page reste conforme — le
+  JavaScript ne fait qu'y ajouter les prénoms et la date d'effacement. Le
+  contact se lit dans `mariages.contact_rgpd` ; vide, la mention renvoie au
+  message qui portait le lien, ce qui n'expose aucune adresse de plus.
 - Le couple dépose sa liste lui-même dans le tableau de bord. Ne jamais la recevoir
   par mail ou WhatsApp — ça éviterait d'en détenir une copie non maîtrisée.
 
@@ -352,16 +363,19 @@ messages au fil de l'eau depuis le tableau de bord, réponses de groupe, aperçu
 WhatsApp (Open Graph rendu côté serveur), photo par invité téléversée vers R2
 après redimensionnement dans le navigateur, déploiement du Worker depuis GitHub
 Actions, import de la liste par le couple lui-même depuis le tableau de bord
-(collage depuis un tableur ou fichier CSV). Pas encore construit : photos du
-couple et du lieu, cron de suppression RGPD, limitation de débit sur le lookup.
+(collage depuis un tableur ou fichier CSV), tableau de bord déployé sur
+`tableau.dev.faire-part.hasakistudio.fr` derrière Cloudflare Access, mention
+d'information RGPD sur le formulaire RSVP, effacement automatique des données
+d'invités à J+90 (Cron Trigger). Pas encore construit : photos du couple et du
+lieu, limitation de débit sur le lookup, contrat de sous-traitance écrit.
 
 **Attention à ne pas confondre deux tableaux de bord.** Celui qui est en ligne
 aujourd'hui vient du projet `Mon-Mariage` (n8n + NAS) et ne sert qu'au suivi du
 mariage de l'auteur : il ne fait pas partie du produit, ne connaît pas
 `mariage_id`, et n'a pas vocation à être livré à un client. Celui de cette
 solution est `dashboard/`, défini et construit ici — lecture, écriture des
-messages, réponses de groupe — et **n'est encore déployé nulle part** : il lui
-manque son projet Pages, son sous-domaine et son application Access
+messages, réponses de groupe — et vit depuis le 23 septembre 2026 sur
+`tableau.dev.faire-part.hasakistudio.fr`, derrière Cloudflare Access
 (cf. `docs/tableau-de-bord.md`). Ne pas prendre l'un pour l'autre en lisant une
 capture d'écran.
 
@@ -382,6 +396,16 @@ complète en décembre, avant qu'un client payant n'y touche.
   provisoire sur `hasakistudio.fr` (`dev.faire-part.hasakistudio.fr` /
   `faire-part.hasakistudio.fr`, déjà possédé, coût 0) ; migration vers un
   domaine dédié à la marque prévue au 1er ou 2e client sur-mesure.
+- ~~Faut-il renommer le *team domain* Cloudflare Access ?~~ **Tranché : non.**
+  `small-bird-358e.cloudflareaccess.com` est tiré au sort par Cloudflare et ne
+  se devine pas (l'avoir supposé a coûté une soirée de 403 silencieux). Le
+  renommer réécrit le champ `iss` de tous les jetons déjà émis, coupe les
+  sessions en cours, oblige à reconfigurer les fournisseurs d'identité et les
+  clients WARP, et le compte porte d'autres applications. En face : les invités
+  ne le voient **jamais** — seuls les mariés, le temps de saisir leur code. Le
+  levier pour cette gêne-là est l'apparence de la page de connexion (Zero Trust
+  > Settings > Custom Pages), pas son nom. Si renommage un jour, groupé avec la
+  migration vers le domaine de marque, jamais pendant une saison de RSVP.
 - La phase 3 peut ne jamais avoir lieu : 6 clients à 300 € et 36 à 50 € font le même
   chiffre, mais le second multiplie par six le support, les litiges et les données de
   tiers hébergées. Arbitrage prévu en février.

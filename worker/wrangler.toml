@@ -2,6 +2,15 @@ name = "faire-part-worker"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
 
+# Effacement automatique des données d'invités 90 jours après le mariage
+# (CLAUDE.md §5). 03:17 UTC : une heure creuse, et une minute qui n'est pas 0
+# pour ne pas se ranger avec tout ce qui se déclenche au sommet de l'heure.
+#
+# Un Cron Trigger ne s'attache qu'à l'environnement déployé : celui-ci vaut pour
+# dev, et [env.prod] a le sien. Sans cette répétition, la prod n'effacerait rien.
+[triggers]
+crons = ["17 3 * * *"]
+
 # ── dev (par défaut) ──────────────────────────────────────────────
 [[d1_databases]]
 binding = "DB"
@@ -49,6 +58,9 @@ DEV_EMAIL = "couple@exemple.fr"
 
 # ── prod ──────────────────────────────────────────────────────────
 [env.prod]
+
+[env.prod.triggers]
+crons = ["17 3 * * *"]
 
 [[env.prod.d1_databases]]
 binding = "DB"
