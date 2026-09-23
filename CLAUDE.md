@@ -242,7 +242,11 @@ Repris du projet `Mon-Mariage`. Ils ont tous coûté du temps une première fois
 
 **WhatsApp**
 - Sans balises Open Graph, le lien arrive en texte brut. Sur un faire-part, ça fait
-  « lien suspect ».
+  « lien suspect ». **Le robot de WhatsApp n'exécute pas de JavaScript** : des
+  balises écrites par le thème après le chargement n'existent pas pour lui. Elles
+  sont donc injectées côté serveur par `functions/_middleware.js`, qui appelle
+  `/api/og`. Ne jamais les déplacer dans le JS du thème. Mode d'emploi complet :
+  `docs/whatsapp.md`.
 - `og:image` doit être un **vrai fichier à une URL absolue** — le base64 ne marche pas.
   Maximum 600 Ko, idéal 1200×630, en JPG/PNG/WebP (ni SVG ni GIF).
 - WhatsApp **cache l'aperçu plusieurs semaines et n'offre aucun outil de purge**.
@@ -291,9 +295,12 @@ Phase actuelle : **fondations**. Construit : schéma D1, Worker (lookup token +
 RSVP), premier thème (`botanique`) branché dessus, deux messagers (`montgolfiere`,
 `voiture`), import d'une liste d'invités, déploiement dev réel sur
 `dev.faire-part.hasakistudio.fr`, tableau de bord couple **en lecture seule**
-(liste, réponses, avancement des messages, export traiteur). Pas encore
-construit : upload photos vers R2, saisie des messages depuis le tableau de
-bord, balises Open Graph pour l'aperçu WhatsApp, cron de suppression RGPD.
+(liste, réponses, avancement des messages, export traiteur), réponses de
+groupe, aperçu WhatsApp (Open Graph rendu côté serveur). Pas encore construit :
+upload photos vers R2, saisie des messages depuis le tableau de bord, cron de
+suppression RGPD, limitation de débit sur le lookup. Le tableau de bord existe
+mais n'est déployé nulle part : il lui manque son projet Pages et son
+application Access (cf. `docs/tableau-de-bord.md`).
 
 | Phase | Période | État |
 |---|---|---|

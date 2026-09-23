@@ -14,6 +14,7 @@ export interface Mariage {
   cocktail_adresse: string | null;
   cocktail_photo_key: string | null;
   photo_couple_key: string | null;
+  og_image_key: string | null;
   reponse_generique_oui: string;
   reponse_generique_non: string;
 }

@@ -235,6 +235,46 @@ async function handleRsvp(request: Request, env: Env, mariageToken: string): Pro
 }
 
 
+// ── Aperçu WhatsApp ───────────────────────────────────────────────
+//
+// Le robot de WhatsApp n'exécute pas de JavaScript : il ne voit que le HTML
+// tel qu'il sort du serveur. Les balises Open Graph doivent donc être écrites
+// dans le <head> avant que la page ne s'anime, d'où cette route, que le
+// middleware Pages appelle pour fabriquer ces balises (cf. functions/_middleware.js).
+//
+// Aucun token ici, et rien d'un invité : l'aperçu se voit dans une conversation
+// de groupe dès qu'un lien est transféré. Il ne dit que le mariage.
+function formatDateFr(iso: string): string {
+  const [a, m, j] = iso.slice(0, 10).split("-");
+  const mois = [
+    "janvier", "février", "mars", "avril", "mai", "juin",
+    "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+  ];
+  return `${Number(j)} ${mois[Number(m) - 1]} ${a}`;
+}
+
+async function handleOg(request: Request, env: Env): Promise<Response> {
+  const mariage = await resolveMariageByHost(env.DB, request.headers.get("host") ?? "", env.SHARED_DOMAIN);
+  if (!mariage) return new Response("Domaine non configuré", { status: 404 });
+
+  // À défaut d'image dédiée, la photo du couple : mal cadrée pour un aperçu
+  // 1200 × 630, mais un lien sans image arrive en texte brut, ce qui sur un
+  // faire-part fait « lien suspect » (CLAUDE.md §7).
+  const image = photoUrl(env, mariage.og_image_key ?? mariage.photo_couple_key);
+
+  return json(
+    {
+      titre: `${mariage.prenom_1} & ${mariage.prenom_2}`,
+      description: `Nous nous marions le ${formatDateFr(mariage.date_mariage)}. Merci de répondre avant le ${formatDateFr(mariage.date_limite_rsvp)}.`,
+      image_url: image,
+      // Sert à la fois d'indication au middleware et de garde-fou visible
+      // depuis l'extérieur : un aperçu sans image se diagnostique d'un coup d'œil.
+      image_dediee: Boolean(mariage.og_image_key),
+    },
+    200,
+  );
+}
+
 // ── Tableau de bord ───────────────────────────────────────────────
 
 /**
@@ -361,6 +401,10 @@ export default {
     const faireArt = url.pathname.match(/^\/api\/faire-part\/([^/]+)$/);
     if (faireArt && request.method === "GET") {
       return handleFaireArt(request, env, faireArt[1]!);
+    }
+
+    if (url.pathname === "/api/og" && request.method === "GET") {
+      return handleOg(request, env);
     }
 
     const rsvp = url.pathname.match(/^\/api\/rsvp\/([^/]+)$/);

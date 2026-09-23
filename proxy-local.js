@@ -6,8 +6,9 @@
 //   node proxy-local.js --tableau    → tableau de bord, http://localhost:8081/
 //
 // Les deux modes écoutent sur des ports différents et peuvent tourner ensemble.
-// En --tableau, le Host relayé au Worker reste localhost : c'est ce qui active
-// la connexion simulée par DEV_EMAIL (cf. worker/src/index.ts, emailTableau).
+// Le Host relayé au Worker est « localhost » : c'est ce que déclare le jeu
+// d'essai (domaine_personnalise) et ce qui active la connexion simulée par
+// DEV_EMAIL en mode --tableau (cf. worker/src/index.ts, emailTableau).
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -15,7 +16,10 @@ const path = require('path');
 const TABLEAU = process.argv.includes('--tableau');
 const ROOT = TABLEAU ? path.join(__dirname, 'dashboard') : path.join(__dirname, 'themes', 'botanique');
 const MESSAGERS_ROOT = path.join(__dirname, 'messagers');
-const HOST_API = TABLEAU ? 'localhost' : 'justine-raphael.faire-part.exemple';
+// Le Host est transmis tel quel, donc « localhost ». C'est ce que le jeu
+// d'essai déclare en domaine_personnalise : un seul hôte local pour le
+// faire-part comme pour le tableau de bord, quel que soit le port.
+const HOST_API = 'localhost';
 const PORT = TABLEAU ? 8081 : 8080;
 
 http.createServer((req, res) => {

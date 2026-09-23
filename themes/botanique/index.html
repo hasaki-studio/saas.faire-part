@@ -5,6 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="https://img.icons8.com/?size=100&id=msKBxCHYuZH0&format=png&color=000000" />
 <title id="page-title">Mariage</title>
+<!-- Un lien à token n'a rien à faire dans un index de moteur de recherche. -->
+<meta name="robots" content="noindex, nofollow">
+<!-- Valeurs de repli : le middleware Pages les remplace par celles du mariage
+     (cf. functions/_middleware.js). Elles servent si le middleware n'est pas
+     déployé ou si l'API ne répond pas — un aperçu neutre vaut mieux qu'un lien
+     nu, qui fait « lien suspect » dans WhatsApp (CLAUDE.md §7). Ne jamais
+     écrire ces balises en JavaScript : le robot de WhatsApp n'en exécute pas. -->
+<meta property="og:type" content="website">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:title" content="Notre faire-part de mariage">
+<meta property="og:description" content="Nous serions heureux de vous compter parmi nous.">
+<meta name="twitter:card" content="summary">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@200;300;400&display=swap" rel="stylesheet">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
