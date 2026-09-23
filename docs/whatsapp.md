@@ -88,6 +88,15 @@ le même nom reste dans le cache des aperçus déjà générés. Incrémenter.
    on conclura à tort que la correction n'a pas marché.
 5. Une fois l'aperçu validé, alors seulement diffuser les liens des invités.
 
+## L'icône
+
+Tant qu'aucune `og:image` n'est définie, WhatsApp se rabat sur le favicon — c'est
+l'enveloppe qu'on voit sur les aperçus actuels. Elle est servie depuis le
+domaine du faire-part (`favicon.svg`, plus `apple-touch-icon.png` pour iOS),
+jamais depuis une banque d'icônes : une page livrée à un client ne doit pas
+dépendre d'un domaine tiers pour s'afficher, et les icônes gratuites demandent
+une attribution que personne ne mettra sur un faire-part.
+
 ## Le reste du <head>
 
 Les pages portent `noindex, nofollow`. Un lien à token n'a rien à faire dans un

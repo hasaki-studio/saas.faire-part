@@ -51,7 +51,7 @@ http.createServer((req, res) => {
   let filePath = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]));
   if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) filePath = path.join(ROOT, 'index.html');
   const ext = path.extname(filePath);
-  const types = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.png': 'image/png' };
+  const types = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg' };
   res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream' });
   fs.createReadStream(filePath).pipe(res);
 }).listen(PORT, () => console.log(`Pret sur http://localhost:${PORT}` + (TABLEAU ? ' (tableau de bord)' : '')));
