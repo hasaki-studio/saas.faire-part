@@ -1,0 +1,62 @@
+# Déploie le Worker à chaque fusion sur main.
+#
+# Pourquoi : `wrangler deploy` demande un terminal, et le projet se pilote
+# souvent depuis un navigateur seul. Ici, fusionner suffit — et le bouton
+# « Run workflow » de l'onglet Actions permet aussi de redéployer à la main
+# sans rien installer.
+#
+# Cloudflare Pages n'est pas concerné : s'il est connecté au dépôt, il
+# reconstruit le front de son côté à chaque push.
+#
+# Ce workflow ne joue PAS les migrations D1. Les fichiers de schema/ ne sont pas
+# rejouables (ALTER TABLE ADD COLUMN échoue si la colonne existe déjà) : les
+# lancer automatiquement casserait le déploiement au deuxième passage. Elles se
+# passent à la main, une fois, depuis la console D1 du tableau de bord
+# Cloudflare (cf. docs/deploiement.md).
+
+name: Déployer le Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'worker/**'
+      - '.github/workflows/deploy-worker.yml'
+  workflow_dispatch:
+
+# Deux déploiements simultanés se marcheraient dessus ; le dernier gagne.
+concurrency:
+  group: deploiement-worker
+  cancel-in-progress: false
+
+jobs:
+  deployer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+
+      # npm ci et pas npm install : on déploie exactement les versions du
+      # fichier de verrouillage, et un lock désynchronisé fait échouer ici
+      # plutôt qu'en production.
+      - name: Installer les dépendances
+        working-directory: worker
+        run: npm ci
+
+      # Le RSVP d'un client tourne sur ce Worker un samedi de juin : on ne
+      # déploie pas du TypeScript qui ne compile pas.
+      - name: Vérifier les types
+        working-directory: worker
+        run: npm run typecheck
+
+      - name: Déployer
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
