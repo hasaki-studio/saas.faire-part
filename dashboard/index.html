@@ -1253,7 +1253,7 @@ async function envoyerImport(invites) {
 async function lireFichier(fichier) {
   const octets = await fichier.arrayBuffer();
   let texte = new TextDecoder('utf-8').decode(octets);
-  if (texte.includes('�')) texte = new TextDecoder('windows-1252').decode(octets);
+  if (texte.includes('\uFFFD')) texte = new TextDecoder('windows-1252').decode(octets);
   return texte;
 }
 
@@ -1302,8 +1302,8 @@ $('import-un').addEventListener('submit', async (e) => {
 });
 
 $('btn-modele').addEventListener('click', () => {
-  // ﻿ : sans ce BOM, Excel lit le modèle en latin-1 et abîme les accents.
-  const csv = '﻿' + [
+  // \uFEFF : sans ce BOM, Excel lit le modèle en latin-1 et abîme les accents.
+  const csv = '\uFEFF' + [
     'Prénom,Nom,Message,Groupe',
     'Héloïse,Martin,"Hâte de te voir danser, comme à Reims !",Témoins',
     'Paul,Durand,,Collègues',
@@ -1513,10 +1513,10 @@ function exportCsv() {
       c.hors_liste ? 'non' : 'oui'].map(q).join(',');
   });
 
-  // ﻿ : sans ce BOM, Excel lit le CSV en latin-1 et abîme les accents.
+  // \uFEFF : sans ce BOM, Excel lit le CSV en latin-1 et abîme les accents.
   // data: plutôt que blob: — les blob: sont bloqués dans le navigateur intégré
   // de WhatsApp, et le couple ouvre parfois son tableau de bord depuis là.
-  const csv = '﻿' + [entete.map(q).join(','), ...corps].join('\r\n') + '\r\n';
+  const csv = '\uFEFF' + [entete.map(q).join(','), ...corps].join('\r\n') + '\r\n';
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = 'traiteur-' + new Date().toISOString().slice(0, 10) + '.csv';
