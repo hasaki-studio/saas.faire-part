@@ -1,7 +1,7 @@
 # SaaS Faire-part
 
 Moteur de faire-part de mariage digital avec RSVP personnalisé, vendu à des couples.
-Dépôt **privé**. Dernière mise à jour du contexte : 21 septembre 2026.
+Dépôt **privé**. Dernière mise à jour du contexte : 23 septembre 2026.
 
 ---
 
@@ -239,6 +239,22 @@ pour 6 choses à construire. Ne jamais coder un messager en dur dans un thème.
 
 - Front en HTML / CSS / JS natif. Pas de framework — les pages doivent s'ouvrir seules
   dans dix ans et se charger sur la 4G d'une invitée dans le métro.
+- **Aucune couleur de texte sous 4,5:1**, mesurée sur le fond réel. Le tableau de
+  bord a quatre niveaux, un par rôle, et c'est la saisie du couple qui reçoit le
+  plus fort contraste — c'est le contenu, il doit dominer l'interface :
+
+  | Jeton | Rôle | Contraste sur crème |
+  |---|---|---|
+  | `--ink` | ce que le couple a saisi | 12,9:1 |
+  | `--ink-2` | infos du mariage, valeurs, dates | 7,3:1 |
+  | `--aide` | consignes et explications | 5,3:1 |
+  | `--sage` | libellés en petites majuscules | 4,6:1 |
+
+  L'or et le rose ne sont **jamais** une couleur de texte : ils restent aux aplats
+  et aux marques, et ont chacun leur variante lisible (`--gold-texte`,
+  `--rose-texte`). Le corps est en graisse 400, pas 300 : en petit corps une
+  graisse fine grise le texte autant qu'une couleur trop claire. Les titres, eux,
+  gardent leur légèreté parce qu'ils sont grands.
 - Worker en TypeScript.
 - Secrets : `.dev.vars` dans le `.gitignore`, `wrangler secret put` en production.
   Un token commité reste dans l'historique git pour toujours, même en dépôt privé.
@@ -302,10 +318,26 @@ Repris du projet `Mon-Mariage`. Ils ont tous coûté du temps une première fois
 - **Orientation EXIF** : une photo de téléphone redessinée dans un canvas sans
   tenir compte de son orientation ressort pivotée.
 
-**CSV** (import de liste)
+**Listes d'invités** (import)
 - Ne jamais ouvrir un CSV de production dans un tableur : Excel, Numbers et Sheets
   réécrivent silencieusement le fichier (virgules fantômes, retours à la ligne perdus).
 - Les `\r` de Windows cassent la correspondance des emails : `sed -i 's/\r//'`.
+- **Excel français exporte en point-virgule et en Windows-1252**, pas en virgule ni
+  en UTF-8. « Héloïse » revient en « HÃ©loÃ¯se ». Le séparateur se détecte, et une
+  lecture UTF-8 qui produit des caractères de remplacement se relit en 1252.
+- **Le collage vaut mieux que le fichier** : sélectionner des cellules et les coller
+  donne du texte tabulé, sans export, sans encodage et sans séparateur à deviner.
+  « Exportez en CSV » est l'étape où les couples décrochent.
+- Les listes de couples contiennent presque toujours une colonne **email** et une
+  colonne **téléphone**. Le produit n'en a pas besoin — les liens partent par
+  WhatsApp — mais il faut **dire** qu'elles ont été reconnues et écartées, sinon on
+  croit à une perte de données.
+- Sans ligne d'en-tête, **ne jamais proposer la même colonne par défaut pour tous les
+  champs** : l'erreur est alors offerte en premier. On profile chaque colonne (emails,
+  téléphones, longueur moyenne, taux de répétition) et on propose ce qu'on a deviné.
+- **Réimporter ne doit jamais régénérer un token** : un couple qui ajoute dix
+  personnes en mars redépose sa liste entière, et recréer les lignes existantes
+  invaliderait autant de liens déjà envoyés (§3, règle 3).
 
 ---
 

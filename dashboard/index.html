@@ -139,6 +139,7 @@
   .apercu .valider { margin-top: 14px; }
   .correspondance { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
   .correspondance label { font-size: 0.72rem; color: var(--sage); display: flex; flex-direction: column; gap: 5px; }
+  .apercu .conflit { font-size: 0.78rem; color: var(--ambre); margin-bottom: 12px; }
   .correspondance select {
     font-family: 'Jost', sans-serif; font-size: 0.84rem; font-weight: 400;
     padding: 7px 10px; border: 1px solid rgba(201, 169, 110, 0.5); background: #fff; color: var(--ink);
@@ -1140,24 +1141,123 @@ function analyserImport(texte) {
   construireApercu(donnees, colonnes, sep === '\t' ? 'collage' : `séparateur « ${sep} »`, lignes[0]);
 }
 
+/* Sans ligne d'en-tête, on ne devine pas au hasard : on regarde ce qu'il y a
+   dans chaque colonne. Une colonne d'emails ou de téléphones s'écarte d'elle-
+   même, un message se reconnaît à sa longueur, un groupe au fait qu'il se
+   répète. Proposer « colonne 1 » partout, c'était offrir l'erreur en premier. */
+function profilerColonnes(lignes) {
+  const nb = Math.max(...lignes.map((l) => l.length));
+  const profils = [];
+
+  for (let i = 0; i < nb; i++) {
+    const valeurs = lignes.map((l) => (l[i] || '').trim()).filter(Boolean);
+    if (!valeurs.length) { profils.push({ i, vide: true }); continue; }
+    const part = (test) => valeurs.filter(test).length / valeurs.length;
+    profils.push({
+      i,
+      vide: false,
+      email: part((v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)),
+      telephone: part((v) => /^[+\d][\d\s.()-]{7,}$/.test(v)),
+      longueur: valeurs.reduce((a, v) => a + v.length, 0) / valeurs.length,
+      motsUniques: new Set(valeurs.map((v) => v.toLowerCase())).size / valeurs.length,
+      unMot: part((v) => !v.includes(' ')),
+    });
+  }
+  return profils;
+}
+
+function devinerColonnes(lignes) {
+  const profils = profilerColonnes(lignes);
+  // Un email ou un téléphone n'est ni un prénom ni un message : hors course.
+  const libres = profils.filter((p) => !p.vide && p.email < 0.5 && p.telephone < 0.5);
+  const pris = new Set();
+  const prendre = (p) => { if (p) pris.add(p.i); return p ? p.i : undefined; };
+  const dispo = () => libres.filter((p) => !pris.has(p.i));
+
+  // Le message est la colonne la plus bavarde, si elle l'est vraiment.
+  const message = dispo().slice().sort((a, b) => b.longueur - a.longueur)[0];
+  const colonnes = {};
+  if (message && message.longueur > 25) colonnes.message = prendre(message);
+
+  // Le groupe se répète : peu de valeurs distinctes, et court.
+  const groupe = dispo()
+    .filter((p) => p.longueur < 25 && p.motsUniques < 0.75)
+    .sort((a, b) => a.motsUniques - b.motsUniques)[0];
+  if (groupe) colonnes.groupe = prendre(groupe);
+
+  // Restent prénom puis nom, dans l'ordre où ils apparaissent.
+  const noms = dispo().filter((p) => p.longueur < 40);
+  colonnes.prenom = prendre(noms[0]) ?? (profils.find((p) => !p.vide) || {}).i ?? 0;
+  if (noms[1]) colonnes.nom = prendre(noms[1]);
+
+  return colonnes;
+}
+
 function afficherCorrespondance(lignes, sep) {
   const boite = $('import-apercu');
+  const profils = profilerColonnes(lignes);
+  const devine = devinerColonnes(lignes);
   const exemple = lignes[0];
-  const options = (champ) => exemple.map((c, i) =>
-    `<option value="${i}">Colonne ${i + 1} — ${esc((c || '').slice(0, 24))}</option>`).join('');
+
+  const etiquette = (p) => {
+    const apercu = (exemple[p.i] || '').trim().slice(0, 22) || '(vide)';
+    if (p.email >= 0.5) return `Colonne ${p.i + 1} — ${apercu} · emails`;
+    if (p.telephone >= 0.5) return `Colonne ${p.i + 1} — ${apercu} · téléphones`;
+    return `Colonne ${p.i + 1} — ${apercu}`;
+  };
+
+  const menu = (champ, facultatif) =>
+    `<select id="map-${champ}" data-map>${facultatif ? '<option value="">—</option>' : ''}` +
+    profils.filter((p) => !p.vide).map((p) =>
+      `<option value="${p.i}"${devine[champ] === p.i ? ' selected' : ''}>${esc(etiquette(p))}</option>`
+    ).join('') + '</select>';
 
   boite.innerHTML = `<div class="apercu">
     <h3>Quelle colonne est quoi ?</h3>
-    <p class="aide">Aucune ligne d'en-tête reconnue. Indiquez au moins le prénom —
-      imposer un ordre garantirait l'inversion prénom / nom un jour ou l'autre.</p>
+    <p class="aide">Aucune ligne d'en-tête reconnue. Voici ce qu'on a deviné d'après
+      le contenu de chaque colonne — corrigez si besoin. Une même colonne ne peut
+      pas servir deux fois.</p>
     <div class="correspondance">
-      <label>Prénom<select id="map-prenom">${options('prenom')}</select></label>
-      <label>Nom<select id="map-nom"><option value="">—</option>${options('nom')}</select></label>
-      <label>Message<select id="map-message"><option value="">—</option>${options('message')}</select></label>
-      <label>Groupe<select id="map-groupe"><option value="">—</option>${options('groupe')}</select></label>
+      <label>Prénom${menu('prenom', false)}</label>
+      <label>Nom${menu('nom', true)}</label>
+      <label>Message${menu('message', true)}</label>
+      <label>Groupe${menu('groupe', true)}</label>
     </div>
+    <p class="conflit" id="map-conflit" hidden></p>
     <button class="small" type="button" id="btn-map">Continuer</button>
   </div>`;
+
+  // Une colonne ne peut désigner qu'un champ. Les deux champs échangent leur
+  // colonne plutôt que d'en vider un : vider, c'est obliger à tout refaire, et
+  // c'est comme ça qu'on se retrouvait avec le prénom sur la colonne d'emails.
+  const dire = (texte) => {
+    $('map-conflit').hidden = false;
+    $('map-conflit').textContent = texte;
+  };
+
+  boite.querySelectorAll('[data-map]').forEach((sel) => {
+    sel.dataset.avant = sel.value;
+    sel.addEventListener('change', () => {
+      const avant = sel.dataset.avant;
+      if (sel.value) {
+        for (const autre of boite.querySelectorAll('[data-map]')) {
+          if (autre === sel || autre.value !== sel.value) continue;
+
+          if (autre.id === 'map-prenom' && avant === '') {
+            // Le prénom est obligatoire et n'a rien à recevoir en échange :
+            // on refuse le changement au lieu de le laisser sans colonne.
+            sel.value = avant;
+            dire('Le prénom est obligatoire ; choisissez-lui une autre colonne d\'abord.');
+            return;
+          }
+          autre.value = avant;
+          autre.dataset.avant = avant;
+          dire(`Les deux champs ont échangé leur colonne : une colonne ne peut en désigner qu'un.`);
+        }
+      }
+      sel.dataset.avant = sel.value;
+    });
+  });
 
   $('btn-map').addEventListener('click', () => {
     const lire = (id) => ($(id).value === '' ? undefined : Number($(id).value));
