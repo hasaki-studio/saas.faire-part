@@ -198,7 +198,10 @@
   .colonne .l small { display: block; font-size: 0.68rem; color: #9a938a; margin-top: 2px; }
   .msg-titre { font-size: 0.86rem; }
 
-  .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
+  .chips-titre {
+    flex: 1 0 100%; font-size: 0.72rem; color: #8a837a; margin-bottom: 2px;
+  }
   .chips .chip {
     font-size: 0.72rem; padding: 5px 12px; background: var(--cream);
     border: 1px solid var(--cream-dark);
@@ -273,8 +276,12 @@
   button.retour:hover { background: none; }
   .crayon { color: var(--gold); font-size: 0.9rem; opacity: 0; transition: opacity 0.15s; }
   tr:hover .crayon, button.retour:focus .crayon { opacity: 1; }
-  .chips .chip.modifiable { cursor: pointer; }
-  .chips .chip.modifiable:hover { border-color: var(--gold); }
+  .chips .chip.modifiable {
+    cursor: pointer; font-family: 'Jost', sans-serif; letter-spacing: 0;
+    text-transform: none; color: var(--ink); line-height: 1.5;
+  }
+  .chips .chip.modifiable:hover { border-color: var(--gold); background: var(--cream); color: var(--ink); }
+  .chips .chip .crayon { opacity: 1; margin-left: 4px; }
 
   #err { display: none; padding: 18px 22px; font-size: 0.82rem; margin-bottom: 24px;
     background: rgba(201, 143, 143, 0.12); border-left: 2px solid var(--rose); }
@@ -622,10 +629,16 @@ function messages() {
     : compte.generique === 0 ? 'Tous vos invités reçoivent un mot écrit pour eux.'
     : "La réponse générique est un choix valide, pas un oubli — le filtre « Réponse générique » ci-dessous liste ces invités si vous voulez leur écrire.";
 
-  $('msg-groupes').innerHTML = GROUPES.map((g) =>
-    `<span class="chip modifiable${g.a_message ? '' : ' manque'}" data-groupe="${esc(g.nom)}">${esc(g.nom)}
-       <b>${g.invites} invité${g.invites > 1 ? 's' : ''}</b>
-       · ${g.a_message ? 'message écrit' : 'message à écrire'}${g.a_photo ? ' · photo' : ''}</span>`).join('');
+  // Les groupes sont le deuxième niveau de la cascade : ce qui est écrit ici ne
+  // sert qu'aux invités du groupe qui n'ont pas de message à eux. Le dire, parce
+  // que sinon on croit qu'un message de groupe écrase les messages individuels.
+  $('msg-groupes').innerHTML = !GROUPES.length ? '' :
+    `<p class="chips-titre">Messages de groupe · reçus par les invités du groupe qui n'ont pas de message à eux</p>` +
+    GROUPES.map((g) =>
+      `<button type="button" class="chip modifiable${g.a_message ? '' : ' manque'}" data-groupe="${esc(g.nom)}">
+         ${esc(g.nom)} <b>${g.invites} invité${g.invites > 1 ? 's' : ''}</b>
+         · ${g.a_message ? 'message écrit' : 'message à écrire'}${g.a_photo ? ' · photo' : ''}
+         <span class="crayon">✎</span></button>`).join('');
 }
 
 
