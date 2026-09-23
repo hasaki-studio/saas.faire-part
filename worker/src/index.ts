@@ -7,6 +7,8 @@ import {
   ecrirePhotoKey,
   ecrireReponseGroupe,
   getConviveParId,
+  importerConvives,
+  type InviteImporte,
   getMariageByEmail,
   getReponseGroupe,
   listerConvives,
@@ -377,6 +379,52 @@ async function handlePhoto(request: Request, env: Env, conviveId: string): Promi
   return json({ enregistre: true, photo_url: photoUrl(env, cle) });
 }
 
+// Un import reste une opération humaine : au-delà, c'est une erreur de
+// manipulation ou autre chose qu'une liste de mariage.
+const MAX_IMPORT = 500;
+
+async function handleImport(request: Request, env: Env): Promise<Response> {
+  const mariage = await mariageDuCouple(request, env);
+  if (mariage instanceof Response) return mariage;
+  if (!origineLegitime(request, env)) return json({ erreur: "Origine refusée" }, 403);
+
+  let payload: unknown;
+  try {
+    payload = await request.json();
+  } catch {
+    return json({ erreur: "JSON invalide" }, 400);
+  }
+
+  const brut = (payload as { invites?: unknown }).invites;
+  if (!Array.isArray(brut) || !brut.length) return json({ erreur: "Aucun invité à ajouter." }, 400);
+  if (brut.length > MAX_IMPORT) {
+    return json({ erreur: `${MAX_IMPORT} invités au maximum par import.` }, 400);
+  }
+
+  const invites: InviteImporte[] = [];
+  for (const ligne of brut) {
+    const l = ligne as Record<string, unknown>;
+    const prenom = typeof l.prenom === "string" ? l.prenom.trim() : "";
+    const nom = typeof l.nom === "string" ? l.nom.trim() : "";
+    // Le prénom seul suffit : c'est lui qui porte le lien et l'adresse au
+    // destinataire. Un nom manquant se complète plus tard.
+    if (!prenom) continue;
+    const message = typeof l.message === "string" ? l.message.trim() : "";
+    const groupe = typeof l.groupe === "string" ? l.groupe.trim() : "";
+    invites.push({
+      prenom: prenom.slice(0, 80),
+      nom: nom.slice(0, 80),
+      message: message ? message.slice(0, MAX_MESSAGE) : null,
+      groupe: groupe ? groupe.slice(0, 60) : null,
+    });
+  }
+  if (!invites.length) return json({ erreur: "Aucune ligne exploitable : il faut au moins un prénom." }, 400);
+
+  // Le token est fabriqué ici, jamais reçu du navigateur (CLAUDE.md §3).
+  const bilan = await importerConvives(env.DB, mariage.id, invites, () => genToken());
+  return json({ enregistre: true, ...bilan });
+}
+
 // ── Aperçu WhatsApp ───────────────────────────────────────────────
 //
 // Le robot de WhatsApp n'exécute pas de JavaScript : il ne voit que le HTML
@@ -571,6 +619,10 @@ export default {
       const message = url.pathname.match(/^\/api\/tableau\/convives\/([^/]+)\/message$/);
       if (message && request.method === "PUT") {
         return handleEcrireMessage(request, env, decodeURIComponent(message[1]!));
+      }
+
+      if (url.pathname === "/api/tableau/convives/import" && request.method === "POST") {
+        return handleImport(request, env);
       }
 
       const photo = url.pathname.match(/^\/api\/tableau\/convives\/([^/]+)\/photo$/);

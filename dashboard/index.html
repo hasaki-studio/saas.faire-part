@@ -87,6 +87,46 @@
      séparés dans le temps — écrire ses messages en novembre, suivre les réponses
      en avril — et une page qui fait les deux à la fois ne fait bien ni l'un ni
      l'autre. */
+  .aide { font-size: 0.8rem; color: #8a837a; margin-bottom: 14px; line-height: 1.6; }
+  #import-coller {
+    width: 100%; resize: vertical; font-family: 'Jost', sans-serif;
+    font-size: 0.85rem; font-weight: 300; line-height: 1.6;
+    padding: 11px 13px; border: 1px solid rgba(201, 169, 110, 0.5); background: #fff; color: var(--ink);
+  }
+  #import-coller:focus { outline: none; border-color: var(--gold); }
+  .import-pied { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .import-pied .etat { font-size: 0.76rem; color: #9a938a; }
+  .import-pied .etat.ok { color: var(--sage-dark); }
+  .import-pied .etat.ko { color: #a86a6a; }
+  .zone-survol { border-color: var(--gold) !important; background: var(--cream) !important; }
+
+  #import-un { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  #import-un input {
+    font-family: 'Jost', sans-serif; font-size: 0.85rem; font-weight: 300; flex: 1 1 150px;
+    padding: 9px 12px; border: 1px solid rgba(201, 169, 110, 0.5); background: #fff; color: var(--ink);
+  }
+  #import-un input:focus { outline: none; border-color: var(--gold); }
+
+  .apercu { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--cream-dark); }
+  .apercu h3 {
+    font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--sage); font-weight: 400; margin-bottom: 10px;
+  }
+  .apercu table { min-width: 0; font-size: 0.8rem; }
+  .apercu td, .apercu th { padding: 7px 10px; }
+  .apercu .alertes { list-style: none; margin: 12px 0 0; font-size: 0.78rem; color: #9a7b3f; }
+  .apercu .alertes li { padding: 3px 0 3px 16px; position: relative; }
+  .apercu .alertes li::before { content: "·"; position: absolute; left: 4px; }
+  .apercu .bilan { font-size: 0.86rem; margin-top: 14px; }
+  .apercu .bilan b { font-weight: 400; color: var(--sage-dark); }
+  .apercu .valider { margin-top: 14px; }
+  .correspondance { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .correspondance label { font-size: 0.72rem; color: var(--sage); display: flex; flex-direction: column; gap: 5px; }
+  .correspondance select {
+    font-family: 'Jost', sans-serif; font-size: 0.82rem; font-weight: 300;
+    padding: 7px 10px; border: 1px solid rgba(201, 169, 110, 0.5); background: #fff; color: var(--ink);
+  }
+
   .onglets {
     display: flex; justify-content: center; gap: 0;
     border-bottom: 1px solid rgba(201, 169, 110, 0.35);
@@ -378,6 +418,37 @@
     </nav>
 
     <section id="vue-messages" hidden>
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-head">
+          <h2>Ajouter des invités</h2>
+          <div class="card-actions">
+            <button class="small" type="button" id="btn-modele">Télécharger le modèle</button>
+          </div>
+        </div>
+
+        <p class="aide">Dans votre tableur, sélectionnez vos lignes, copiez-les
+          (Ctrl+C), et collez-les ici. Pas besoin d'exporter quoi que ce soit.
+          L'ordre des colonnes n'a pas d'importance — on lit la ligne d'en-tête.</p>
+
+        <textarea id="import-coller" rows="4"
+          placeholder="Prénom	Nom	Message	Groupe&#10;Héloïse	Martin	Hâte de te voir danser !	Témoins"></textarea>
+
+        <div class="import-pied">
+          <input type="file" id="import-fichier" accept=".csv,.txt,text/csv,text/plain" hidden>
+          <button class="small" type="button" id="btn-fichier">Ou déposer un fichier CSV</button>
+          <button class="small" type="button" id="btn-un">+ Un seul invité</button>
+          <span class="etat" id="import-etat"></span>
+        </div>
+
+        <form id="import-un" hidden>
+          <input type="text" id="un-prenom" placeholder="Prénom" required>
+          <input type="text" id="un-nom" placeholder="Nom">
+          <input type="text" id="un-groupe" placeholder="Groupe (facultatif)">
+          <button class="small" type="submit">Ajouter</button>
+        </form>
+
+        <div id="import-apercu"></div>
+      </div>
     <div class="card" style="margin-bottom:20px">
       <h2>Messages personnalisés</h2>
       <p class="msg-titre" id="msg-texte"></p>
@@ -950,6 +1021,299 @@ function ouvrirEditeurGroupe(nom) {
   });
 }
 
+
+
+/* ---------- Import d'invités ----------
+   Le chemin principal est le collage : la liste d'un couple vit dans un
+   tableur, et « exportez en CSV » est l'étape où les gens décrochent. Coller
+   des cellules donne du texte séparé par des tabulations, sans fichier, sans
+   encodage et sans séparateur à deviner. Le fichier reste en secours. */
+
+const EN_TETES = {
+  prenom: ['prenom', 'first name', 'firstname', 'given name'],
+  nom: ['nom', 'name', 'last name', 'lastname', 'surname', 'nom de famille', 'famille'],
+  message: ['message', 'message perso', 'message personnalise', 'mot', 'mot perso'],
+  groupe: ['groupe', 'group', 'table', 'categorie', 'tablee'],
+};
+
+const sansAccent = (v) =>
+  String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
+/* Tabulation pour un collage, point-virgule pour un Excel français, virgule
+   sinon. On compte sur les premières lignes : le séparateur réel y revient à
+   chaque ligne, un caractère de texte non. */
+function detecterSeparateur(texte) {
+  const lignes = texte.split(/\r?\n/).filter((l) => l.trim()).slice(0, 6);
+  const score = (sep) => {
+    const parGigne = lignes.map((l) => l.split(sep).length - 1);
+    const mini = Math.min(...parGigne);
+    return mini > 0 ? mini * 10 + parGigne.reduce((a, b) => a + b, 0) : 0;
+  };
+  return [['\t', score('\t')], [';', score(';')], [',', score(',')]]
+    .sort((a, b) => b[1] - a[1])[0][0];
+}
+
+/* Analyse en gérant les champs entre guillemets — les messages contiennent des
+   virgules et des retours à la ligne. */
+function lireTableau(texte, sep) {
+  if (texte.charCodeAt(0) === 0xfeff) texte = texte.slice(1);   // BOM d'Excel
+  const lignes = [];
+  let champ = '';
+  let ligne = [];
+  let dansGuillemets = false;
+
+  for (let i = 0; i < texte.length; i++) {
+    const c = texte[i];
+    if (dansGuillemets) {
+      if (c === '"') {
+        if (texte[i + 1] === '"') { champ += '"'; i++; }
+        else dansGuillemets = false;
+      } else champ += c;
+      continue;
+    }
+    if (c === '"') dansGuillemets = true;
+    else if (c === sep) { ligne.push(champ); champ = ''; }
+    else if (c === '\n') { ligne.push(champ); lignes.push(ligne); ligne = []; champ = ''; }
+    else if (c !== '\r') champ += c;   // les \r de Windows cassent tout
+  }
+  if (champ !== '' || ligne.length) { ligne.push(champ); lignes.push(ligne); }
+  return lignes.filter((l) => l.some((c) => c.trim() !== ''));
+}
+
+function associerColonnes(entete) {
+  const trouve = {};
+  entete.forEach((cellule, i) => {
+    const v = sansAccent(cellule);
+    for (const [champ, variantes] of Object.entries(EN_TETES)) {
+      if (trouve[champ] === undefined && variantes.some((x) => v === x || v.startsWith(x))) {
+        trouve[champ] = i;
+      }
+    }
+  });
+  return trouve;
+}
+
+let importPret = null;   // lignes prêtes à envoyer, une fois l'aperçu validé
+
+function analyserImport(texte) {
+  const etat = $('import-etat');
+  const boite = $('import-apercu');
+  importPret = null;
+  boite.innerHTML = '';
+  etat.textContent = '';
+  etat.className = 'etat';
+  if (!texte.trim()) return;
+
+  const sep = detecterSeparateur(texte);
+  const lignes = lireTableau(texte, sep);
+  if (!lignes.length) return;
+
+  let colonnes = associerColonnes(lignes[0]);
+  let donnees = lignes.slice(1);
+
+  // Pas d'en-tête reconnu : on ne devine pas l'ordre, on demande.
+  if (colonnes.prenom === undefined) {
+    afficherCorrespondance(lignes, sep);
+    return;
+  }
+
+  construireApercu(donnees, colonnes, sep === '\t' ? 'collage' : `séparateur « ${sep} »`);
+}
+
+function afficherCorrespondance(lignes, sep) {
+  const boite = $('import-apercu');
+  const exemple = lignes[0];
+  const options = (champ) => exemple.map((c, i) =>
+    `<option value="${i}">Colonne ${i + 1} — ${esc((c || '').slice(0, 24))}</option>`).join('');
+
+  boite.innerHTML = `<div class="apercu">
+    <h3>Quelle colonne est quoi ?</h3>
+    <p class="aide">Aucune ligne d'en-tête reconnue. Indiquez au moins le prénom —
+      imposer un ordre garantirait l'inversion prénom / nom un jour ou l'autre.</p>
+    <div class="correspondance">
+      <label>Prénom<select id="map-prenom">${options('prenom')}</select></label>
+      <label>Nom<select id="map-nom"><option value="">—</option>${options('nom')}</select></label>
+      <label>Message<select id="map-message"><option value="">—</option>${options('message')}</select></label>
+      <label>Groupe<select id="map-groupe"><option value="">—</option>${options('groupe')}</select></label>
+    </div>
+    <button class="small" type="button" id="btn-map">Continuer</button>
+  </div>`;
+
+  $('btn-map').addEventListener('click', () => {
+    const lire = (id) => ($(id).value === '' ? undefined : Number($(id).value));
+    construireApercu(lignes, {
+      prenom: Number($('map-prenom').value),
+      nom: lire('map-nom'),
+      message: lire('map-message'),
+      groupe: lire('map-groupe'),
+    }, sep === '\t' ? 'collage' : `séparateur « ${sep} »`);
+  });
+}
+
+function construireApercu(donnees, colonnes, origine) {
+  const boite = $('import-apercu');
+  const alertes = [];
+  const invites = [];
+  const vus = new Map();
+
+  donnees.forEach((l, i) => {
+    const val = (k) => (colonnes[k] === undefined ? '' : (l[colonnes[k]] || '').trim());
+    const prenom = val('prenom');
+    const nom = val('nom');
+    if (!prenom) { alertes.push(`ligne ${i + 2} ignorée : pas de prénom`); return; }
+    if (!nom) alertes.push(`${prenom} n'a pas de nom`);
+
+    const cle = sansAccent(`${prenom} ${nom}`);
+    if (vus.has(cle)) alertes.push(`« ${prenom} ${nom} » apparaît plusieurs fois`);
+    vus.set(cle, true);
+
+    invites.push({ prenom, nom, message: val('message'), groupe: val('groupe') });
+  });
+
+  // Deux étiquettes voisines font deux groupes, donc deux messages à écrire et
+  // un invité qui reçoit le mauvais.
+  const groupes = [...new Set(invites.map((i) => i.groupe).filter(Boolean))];
+  const collisions = groupes.filter((g, i) =>
+    groupes.findIndex((h) => sansAccent(h) === sansAccent(g)) !== i);
+  if (collisions.length) {
+    alertes.push(`étiquettes de groupe presque identiques : ${[...new Set(collisions)].join(', ')} — elles feront des groupes distincts`);
+  }
+
+  const connus = new Set(CONVIVES.map((c) => sansAccent(`${c.prenom} ${c.nom}`)));
+  const nouveaux = [];
+  for (const invite of invites) {
+    const cle = sansAccent(`${invite.prenom} ${invite.nom}`);
+    if (connus.has(cle)) continue;
+    connus.add(cle);
+    nouveaux.push(invite);
+  }
+  const dejaLa = invites.length - nouveaux.length;
+
+  if (!invites.length) {
+    boite.innerHTML = '<div class="apercu"><p class="empty">Aucune ligne exploitable.</p></div>';
+    return;
+  }
+
+  importPret = invites;
+
+  const extrait = invites.slice(0, 6);
+  boite.innerHTML = `<div class="apercu">
+    <h3>Aperçu · ${origine}</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Prénom</th><th>Nom</th><th>Groupe</th><th>Message</th></tr></thead>
+      <tbody>${extrait.map((i) => `<tr>
+        <td>${esc(i.prenom)}</td><td>${esc(i.nom) || '<span class="muted">—</span>'}</td>
+        <td>${esc(i.groupe) || '<span class="muted">—</span>'}</td>
+        <td class="note">${esc(i.message) || '<span class="muted">—</span>'}</td></tr>`).join('')}
+      </tbody></table></div>
+    ${invites.length > extrait.length ? `<p class="aide">… et ${invites.length - extrait.length} autres.</p>` : ''}
+    ${alertes.length ? `<ul class="alertes">${alertes.slice(0, 8).map((a) => `<li>${esc(a)}</li>`).join('')}
+      ${alertes.length > 8 ? `<li>… et ${alertes.length - 8} autres remarques</li>` : ''}</ul>` : ''}
+    <p class="bilan"><b>${nouveaux.length}</b> ${nouveaux.length > 1 ? 'nouveaux invités' : 'nouvel invité'} à ajouter${
+      dejaLa ? `, <b>${dejaLa}</b> déjà dans votre liste — leurs liens sont conservés` : ''}.</p>
+    <button class="small valider" type="button" id="btn-valider"${nouveaux.length ? '' : ' disabled'}>
+      Ajouter ${nouveaux.length} invité${nouveaux.length > 1 ? 's' : ''}</button>
+  </div>`;
+
+  if (nouveaux.length) $('btn-valider').addEventListener('click', envoyerImport);
+}
+
+async function envoyerImport(invites) {
+  const liste = Array.isArray(invites) ? invites : importPret;
+  if (!liste || !liste.length) return;
+  const etat = $('import-etat');
+  etat.textContent = 'Ajout…';
+  etat.className = 'etat';
+
+  try {
+    const res = await fetch('/api/tableau/convives/import', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ invites: liste }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.erreur || 'Le serveur a répondu ' + res.status);
+
+    etat.textContent = `${data.ajoutes} ajouté${data.ajoutes > 1 ? 's' : ''}` +
+      (data.existants ? `, ${data.existants} déjà présent${data.existants > 1 ? 's' : ''}` : '');
+    etat.className = 'etat ok';
+    $('import-coller').value = '';
+    $('import-apercu').innerHTML = '';
+    importPret = null;
+    await charger();   // la liste, les compteurs et les groupes changent
+  } catch (e) {
+    etat.textContent = e.message;
+    etat.className = 'etat ko';
+  }
+}
+
+/* Un fichier apporte deux pièges que le collage n'a pas : Excel français
+   exporte en Windows-1252 et non en UTF-8. On lit en UTF-8, et si des
+   caractères de remplacement apparaissent, on relit dans l'autre encodage. */
+async function lireFichier(fichier) {
+  const octets = await fichier.arrayBuffer();
+  let texte = new TextDecoder('utf-8').decode(octets);
+  if (texte.includes('�')) texte = new TextDecoder('windows-1252').decode(octets);
+  return texte;
+}
+
+$('import-coller').addEventListener('input', (e) => analyserImport(e.target.value));
+
+$('btn-fichier').addEventListener('click', () => $('import-fichier').click());
+$('import-fichier').addEventListener('change', async (e) => {
+  const fichier = e.target.files?.[0];
+  if (!fichier) return;
+  e.target.value = '';
+  $('import-coller').value = await lireFichier(fichier);
+  analyserImport($('import-coller').value);
+});
+
+// Déposer le fichier directement sur la zone de collage.
+['dragover', 'dragleave', 'drop'].forEach((type) => {
+  $('import-coller').addEventListener(type, async (e) => {
+    e.preventDefault();
+    $('import-coller').classList.toggle('zone-survol', type === 'dragover');
+    if (type !== 'drop') return;
+    const fichier = e.dataTransfer?.files?.[0];
+    if (!fichier) return;
+    $('import-coller').value = await lireFichier(fichier);
+    analyserImport($('import-coller').value);
+  });
+});
+
+$('btn-un').addEventListener('click', () => {
+  const f = $('import-un');
+  f.hidden = !f.hidden;
+  if (!f.hidden) $('un-prenom').focus();
+});
+
+$('import-un').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const prenom = $('un-prenom').value.trim();
+  if (!prenom) return;
+  await envoyerImport([{
+    prenom,
+    nom: $('un-nom').value.trim(),
+    message: '',
+    groupe: $('un-groupe').value.trim(),
+  }]);
+  ['un-prenom', 'un-nom', 'un-groupe'].forEach((id) => ($(id).value = ''));
+  $('un-prenom').focus();
+});
+
+$('btn-modele').addEventListener('click', () => {
+  // ﻿ : sans ce BOM, Excel lit le modèle en latin-1 et abîme les accents.
+  const csv = '﻿' + [
+    'Prénom,Nom,Message,Groupe',
+    'Héloïse,Martin,"Hâte de te voir danser, comme à Reims !",Témoins',
+    'Paul,Durand,,Collègues',
+    'Zoé,Leroy,,',
+  ].join('\r\n') + '\r\n';
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'modele-invites.csv';
+  a.click();
+});
 
 /* ---------- Onglets ----------
    Par défaut on ouvre sur le travail qui reste : tant qu'un invité n'a pas de

@@ -130,6 +130,33 @@ demanderait d'abord de décider ce qu'on enregistre — date d'envoi du lien, da
 de chaque relance — et où. À trancher quand le besoin se posera pour de vrai,
 c'est-à-dire en avril.
 
+**Le couple dépose sa liste lui-même**, comme l'exige §5 — ne jamais la
+recevoir par mail ou WhatsApp, ce serait en détenir une copie non maîtrisée.
+
+Le chemin principal est **le collage** : la liste vit dans un tableur, et
+« exportez en CSV » est l'étape où les gens décrochent. Coller des cellules
+donne du texte séparé par des tabulations, sans fichier, sans encodage, sans
+séparateur à deviner. Le fichier reste en secours, avec ses deux pièges :
+Excel français exporte en **point-virgule** et en **Windows-1252**, tous deux
+détectés — on lit en UTF-8, et des caractères de remplacement font relire dans
+l'autre encodage.
+
+L'ordre des colonnes n'est jamais imposé : on lit la ligne d'en-tête, avec des
+variantes tolérées (`prénom`/`prenom`/`first name`…). Sans en-tête reconnu, la
+page demande quelle colonne est quoi, plutôt que de deviner — imposer l'ordre
+garantirait l'inversion prénom / nom un jour ou l'autre.
+
+**Rien n'entre en base sans aperçu** : les premières lignes, les alertes
+(prénom manquant, doublon, étiquettes de groupe voisines) et le bilan.
+
+Et le contrôle qui compte vraiment : **réimporter ne régénère jamais un
+token**. Un couple qui ajoute dix personnes en mars redépose souvent sa liste
+entière ; recréer les lignes existantes invaliderait autant de liens déjà
+envoyés, parfois imprimés (§3, règle 3). La comparaison se fait sur
+prénom + nom sans accent ni casse, côté serveur, et vaut aussi à l'intérieur du
+fichier déposé. L'aperçu l'annonce : « 10 nouveaux, 97 déjà dans votre liste —
+leurs liens sont conservés ».
+
 **Deux onglets, parce que le couple a deux métiers séparés dans le temps.** En
 novembre il écrit cent messages, sans aucune réponse à suivre ; en avril il suit
 les réponses et prépare le traiteur. Une page qui fait les deux à la fois ne

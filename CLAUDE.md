@@ -319,8 +319,9 @@ RSVP), premier thème (`botanique`) branché dessus, deux messagers (`montgolfie
 messages au fil de l'eau depuis le tableau de bord, réponses de groupe, aperçu
 WhatsApp (Open Graph rendu côté serveur), photo par invité téléversée vers R2
 après redimensionnement dans le navigateur, déploiement du Worker depuis GitHub
-Actions. Pas encore construit : photos du couple et du lieu, cron de suppression
-RGPD, limitation de débit sur le lookup.
+Actions, import de la liste par le couple lui-même depuis le tableau de bord
+(collage depuis un tableur ou fichier CSV). Pas encore construit : photos du
+couple et du lieu, cron de suppression RGPD, limitation de débit sur le lookup.
 
 **Attention à ne pas confondre deux tableaux de bord.** Celui qui est en ligne
 aujourd'hui vient du projet `Mon-Mariage` (n8n + NAS) et ne sert qu'au suivi du

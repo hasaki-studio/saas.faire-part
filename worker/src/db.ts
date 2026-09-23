@@ -245,3 +245,62 @@ export async function ecrirePhotoKey(
     .bind(photoKey, conviveId, mariageId)
     .run();
 }
+
+export interface InviteImporte {
+  prenom: string;
+  nom: string;
+  message: string | null;
+  groupe: string | null;
+}
+
+/**
+ * Ajoute des invités sans jamais toucher à ceux qui existent déjà.
+ *
+ * C'est le contrôle qui compte : un couple qui ajoute dix personnes en mars
+ * redépose souvent sa liste entière. Si l'import recréait les lignes
+ * existantes, ce sont autant de tokens neufs — donc de liens déjà envoyés,
+ * parfois imprimés sur des cartons, qui cesseraient de fonctionner
+ * (CLAUDE.md §3, règle 3). La comparaison se fait sur prénom + nom, sans
+ * accent ni casse, et vaut aussi à l'intérieur du fichier déposé.
+ */
+export async function importerConvives(
+  db: D1Database,
+  mariageId: string,
+  invites: InviteImporte[],
+  genToken: () => string,
+): Promise<{ ajoutes: number; existants: number }> {
+  const cle = (prenom: string, nom: string) =>
+    `${prenom}|${nom}`
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .trim();
+
+  const { results } = await db
+    .prepare("SELECT prenom, nom FROM convives WHERE mariage_id = ?1")
+    .bind(mariageId)
+    .all<{ prenom: string; nom: string }>();
+  const connus = new Set(results.map((r) => cle(r.prenom, r.nom)));
+
+  const nouveaux: InviteImporte[] = [];
+  for (const invite of invites) {
+    const k = cle(invite.prenom, invite.nom);
+    if (connus.has(k)) continue;
+    connus.add(k);
+    nouveaux.push(invite);
+  }
+
+  if (nouveaux.length) {
+    await db.batch(
+      nouveaux.map((i) =>
+        db
+          .prepare(
+            "INSERT INTO convives (id, mariage_id, token, prenom, nom, message_perso, groupe, origine) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'liste')",
+          )
+          .bind(crypto.randomUUID(), mariageId, genToken(), i.prenom, i.nom, i.message, i.groupe),
+      ),
+    );
+  }
+
+  return { ajoutes: nouveaux.length, existants: invites.length - nouveaux.length };
+}
