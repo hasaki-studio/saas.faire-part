@@ -78,7 +78,7 @@
   }
   button:hover { background: var(--gold); color: #fff; }
   button:disabled { opacity: 0.4; cursor: not-allowed; }
-  button.small { font-size: 0.6rem; padding: 8px 16px; letter-spacing: 0.16em; }
+  button.small { font-size: 0.6rem; padding: 8px 16px; letter-spacing: 0.16em; white-space: nowrap; }
   button.small.on { background: var(--sage-dark); border-color: var(--sage-dark); color: var(--cream); }
 
   .stamp { font-size: 0.66rem; color: var(--sage); letter-spacing: 0.08em; }
@@ -209,20 +209,23 @@
   .filtres .count { font-size: 0.75rem; color: var(--sage-dark); margin-left: auto; }
 
   .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  /* min-width : passé dix colonnes, mieux vaut faire défiler le tableau que
+     comprimer les cellules jusqu'à couper les noms. .table-wrap gère le
+     débordement. */
+  table { width: 100%; min-width: 860px; border-collapse: collapse; font-size: 0.82rem; }
   th {
     text-align: left; font-size: 0.6rem; font-weight: 400;
     letter-spacing: 0.18em; text-transform: uppercase; color: var(--sage);
-    padding: 0 12px 12px; border-bottom: 1px solid rgba(201, 169, 110, 0.35);
+    padding: 0 9px 12px; border-bottom: 1px solid rgba(201, 169, 110, 0.35);
     white-space: nowrap; user-select: none;
   }
   th.sortable { cursor: pointer; }
   th.sortable:hover { color: var(--gold); }
   th .arrow { opacity: 0.45; font-size: 0.7rem; }
-  td { padding: 13px 12px; border-bottom: 1px solid var(--cream-dark); vertical-align: top; }
+  td { padding: 13px 9px; border-bottom: 1px solid var(--cream-dark); vertical-align: top; }
   tr:hover td { background: rgba(247, 243, 236, 0.7); }
-  td, .note { overflow-wrap: anywhere; }
-  .note { font-size: 0.78rem; max-width: 300px; }
+  .note { font-size: 0.78rem; max-width: 210px; overflow-wrap: anywhere; }
+  td .nom { display: inline-block; }
 
   /* Un accompagnant n'est pas un invité de plus dans la liste : il est rattaché
      à la personne qui l'a annoncé, sinon le plan de table devient faux. */
@@ -237,6 +240,7 @@
   .tag.non { background: rgba(201, 143, 143, 0.16); color: #a86a6a; }
   .tag.warn { background: rgba(201, 169, 110, 0.22); color: #9a7b3f; }
   .tag.groupe { background: rgba(125, 155, 118, 0.10); color: var(--sage); }
+  td .par { color: #8a837a; }
 
   #err { display: none; padding: 18px 22px; font-size: 0.82rem; margin-bottom: 24px;
     background: rgba(201, 143, 143, 0.12); border-left: 2px solid var(--rose); }
@@ -330,6 +334,7 @@
             <tr>
               <th class="sortable" data-k="nom">Invité <span class="arrow"></span></th>
               <th class="sortable" data-k="hors_liste">Liste <span class="arrow"></span></th>
+              <th class="sortable" data-k="accompagnant_de">Annoncé par <span class="arrow"></span></th>
               <th class="sortable" data-k="groupe">Groupe <span class="arrow"></span></th>
               <th class="sortable" data-k="presence">Présence <span class="arrow"></span></th>
               <th class="sortable" data-k="regime">Régime <span class="arrow"></span></th>
@@ -611,6 +616,12 @@ function valeurTri(c, cle) {
   if (cle === 'a_message') return ({ perso: 0, groupe: 1, generique: 2 })[retourPrevu(c)] ?? 3;
   if (cle === 'hors_liste') return c.hors_liste ? 0 : 1;   // les inattendus en tête
   if (cle === 'groupe') return (c.groupe || 'zzz').toLowerCase();   // les sans-groupe en dernier
+  if (cle === 'accompagnant_de') {
+    // Tri par hôte, les invités principaux après : la colonne sert à regrouper
+    // les accompagnants d'une même personne, pas à les disperser.
+    const hote = c.accompagnant_de ? CONVIVES.find((p) => p.id === c.accompagnant_de) : null;
+    return hote ? nomComplet(hote).toLowerCase() : 'zzz';
+  }
   return c[cle] || '';
 }
 
@@ -627,6 +638,7 @@ function tableau() {
     : `${lignes.length} sur ${CONVIVES.length} affichés`;
 
   $('tbody').innerHTML = lignes.length ? lignes.map((c) => {
+    const hote = c.accompagnant_de ? CONVIVES.find((p) => p.id === c.accompagnant_de) : null;
     const tag = c.presence === 'oui' ? '<span class="tag oui">Présent</span>'
       : c.presence === 'non' ? '<span class="tag non">Absent</span>'
       : '<span class="muted">en attente</span>';
@@ -636,6 +648,7 @@ function tableau() {
     return `<tr>
       <td><span class="${c.accompagnant_de ? 'accomp' : ''}">${esc(nomComplet(c)) || '<span class="muted">—</span>'}</span></td>
       <td>${c.hors_liste ? '<span class="tag warn">Hors liste</span>' : '<span class="muted">Invité</span>'}</td>
+      <td>${hote ? `<span class="par">${esc(nomComplet(hote))}</span>` : '<span class="muted">—</span>'}</td>
       <td>${esc(c.groupe) || '<span class="muted">—</span>'}</td>
       <td>${tag}</td>
       <td>${esc(REGIMES[c.regime_alimentaire] || '') || '<span class="muted">—</span>'}</td>
@@ -647,7 +660,7 @@ function tableau() {
       <td style="white-space:nowrap">${c.repondu_le ? dateHeure(c.repondu_le) : '<span class="muted">—</span>'}</td>
       <td>${lien}</td>
     </tr>`;
-  }).join('') : '<tr><td colspan="9" class="empty">Aucun invité ne correspond à ce filtre.</td></tr>';
+  }).join('') : '<tr><td colspan="10" class="empty">Aucun invité ne correspond à ce filtre.</td></tr>';
 
   document.querySelectorAll('th[data-k] .arrow').forEach((a) => {
     a.textContent = a.parentElement.dataset.k === triCle ? (triAsc ? '▲' : '▼') : '';

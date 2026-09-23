@@ -515,6 +515,13 @@ nav {
   }
   .ajouter-accompagnant:hover { opacity: 0.7; }
 
+  .accompagnants-note {
+    font-size: 0.82rem;
+    color: var(--sage);
+    margin-top: 6px;
+    font-style: italic;
+  }
+
   .rsvp-submit {
     margin-top: 10px;
     padding: 16px 40px;
@@ -935,6 +942,7 @@ nav {
         <label>Accompagnants</label>
         <div id="accompagnants-liste"></div>
         <button type="button" class="ajouter-accompagnant" onclick="ajouterAccompagnant()">+ Ajouter un accompagnant</button>
+        <p class="accompagnants-note" id="accompagnants-note" hidden>Quatre accompagnants au maximum. Au-delà, écrivez-nous directement.</p>
       </div>
       <div class="form-group">
         <label>Régime alimentaire</label>
@@ -1317,16 +1325,38 @@ function formatDate(iso) {
   return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+// Doit rester aligné sur MAX_ACCOMPAGNANTS dans worker/src/index.ts : ici c'est
+// du confort, le Worker reste seul juge — le formulaire se contourne.
+const MAX_ACCOMPAGNANTS = 4;
+
+function nbAccompagnants() {
+  return document.querySelectorAll('.accompagnant-row').length;
+}
+
+// Le bouton disparaît au plafond plutôt que d'ouvrir une ligne qui serait
+// refusée à l'envoi : un invité qui a saisi un nom et le voit rejeté a déjà
+// perdu confiance dans le formulaire.
+function majBoutonAccompagnant() {
+  const bouton = document.querySelector('.ajouter-accompagnant');
+  if (!bouton) return;
+  const plein = nbAccompagnants() >= MAX_ACCOMPAGNANTS;
+  bouton.hidden = plein;
+  const note = document.getElementById('accompagnants-note');
+  if (note) note.hidden = !plein;
+}
+
 function ajouterAccompagnant(prenom = '', nom = '') {
+  if (nbAccompagnants() >= MAX_ACCOMPAGNANTS) return;
   const liste = document.getElementById('accompagnants-liste');
   const row = document.createElement('div');
   row.className = 'accompagnant-row';
   row.innerHTML = `
     <input type="text" class="accompagnant-prenom" placeholder="Prénom" value="${prenom}">
     <input type="text" class="accompagnant-nom" placeholder="Nom" value="${nom}">
-    <button type="button" class="retirer-accompagnant" onclick="this.closest('.accompagnant-row').remove()">×</button>
+    <button type="button" class="retirer-accompagnant" onclick="this.closest('.accompagnant-row').remove(); majBoutonAccompagnant();">×</button>
   `;
   liste.appendChild(row);
+  majBoutonAccompagnant();
 }
 
 function accompagnantsDuFormulaire() {

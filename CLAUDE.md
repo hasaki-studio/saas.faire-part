@@ -149,7 +149,12 @@ Elles viennent d'arbitrages déjà faits. Les changer change le produit.
   formulés comme choix de menu, jamais comme question sur la religion.
 - **Un accompagnant est une ligne `convives`, pas un compteur.** On demande son prénom
   et son nom — c'est ce qui permet le plan de table et les marque-places sans
-  relancer tout le monde en avril.
+  relancer tout le monde en avril. **Quatre au maximum** par invité
+  (`MAX_ACCOMPAGNANTS`, refusé par le Worker et masqué dans le formulaire) : le
+  couple décide qui vient, et une liste ouverte laisse un invité amener une
+  tablée sans prévenir, alors que le traiteur est confirmé en avril. Un invité
+  hors liste peut en annoncer aussi — ses accompagnants héritent de son origine
+  et apparaissent comme lui dans le tableau de bord.
 - **Les photos vivent dans R2**, jamais en base64 dans la page. Nom de fichier dérivé
   du token, jamais séquentiel (`1.jpg`, `2.jpg` s'énumèrent).
 - **Les photos sont redimensionnées dans le navigateur (API Canvas) avant l'envoi**,

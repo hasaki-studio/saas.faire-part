@@ -1,5 +1,6 @@
 import { emailAuthentifie } from "./acces";
 import {
+  type Origine,
   getAccompagnants,
   getConviveByToken,
   getMariageByEmail,
@@ -28,6 +29,12 @@ export interface Env {
 }
 
 const REGIMES_VALIDES = new Set(["vegetarien", "vegan", "halal", "casher", "sans_gluten"]);
+
+// Plafond d'accompagnants annonçables par un invité. Ce n'est pas une limite
+// technique : c'est le couple qui décide qui vient, et une liste ouverte laisse
+// un invité amener une tablée entière sans prévenir — le traiteur est confirmé
+// en avril, pas la veille. Au-delà, la conversation passe par les mariés.
+const MAX_ACCOMPAGNANTS = 4;
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -140,7 +147,24 @@ async function handleRsvp(request: Request, env: Env, mariageToken: string): Pro
     return json({ erreur: "Réponse invalide" }, 400);
   }
 
+  const accompagnants = payload.accompagnants ?? [];
+  if (accompagnants.length > MAX_ACCOMPAGNANTS) {
+    return json(
+      {
+        erreur: `Vous pouvez annoncer au maximum ${MAX_ACCOMPAGNANTS} accompagnants. Au-delà, écrivez directement aux mariés.`,
+      },
+      400,
+    );
+  }
+
   const now = new Date().toISOString();
+
+  // L'hôte de la réponse : la ligne existante, ou celle qu'on vient de créer
+  // pour un token inconnu. Les accompagnants se rattachent à elle dans les deux
+  // cas — avant, le chemin « hors liste » les jetait en silence, et le couple
+  // confirmait au traiteur un effectif amputé de ces couverts-là.
+  let hote: { id: string; origine: Origine };
+  let reconnu: boolean;
 
   if (!convive) {
     // Lien mal recopié ou personne non prévue sur la liste : on la laisse quand même
@@ -153,32 +177,35 @@ async function handleRsvp(request: Request, env: Env, mariageToken: string): Pro
       return json({ erreur: "Merci d'indiquer votre prénom et votre nom." }, 400);
     }
 
+    const id = crypto.randomUUID();
     await env.DB.prepare(
       "INSERT INTO convives (id, mariage_id, token, prenom, nom, presence, regime_alimentaire, message_invite, repondu_le, origine) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 'hors_liste')",
     )
-      .bind(crypto.randomUUID(), mariage.id, genToken(), prenom, nom, payload.presence, payload.regime_alimentaire ?? null, payload.message ?? null, now)
+      .bind(id, mariage.id, genToken(), prenom, nom, payload.presence, payload.regime_alimentaire ?? null, payload.message ?? null, now)
       .run();
 
-    const retourInconnu =
-      payload.presence === "oui" ? mariage.reponse_generique_oui : mariage.reponse_generique_non;
-    return json({ reconnu: false, enregistre: true, retour: { message: retourInconnu, photo_url: null } });
-  }
+    hote = { id, origine: "hors_liste" };
+    reconnu = false;
+  } else {
+    await env.DB.prepare(
+      "UPDATE convives SET presence = ?1, regime_alimentaire = ?2, message_invite = ?3, repondu_le = ?4 WHERE id = ?5",
+    )
+      .bind(payload.presence, payload.regime_alimentaire ?? null, payload.message ?? null, now, convive.id)
+      .run();
 
-  await env.DB.prepare(
-    "UPDATE convives SET presence = ?1, regime_alimentaire = ?2, message_invite = ?3, repondu_le = ?4 WHERE id = ?5",
-  )
-    .bind(payload.presence, payload.regime_alimentaire ?? null, payload.message ?? null, now, convive.id)
-    .run();
+    hote = { id: convive.id, origine: convive.origine };
+    reconnu = true;
+  }
 
   // La liste d'accompagnants remplace la précédente à chaque envoi (un RSVP est modifiable,
   // cf. FAQ). Chaque accompagnant reste sa propre ligne, jamais un compteur (cf. CLAUDE.md §4).
-  await env.DB.prepare("DELETE FROM convives WHERE accompagnant_de = ?1").bind(convive.id).run();
-  for (const a of payload.accompagnants ?? []) {
+  await env.DB.prepare("DELETE FROM convives WHERE accompagnant_de = ?1").bind(hote.id).run();
+  for (const a of accompagnants) {
     await env.DB.prepare(
       // Le +1 d'un inconnu n'est pas davantage sur la liste que lui.
       "INSERT INTO convives (id, mariage_id, token, accompagnant_de, prenom, nom, presence, repondu_le, origine) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
     )
-      .bind(crypto.randomUUID(), mariage.id, genToken(), convive.id, a.prenom.trim(), a.nom.trim(), payload.presence, now, convive.origine)
+      .bind(crypto.randomUUID(), mariage.id, genToken(), hote.id, a.prenom.trim(), a.nom.trim(), payload.presence, now, hote.origine)
       .run();
   }
 
@@ -189,7 +216,7 @@ async function handleRsvp(request: Request, env: Env, mariageToken: string): Pro
   // le remplace jamais. Rien de tout ça sur un « non » : toujours la réponse
   // générique, un mot écrit pour quelqu'un devient cruel quand il décline (§4).
   const groupe =
-    oui && !convive.message_perso && convive.groupe
+    convive && oui && !convive.message_perso && convive.groupe
       ? await getReponseGroupe(env.DB, mariage.id, convive.groupe)
       : null;
 
@@ -199,12 +226,12 @@ async function handleRsvp(request: Request, env: Env, mariageToken: string): Pro
   // de choisir.
   const retour = {
     message: oui
-      ? convive.message_perso || groupe?.message || mariage.reponse_generique_oui
+      ? convive?.message_perso || groupe?.message || mariage.reponse_generique_oui
       : mariage.reponse_generique_non,
-    photo_url: oui ? photoUrl(env, convive.photo_key ?? groupe?.photo_key ?? null) : null,
+    photo_url: oui ? photoUrl(env, convive?.photo_key ?? groupe?.photo_key ?? null) : null,
   };
 
-  return json({ reconnu: true, retour });
+  return json({ reconnu, enregistre: true, retour });
 }
 
 
