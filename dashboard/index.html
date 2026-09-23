@@ -83,6 +83,35 @@
 
   .stamp { font-size: 0.66rem; color: var(--sage); letter-spacing: 0.08em; }
 
+  /* Deux onglets, repris du tableau de bord d'origine : le couple a deux métiers
+     séparés dans le temps — écrire ses messages en novembre, suivre les réponses
+     en avril — et une page qui fait les deux à la fois ne fait bien ni l'un ni
+     l'autre. */
+  .onglets {
+    display: flex; justify-content: center; gap: 0;
+    border-bottom: 1px solid rgba(201, 169, 110, 0.35);
+    margin-bottom: 34px;
+  }
+  .onglets button {
+    border: none; border-bottom: 2px solid transparent; background: none;
+    padding: 12px 26px; color: var(--sage); font-size: 0.68rem; letter-spacing: 0.24em;
+  }
+  .onglets button:hover { background: none; color: var(--sage-dark); }
+  .onglets button.on { color: var(--sage-dark); border-bottom-color: var(--gold); }
+
+  /* Une fiche par invité : le nom, puis directement de quoi écrire. Rien à
+     décoder, rien à déplier — dans cet onglet les invités ne sont pas à
+     trouver, ils sont la page. */
+  .fiche { border-bottom: 1px solid var(--cream-dark); padding: 20px 0; }
+  .fiche:first-child { padding-top: 4px; }
+  .fiche:last-child { border-bottom: none; padding-bottom: 4px; }
+  .fiche-tete { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .fiche-tete .nom { font-size: 1rem; color: var(--ink); }
+  .fiche-tete .groupe { font-size: 0.75rem; color: #8a837a; }
+  .fiche-tete .etat-fiche { margin-left: auto; }
+  .fiche .editeur { padding: 0; background: none; }
+  .fiche .editeur .titre { display: none; }
+
   .kpis {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -245,10 +274,7 @@
   .tag.groupe { background: rgba(125, 155, 118, 0.10); color: var(--sage); }
   td .par { color: #8a837a; }
 
-  /* L'éditeur se déplie sous la ligne plutôt que dans une colonne : à dix
-     colonnes, une cellule de saisie serait large de deux centimètres. */
-  tr.edition td { background: var(--cream); padding: 0; }
-  .editeur { padding: 18px 20px 20px; }
+  .editeur { padding: 0; }
   .editeur .titre {
     font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase;
     color: var(--sage); margin-bottom: 9px;
@@ -339,6 +365,40 @@
 
   <main id="content" style="display:none">
 
+
+    <nav class="onglets" id="onglets">
+      <button type="button" data-vue="messages">Messages</button>
+      <button type="button" data-vue="reponses">Réponses</button>
+    </nav>
+
+    <section id="vue-messages" hidden>
+    <div class="card" style="margin-bottom:20px">
+      <h2>Messages personnalisés</h2>
+      <p class="msg-titre" id="msg-texte"></p>
+      <div class="colonnes" id="msg-colonnes"></div>
+      <p class="reg-warn" id="msg-note"></p>
+      <div class="chips" id="msg-groupes"></div>
+      <div id="msg-editeur"></div>
+    </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Vos invités <span class="stamp" id="fiches-compte"></span></h2>
+          <div class="card-actions">
+            <button class="small" type="button" data-fiches="a-ecrire">À écrire</button>
+            <button class="small" type="button" data-fiches="ecrits">Déjà écrits</button>
+            <button class="small" type="button" data-fiches="tous">Tous</button>
+          </div>
+        </div>
+        <div class="filtres">
+          <input type="search" id="fiches-recherche" placeholder="Rechercher un invité" aria-label="Rechercher un invité">
+          <span id="fiches-groupes" style="display:flex;gap:8px;flex-wrap:wrap"></span>
+        </div>
+        <div id="fiches"></div>
+      </div>
+    </section>
+
+    <section id="vue-reponses" hidden>
     <section class="kpis">
       <div class="kpi accent"><div class="num" id="k-oui">0</div><div class="lbl">Réponses oui</div></div>
       <div class="kpi accent"><div class="num" id="k-pers">0</div><div class="lbl">Personnes à table<span class="sub" id="k-pers-sub"></span></div></div>
@@ -361,15 +421,6 @@
         <h2>Régimes &amp; allergies</h2>
         <div class="bars" id="regimes"></div>
       </div>
-    </div>
-
-    <div class="card" style="margin-bottom:20px">
-      <h2>Messages personnalisés</h2>
-      <p class="msg-titre" id="msg-texte"></p>
-      <div class="colonnes" id="msg-colonnes"></div>
-      <p class="reg-warn" id="msg-note"></p>
-      <div class="chips" id="msg-groupes"></div>
-      <div id="msg-editeur"></div>
     </div>
 
     <div class="card">
@@ -411,6 +462,8 @@
         </table>
       </div>
     </div>
+
+    </section>
 
   </main>
 
@@ -671,13 +724,6 @@ function messages() {
 const MAX_MESSAGE = 1500;
 const ATTENTE_SAUVEGARDE = 700;   // frappe terminée → envoi
 
-let ouvert = null;   // id du convive dont l'éditeur est déplié
-
-function fermerEditeur() {
-  document.querySelectorAll('tr.edition').forEach((tr) => tr.remove());
-  ouvert = null;
-}
-
 function editeurHtml(valeur, titre, photo) {
   const colonnePhoto = !photo ? '' : `
     <div class="photo">
@@ -713,7 +759,7 @@ function editeurHtml(valeur, titre, photo) {
  * `onEnregistre(aMessage)` permet de rafraîchir les compteurs sans recharger
  * toute la page — recharger ferait perdre le curseur en pleine phrase.
  */
-function brancherEditeur(zone, chemin, onEnregistre) {
+function brancherEditeur(zone, chemin, onEnregistre, focus = true) {
   const champ = zone.querySelector('textarea');
   const etat = zone.querySelector('.etat');
   const compteur = zone.querySelector('.compteur');
@@ -762,8 +808,10 @@ function brancherEditeur(zone, chemin, onEnregistre) {
   champ.addEventListener('blur', () => { clearTimeout(minuteur); enregistrer(); });
 
   majCompteur();
-  champ.focus();
-  champ.setSelectionRange(champ.value.length, champ.value.length);
+  if (focus) {
+    champ.focus();
+    champ.setSelectionRange(champ.value.length, champ.value.length);
+  }
 }
 
 
@@ -882,40 +930,9 @@ function brancherPhoto(zone, convive) {
   majAffichage();
 }
 
-function ouvrirEditeurInvite(id) {
-  if (ouvert === id) { fermerEditeur(); return; }
-  fermerEditeur();
-
-  const convive = CONVIVES.find((c) => c.id === id);
-  const ligne = document.querySelector(`[data-ecrire="${CSS.escape(id)}"]`)?.closest('tr');
-  if (!convive || !ligne) return;
-
-  const tr = document.createElement('tr');
-  tr.className = 'edition';
-  tr.innerHTML = `<td colspan="10">${editeurHtml(
-    convive.message_perso,
-    `Message pour ${nomComplet(convive)}`,
-    { url: convive.photo_url, champId: `photo-${id}` },
-  )}</td>`;
-  ligne.after(tr);
-  ouvert = id;
-  brancherPhoto(tr, convive);
-
-  brancherEditeur(tr, `/api/tableau/convives/${encodeURIComponent(id)}/message`, (aMessage, texte) => {
-    convive.a_message = aMessage;
-    convive.message_perso = texte || null;
-    // Les compteurs bougent, la ligne aussi (« Retour prévu »), mais on ne
-    // redessine pas le tableau : le curseur est encore dans la zone de saisie.
-    messages();
-    const cellule = ligne.querySelector('td:nth-child(8)');
-    if (cellule) cellule.innerHTML = etiquetteRetour(convive);
-  });
-}
-
 function ouvrirEditeurGroupe(nom) {
   const groupe = GROUPES.find((g) => g.nom === nom);
   if (!groupe) return;
-  fermerEditeur();
 
   const boite = $('msg-editeur');
   boite.innerHTML = editeurHtml(groupe.message, `Message du groupe « ${nom} »`, null);
@@ -923,7 +940,91 @@ function ouvrirEditeurGroupe(nom) {
     groupe.a_message = aMessage;
     groupe.message = texte || null;
     messages();
+    fiches();
   });
+}
+
+
+/* ---------- Onglets ----------
+   Par défaut on ouvre sur le travail qui reste : tant qu'un invité n'a pas de
+   mot, c'est l'onglet Messages. Une fois tout écrit, le suivi devient le sujet. */
+let vue = 'messages';
+
+function changerVue(nom) {
+  vue = nom;
+  $('vue-messages').hidden = nom !== 'messages';
+  $('vue-reponses').hidden = nom !== 'reponses';
+  document.querySelectorAll('#onglets button').forEach((b) =>
+    b.classList.toggle('on', b.dataset.vue === nom));
+  $('btn-export').hidden = nom !== 'reponses';
+}
+
+/* ---------- Fiches d'écriture ---------- */
+let filtreFiches = 'a-ecrire';
+let rechercheFiches = '';
+
+// Le compteur seul, sans redessiner : pendant la frappe, refaire la liste
+// emporterait le curseur en pleine phrase.
+function majCompteFiches() {
+  const invites = CONVIVES.filter((c) => !c.accompagnant_de);
+  const aEcrire = invites.filter((c) => retourPrevu(c) === 'generique').length;
+  $('fiches-compte').textContent = aEcrire
+    ? `· ${aEcrire} sans mot à eux`
+    : invites.length ? '· tous ont leur mot' : '';
+}
+
+function fiches() {
+  const invites = CONVIVES.filter((c) => !c.accompagnant_de);
+  const aEcrire = invites.filter((c) => retourPrevu(c) === 'generique');
+
+  // Le filtre par défaut n'a de sens que tant qu'il reste du travail : une fois
+  // tout écrit, « à écrire » afficherait une page vide sans rien expliquer.
+  if (filtreFiches === 'a-ecrire' && !aEcrire.length && invites.length) filtreFiches = 'tous';
+
+  const visibles = invites.filter((c) => {
+    const etat = retourPrevu(c);
+    if (filtreFiches === 'a-ecrire' && etat !== 'generique') return false;
+    if (filtreFiches === 'ecrits' && etat === 'generique') return false;
+    if (filtreFiches.startsWith('groupe:') && c.groupe !== filtreFiches.slice(7)) return false;
+    if (rechercheFiches && !nomComplet(c).toLowerCase().includes(rechercheFiches)) return false;
+    return true;
+  });
+
+  majCompteFiches();
+
+  document.querySelectorAll('[data-fiches]').forEach((b) =>
+    b.classList.toggle('on', b.dataset.fiches === filtreFiches));
+
+  const boite = $('fiches');
+  if (!visibles.length) {
+    boite.innerHTML = `<p class="empty">${invites.length
+      ? 'Aucun invité ne correspond.'
+      : "Aucun invité pour le moment — importez votre liste pour commencer."}</p>`;
+    return;
+  }
+
+  boite.innerHTML = visibles.map((c) => `
+    <article class="fiche" data-fiche="${esc(c.id)}">
+      <div class="fiche-tete">
+        <span class="nom">${esc(nomComplet(c))}</span>
+        ${c.groupe ? `<span class="groupe">${esc(c.groupe)}</span>` : ''}
+        <span class="etat-fiche">${etiquetteRetour(c)}</span>
+      </div>
+      ${editeurHtml(c.message_perso, '', { url: c.photo_url, champId: `fiche-photo-${c.id}` })}
+    </article>`).join('');
+
+  for (const c of visibles) {
+    const article = boite.querySelector(`[data-fiche="${CSS.escape(c.id)}"]`);
+    // focus: false — brancher trente champs volerait le curseur trente fois.
+    brancherEditeur(article, `/api/tableau/convives/${encodeURIComponent(c.id)}/message`, (aMessage, texte) => {
+      c.a_message = aMessage;
+      c.message_perso = texte || null;
+      article.querySelector('.etat-fiche').innerHTML = etiquetteRetour(c);
+      majCompteFiches();
+      messages();
+    }, false);
+    brancherPhoto(article, c);
+  }
 }
 
 /* ---------- Liste de récap ---------- */
@@ -950,8 +1051,7 @@ function etiquetteRetour(c) {
   })[retourPrevu(c)];
   // Un accompagnant n'a pas d'écran de retour : rien à écrire pour lui.
   if (!tag) return '<span class="muted">—</span>';
-  return `<button class="retour" type="button" data-ecrire="${esc(c.id)}"
-            title="Écrire le message de ${esc(nomComplet(c))}">${tag}<span class="crayon">✎</span></button>`;
+  return tag;
 }
 
 function valeurTri(c, cle) {
@@ -971,7 +1071,6 @@ function valeurTri(c, cle) {
 }
 
 function tableau() {
-  ouvert = null;   // le redessin emporte la ligne d'édition
   const lignes = CONVIVES.filter(correspond).sort((a, b) => {
     const x = valeurTri(a, triCle), y = valeurTri(b, triCle);
     const d = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'fr');
@@ -1010,6 +1109,14 @@ function tableau() {
   });
   document.querySelectorAll('button[data-f]').forEach((b) =>
     b.classList.toggle('on', b.dataset.f === filtre));
+}
+
+function chipsGroupesFiches() {
+  const box = $('fiches-groupes');
+  box.innerHTML = GROUPES.map((g) =>
+    `<button class="small" type="button" data-fiches="groupe:${esc(g.nom)}">${esc(g.nom)}</button>`).join('');
+  box.querySelectorAll('[data-fiches]').forEach((b) =>
+    b.addEventListener('click', () => { filtreFiches = b.dataset.fiches; fiches(); }));
 }
 
 function chipsGroupes() {
@@ -1059,14 +1166,23 @@ document.querySelectorAll('th[data-k]').forEach((th) =>
     tableau();
   }));
 
+document.querySelectorAll('#onglets button').forEach((b) =>
+  b.addEventListener('click', () => changerVue(b.dataset.vue)));
+
+document.querySelectorAll('[data-fiches]').forEach((b) =>
+  b.addEventListener('click', () => { filtreFiches = b.dataset.fiches; fiches(); }));
+
+$('fiches-recherche').addEventListener('input', (e) => {
+  rechercheFiches = e.target.value.trim().toLowerCase();
+  fiches();
+});
+
 $('msg-groupes').addEventListener('click', (e) => {
   const chip = e.target.closest('[data-groupe]');
   if (chip) ouvrirEditeurGroupe(chip.dataset.groupe);
 });
 
 $('tbody').addEventListener('click', (e) => {
-  const crayon = e.target.closest('[data-ecrire]');
-  if (crayon) { ouvrirEditeurInvite(crayon.dataset.ecrire); return; }
   const bouton = e.target.closest('[data-lien]');
   if (!bouton) return;
   navigator.clipboard.writeText(bouton.dataset.lien).then(
@@ -1088,7 +1204,8 @@ async function charger() {
 
     document.title = `${MARIAGE.prenom_1} & ${MARIAGE.prenom_2} — Tableau de bord`;
     $('titre').textContent = `${MARIAGE.prenom_1} & ${MARIAGE.prenom_2}`;
-    $('sous-titre').textContent = 'Tableau de bord des réponses';
+    $('sous-titre').textContent =
+      `Mariage le ${dateFr(MARIAGE.date_mariage)} · réponses attendues avant le ${dateFr(MARIAGE.date_limite_rsvp)}`;
     $('pied').textContent =
       `${MARIAGE.prenom_1} & ${MARIAGE.prenom_2} · ${dateFr(MARIAGE.date_mariage)} · réponses attendues avant le ${dateFr(MARIAGE.date_limite_rsvp)}`;
 
@@ -1097,7 +1214,12 @@ async function charger() {
     regimes();
     messages();
     chipsGroupes();
+    fiches();
+    chipsGroupesFiches();
     tableau();
+    // Ouvrir sur le travail qui reste, pas sur des compteurs à zéro.
+    const resteAEcrire = CONVIVES.some((c) => !c.accompagnant_de && retourPrevu(c) === 'generique');
+    changerVue(resteAEcrire ? 'messages' : 'reponses');
 
     $('loader').style.display = 'none';
     $('content').style.display = 'block';

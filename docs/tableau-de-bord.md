@@ -130,6 +130,23 @@ demanderait d'abord de décider ce qu'on enregistre — date d'envoi du lien, da
 de chaque relance — et où. À trancher quand le besoin se posera pour de vrai,
 c'est-à-dire en avril.
 
+**Deux onglets, parce que le couple a deux métiers séparés dans le temps.** En
+novembre il écrit cent messages, sans aucune réponse à suivre ; en avril il suit
+les réponses et prépare le traiteur. Une page qui fait les deux à la fois ne
+fait bien ni l'un ni l'autre : elle accueillait le couple avec des compteurs à
+zéro, un anneau vide et un tableau de dix colonnes dont huit étaient des tirets,
+en cachant l'écriture derrière un clic sur une cellule que personne ne devine.
+
+- **Messages** — une fiche par invité : le prénom, son groupe, un grand champ de
+  texte, la photo à côté. Filtre par défaut « à écrire », donc la page s'ouvre
+  sur le travail qui reste. Dans cet onglet, les invités ne sont pas à trouver,
+  ils *sont* la page.
+- **Réponses** — le tableau de suivi, ses filtres, ses graphiques et l'export
+  traiteur.
+
+L'onglet ouvert au chargement dépend de l'état : tant qu'un invité n'a pas son
+mot, c'est Messages ; une fois tout écrit, le suivi devient le sujet.
+
 **L'écriture des messages**, au fil de l'eau : on clique sur ce que la cellule
 « Retour prévu » annonce, l'éditeur se déplie sous la ligne, et le texte part
 tout seul 700 ms après la dernière frappe — ainsi qu'à la sortie du champ, pour
