@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wedding Studio — Création de votre invitation</title>
+<style>
+:root{
+ --bg:#f5f3ee;--panel:#fffdf9;--ink:#25251f;--muted:#77736a;
+ --line:#ddd7ca;--gold:#ad8750;--gold2:#d4bb91;--dark:#292a23;
+ --green:#64715b;--danger:#9a5f5f;
+}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:14px Inter,Arial,sans-serif}
+button,input,select,textarea{font:inherit} button{cursor:pointer}
+.app{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+.sidebar{background:var(--dark);color:#eee9df;padding:28px 18px;display:flex;flex-direction:column}
+.brand{font-family:Georgia,serif;color:#d5b77f;font-size:25px;letter-spacing:5px;padding:5px 12px 35px}
+.step{display:flex;gap:12px;align-items:center;padding:13px 12px;border-radius:8px;color:#bdb9b0;margin:3px 0}
+.step.active{background:#3a3b32;color:#fff}
+.num{width:27px;height:27px;border:1px solid #77766d;border-radius:50%;display:grid;place-items:center;font-size:11px}
+.active .num{border-color:#d4b47a;color:#d4b47a}
+.sidebar-bottom{margin-top:auto;color:#99958b;font-size:12px;padding:12px}
+.main{display:flex;flex-direction:column;min-width:0}
+.topbar{height:74px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 32px;position:sticky;top:0;z-index:5}
+.top-title{font-family:Georgia,serif;font-size:22px}
+.actions{display:flex;gap:10px}.btn{border:1px solid var(--line);background:white;padding:10px 16px;border-radius:5px}.btn.primary{background:var(--gold);border-color:var(--gold);color:white}.btn.dark{background:var(--dark);color:white}
+.content{display:grid;grid-template-columns:minmax(500px,1fr) 430px;gap:24px;padding:26px;max-width:1500px;width:100%;margin:auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:25px;margin-bottom:18px}
+.card h2{font:400 25px Georgia,serif;margin:0 0 6px}.sub{color:var(--muted);font-size:12px;margin-bottom:22px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+label{display:block;font-size:11px;color:#555148;margin:0 0 7px;letter-spacing:.5px}
+input,select,textarea{width:100%;border:1px solid var(--line);border-radius:5px;background:#fff;padding:11px 12px;color:var(--ink);outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--gold)} textarea{min-height:95px;resize:vertical}
+.uploads{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.upload{height:150px;border:1px dashed #c9c0b1;border-radius:7px;background:#faf8f3;display:grid;place-items:center;text-align:center;color:var(--muted);padding:15px}
+.upload strong{display:block;color:#4b473f;margin-bottom:6px}.upload small{font-size:10px}
+.guest-tools{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.search{max-width:240px}
+.table{width:100%;border-collapse:collapse;font-size:12px}.table th,.table td{text-align:left;border-bottom:1px solid var(--line);padding:12px 7px}.table th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1px}
+.badge{padding:4px 7px;border-radius:20px;background:#e9eee6;color:#52614c;font-size:10px}.badge.gray{background:#eeeae3;color:#77736a}
+.add{color:var(--gold);background:none;border:0;padding:0}
+.rule{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;border:1px solid var(--line);padding:13px;border-radius:6px;margin-bottom:9px}
+.preview-wrap{position:sticky;top:100px}
+.preview-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.preview-head strong{font-family:Georgia,serif;font-size:18px}
+.phone{background:#ddd8cf;padding:17px;border-radius:24px;max-width:360px;margin:auto;box-shadow:0 15px 35px #00000018}
+.screen{background:#f8f3e8;border-radius:17px;overflow:hidden;min-height:650px;box-shadow:0 2px 7px #00000012}
+.p-hero{height:265px;background:linear-gradient(135deg,#34342d,#171813);display:flex;align-items:end;padding:24px;color:white;position:relative}
+.p-hero:after{content:"PHOTO DU COUPLE";position:absolute;inset:0;display:grid;place-items:center;color:#ffffff66;font-size:9px;letter-spacing:3px}
+.p-content{position:relative;z-index:1}.p-eyebrow{font-size:7px;letter-spacing:3px}.p-names{font:400 40px/0.86 Georgia,serif;color:#d4b070;margin:13px 0}.p-date{font:11px Georgia,serif;letter-spacing:2px}.p-place{font-size:7px;letter-spacing:1.8px;margin-top:7px}
+.p-body{text-align:center;padding:28px 22px}.p-greeting{font-size:8px;letter-spacing:2px;color:#777}.p-guest{font:400 30px Georgia,serif;margin:4px}.p-msg{font:12px Georgia,serif;line-height:1.5;color:#575249}.p-line{width:35px;border-top:1px solid var(--gold);margin:16px auto}.p-rsvp{border:1px solid var(--gold);padding:14px;margin-top:18px;font-size:9px;letter-spacing:1px}.progress{height:7px;background:#e8e3da;border-radius:8px;overflow:hidden}.progress i{display:block;height:100%;background:var(--gold);width:66%}.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.stat{border:1px solid var(--line);border-radius:7px;padding:14px}.stat b{font:400 24px Georgia,serif}.stat span{display:block;color:var(--muted);font-size:10px;margin-top:4px}
+@media(max-width:1100px){.content{grid-template-columns:1fr}.preview-wrap{position:static}.phone{max-width:430px}}
+@media(max-width:760px){.app{grid-template-columns:1fr}.sidebar{display:none}.content{padding:15px}.grid2,.grid3,.uploads{grid-template-columns:1fr}.topbar{padding:0 16px}.topbar .actions .btn:not(.primary){display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand">W | S</div>
+  <div class="step active"><span class="num">1</span><span>Votre événement</span></div>
+  <div class="step"><span class="num">2</span><span>Votre design</span></div>
+  <div class="step"><span class="num">3</span><span>Vos invités</span></div>
+  <div class="step"><span class="num">4</span><span>Personnalisation</span></div>
+  <div class="step"><span class="num">5</span><span>RSVP & options</span></div>
+  <div class="step"><span class="num">6</span><span>Publication</span></div>
+  <div class="sidebar-bottom">Brouillon enregistré automatiquement</div>
+</aside>
+
+<main class="main">
+<header class="topbar">
+  <div class="top-title">Créer votre invitation</div>
+  <div class="actions"><button class="btn">Aperçu</button><button class="btn primary">Continuer →</button></div>
+</header>
+
+<div class="content">
+<section>
+
+<div class="card">
+<h2>Votre événement</h2><div class="sub">Ces informations seront utilisées dans votre invitation.</div>
+<div class="grid2">
+<div><label>Prénom 1</label><input value="Sarah"></div>
+<div><label>Prénom 2</label><input value="Thomas"></div>
+<div><label>Date</label><input type="date" value="2027-06-12"></div>
+<div><label>Heure</label><input type="time" value="16:00"></div>
+<div><label>Lieu</label><input value="Château de Saint-Martin"></div>
+<div><label>Ville</label><input value="Aix-en-Provence"></div>
+</div>
+<div style="margin-top:16px"><label>Phrase d'accroche</label><input value="Une belle histoire continue…"></div>
+</div>
+
+<div class="card">
+<h2>Vos photos</h2><div class="sub">Ajoutez les images qui apparaîtront dans le template.</div>
+<div class="uploads">
+<div class="upload"><div><strong>＋ Photo du couple</strong><small>JPG, PNG ou WebP · 10 Mo max</small></div></div>
+<div class="upload"><div><strong>＋ Photo du lieu</strong><small>JPG, PNG ou WebP · 10 Mo max</small></div></div>
+</div>
+</div>
+
+<div class="card">
+<h2>Vos invités</h2><div class="sub">Ajoutez-les un par un ou importez votre fichier Excel/CSV.</div>
+<div class="guest-tools"><button class="btn">＋ Ajouter un invité</button><button class="btn">↑ Importer Excel / CSV</button></div>
+<table class="table">
+<thead><tr><th>Invité</th><th>Contact</th><th>Groupe</th><th>+1</th><th></th></tr></thead>
+<tbody>
+<tr><td><b>Thomas Martin</b></td><td>thomas@email.com</td><td><span class="badge">Amis</span></td><td>1</td><td>•••</td></tr>
+<tr><td><b>Julie Dupont</b></td><td>julie@email.com</td><td><span class="badge">Famille</span></td><td>0</td><td>•••</td></tr>
+<tr><td><b>Marc Bernard</b></td><td>06 12 34 56 78</td><td><span class="badge gray">Collègues</span></td><td>1</td><td>•••</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>Personnalisation</h2><div class="sub">Définissez les règles appliquées automatiquement à vos invités.</div>
+<div class="rule"><div><label>Groupe</label><select><option>Amis</option><option>Famille</option><option>Collègues</option></select></div><div><label>Message</label><input value="On compte sur toi pour faire la fête !"></div><button class="add">Supprimer</button></div>
+<div class="rule"><div><label>Groupe</label><select><option>Famille</option><option>Amis</option></select></div><div><label>Message</label><input value="Nous avons hâte de partager cette journée avec vous."></div><button class="add">Supprimer</button></div>
+<button class="btn" style="margin-top:5px">＋ Ajouter une règle</button>
+</div>
+
+<div class="card">
+<h2>Options RSVP</h2><div class="sub">Choisissez les informations que vos invités pourront renseigner.</div>
+<div class="grid3">
+<label><input type="checkbox" checked> Réponse de présence</label>
+<label><input type="checkbox" checked> +1</label>
+<label><input type="checkbox" checked> Enfants</label>
+<label><input type="checkbox" checked> Régime alimentaire</label>
+<label><input type="checkbox"> Hébergement</label>
+<label><input type="checkbox" checked> Petit mot</label>
+</div>
+</div>
+
+<div class="card">
+<h2>Message général</h2>
+<div class="sub">Utilisé lorsqu'aucun message individuel ou de groupe n'est défini.</div>
+<textarea>Nous serions ravis de vous avoir à nos côtés pour célébrer cette nouvelle aventure.</textarea>
+</div>
+
+</section>
+
+<aside class="preview-wrap">
+<div class="preview-head"><strong>Aperçu en direct</strong><span style="font-size:11px;color:#777">Thomas · Amis</span></div>
+<div class="phone">
+<div class="screen">
+<div class="p-hero"><div class="p-content"><div class="p-eyebrow">NOUS NOUS MARIONS</div><div class="p-names">Sarah<br>& Thomas</div><div class="p-date">12 JUIN 2027</div><div class="p-place">CHÂTEAU DE SAINT-MARTIN · PROVENCE</div></div></div>
+<div class="p-body">
+<div class="p-greeting">NOUS SERIONS RAVIS DE T’AVOIR À NOS CÔTÉS</div>
+<div class="p-guest">Thomas,</div>
+<div class="p-line"></div>
+<div class="p-msg">On compte sur toi pour faire la fête !</div>
+<div class="p-rsvp">SERAS-TU DES NÔTRES ?</div>
+</div>
+</div>
+</div>
+
+<div class="card" style="margin-top:18px">
+<h2 style="font-size:20px">Votre événement</h2>
+<div class="stat-row">
+<div class="stat"><b>247</b><span>Invités</span></div>
+<div class="stat"><b>163</b><span>Réponses</span></div>
+<div class="stat"><b>66%</b><span>Complété</span></div>
+</div>
+<div style="margin-top:17px"><div style="display:flex;justify-content:space-between;font-size:10px;color:#777;margin-bottom:7px"><span>Configuration</span><span>66%</span></div><div class="progress"><i></i></div></div>
+</div>
+
+</aside>
+</div>
+</main>
+</div>
+</body>
+</html>
