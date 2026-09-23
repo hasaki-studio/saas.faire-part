@@ -57,6 +57,10 @@ VALUES
   ('c5', 'mdev', '75AESW63', NULL, 'Paul', 'MARTIN', 'On compte sur toi pour l''ambiance', 'Collègues', 'oui', 'sans_gluten', NULL, '2026-09-21T11:00:00.000Z', 'liste'),
   ('c6', 'mdev', 'XYQAWKSZ', NULL, 'Imen', 'HADDAD', NULL, NULL, 'oui', 'halal', 'On sera là avec plaisir.', '2026-09-21T14:30:00.000Z', 'liste'),
   ('c7', 'mdev', 'M4TQ8ZRW', 'c6', 'Sofia', 'HADDAD', NULL, NULL, 'oui', NULL, NULL, '2026-09-21T14:30:00.000Z', 'liste'),
-  -- arrivée avec un token inconnu, et son +1 qui hérite de l'origine
-  ('c8', 'mdev', 'VW9JNP24', NULL, 'Thomas', 'DUVAL', NULL, NULL, 'oui', NULL, 'On a eu le lien par Héloïse !', '2026-09-22T20:10:00.000Z', 'hors_liste'),
+  -- Arrivé sans lien personnel valable : token absent de la base, donc
+  -- faire-part générique et ligne créée à la réponse (§3 règle #4). Attention,
+  -- un lien *transféré* ne produit pas ce cas — il est reconnu comme son
+  -- destinataire d'origine. Alice n'a jamais rien reçu : c'est Thomas qui l'a
+  -- annoncée, et elle hérite de son origine.
+  ('c8', 'mdev', 'VW9JNP24', NULL, 'Thomas', 'DUVAL', NULL, NULL, 'oui', NULL, 'On nous a donné l''adresse du site, on n''avait pas de lien personnel.', '2026-09-22T20:10:00.000Z', 'hors_liste'),
   ('c9', 'mdev', 'ZT6HKB83', 'c8', 'Alice', 'DUVAL', NULL, NULL, 'oui', NULL, NULL, '2026-09-22T20:10:00.000Z', 'hors_liste');
