@@ -67,10 +67,28 @@ variable `DEV_EMAIL` simule la connexion — uniquement sur `localhost`, et elle
 est absente de `[env.prod.vars]`. Deux verrous plutôt qu'un : une variable
 oubliée en production ne suffirait pas à ouvrir le tableau de bord.
 
+Sur une base locale vide, jouer les migrations puis le jeu d'essai — des
+personnes inventées, jamais d'invités réels (§5) :
+
+```bash
+cd worker
+npx wrangler d1 execute DB --local --file=../schema/001_init.sql
+npx wrangler d1 execute DB --local --file=../schema/002_photo_couple_et_message_invite.sql
+npx wrangler d1 execute DB --local --file=../schema/003_email_proprietaire.sql
+npx wrangler d1 execute DB --local --file=../schema/004_origine_convive.sql
+npx wrangler d1 execute DB --local --file=../schema/005_groupes.sql
+npx wrangler d1 execute DB --local --file=../schema/dev-seed.sql
+```
+
+Puis deux terminaux, l'un pour l'API, l'autre pour la page :
+
 ```bash
 cd worker && npx wrangler dev          # API sur :8787
 node proxy-local.js --tableau          # tableau de bord sur :8081
 ```
+
+`no such table: mariages` signifie simplement que les migrations n'ont pas été
+jouées sur la base **locale** (elle est distincte de la base `--remote`).
 
 ## Ce qu'il fait, et ce qu'il ne fait pas encore
 
