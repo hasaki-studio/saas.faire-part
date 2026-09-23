@@ -114,6 +114,9 @@
   }
   .apercu table { min-width: 0; font-size: 0.8rem; }
   .apercu td, .apercu th { padding: 7px 10px; }
+  .apercu .colonnes-lues { font-size: 0.78rem; color: #8a837a; margin-bottom: 12px; line-height: 1.7; }
+  .apercu .colonnes-lues b { font-weight: 400; color: var(--sage-dark); }
+  .apercu .colonnes-lues .ignorees { color: #9a7b3f; }
   .apercu .alertes { list-style: none; margin: 12px 0 0; font-size: 0.78rem; color: #9a7b3f; }
   .apercu .alertes li { padding: 3px 0 3px 16px; position: relative; }
   .apercu .alertes li::before { content: "·"; position: absolute; left: 4px; }
@@ -149,6 +152,9 @@
   .fiche-tete .nom { font-size: 1rem; color: var(--ink); }
   .fiche-tete .groupe { font-size: 0.75rem; color: #8a837a; }
   .fiche-tete .etat-fiche { margin-left: auto; }
+  .fiche-groupe { background: var(--cream); margin: 0 -26px; padding: 20px 26px; }
+  .fiche-groupe .nom { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.1rem; color: var(--sage-dark); }
+  .fiche-groupe .aide { margin: -4px 0 12px; }
   .fiche .editeur { padding: 0; background: none; }
   .fiche .editeur .titre { display: none; }
 
@@ -1117,7 +1123,7 @@ function analyserImport(texte) {
     return;
   }
 
-  construireApercu(donnees, colonnes, sep === '\t' ? 'collage' : `séparateur « ${sep} »`);
+  construireApercu(donnees, colonnes, sep === '\t' ? 'collage' : `séparateur « ${sep} »`, lignes[0]);
 }
 
 function afficherCorrespondance(lignes, sep) {
@@ -1146,11 +1152,31 @@ function afficherCorrespondance(lignes, sep) {
       nom: lire('map-nom'),
       message: lire('map-message'),
       groupe: lire('map-groupe'),
-    }, sep === '\t' ? 'collage' : `séparateur « ${sep} »`);
+    }, sep === '\t' ? 'collage' : `séparateur « ${sep} »`, null);
   });
 }
 
-function construireApercu(donnees, colonnes, origine) {
+/* Sans cette ligne, on ne sait pas si une colonne a été comprise puis écartée
+   ou simplement perdue — et dans un champ de collage, les tabulations ne
+   s'alignent pas, ce qui donne l'impression d'un décalage qui n'existe pas. */
+function resumerColonnes(colonnes, entete) {
+  if (!entete) return '';
+  const noms = { prenom: 'Prénom', nom: 'Nom', message: 'Message', groupe: 'Groupe' };
+  const lues = Object.entries(colonnes)
+    .filter(([, i]) => i !== undefined)
+    .map(([champ, i]) => `<b>${esc(entete[i] || `colonne ${i + 1}`)}</b> → ${noms[champ]}`);
+  const prises = new Set(Object.values(colonnes).filter((i) => i !== undefined));
+  const ignorees = entete
+    .map((c, i) => (prises.has(i) || !String(c).trim() ? null : String(c).trim()))
+    .filter(Boolean);
+
+  return `<p class="colonnes-lues">${lues.join(' · ')}${
+    ignorees.length
+      ? `<br><span class="ignorees">Colonnes ignorées : ${esc(ignorees.join(', '))} — le produit n'en a pas besoin, les liens partent par vos soins.</span>`
+      : ''}</p>`;
+}
+
+function construireApercu(donnees, colonnes, origine, entete) {
   const boite = $('import-apercu');
   const alertes = [];
   const invites = [];
@@ -1199,6 +1225,7 @@ function construireApercu(donnees, colonnes, origine) {
   const extrait = invites.slice(0, 6);
   boite.innerHTML = `<div class="apercu">
     <h3>Aperçu · ${origine}</h3>
+    ${resumerColonnes(colonnes, entete)}
     <div class="table-wrap"><table>
       <thead><tr><th>Prénom</th><th>Nom</th><th>Groupe</th><th>Message</th></tr></thead>
       <tbody>${extrait.map((i) => `<tr>
@@ -1374,7 +1401,22 @@ function fiches() {
     return;
   }
 
-  boite.innerHTML = visibles.map((c) => `
+  // Le message d'un groupe s'écrit à l'endroit où l'on regarde ses invités :
+  // en tête de leur liste, pas dans un coin de la page.
+  const nomGroupe = filtreFiches.startsWith('groupe:') ? filtreFiches.slice(7) : null;
+  const groupe = nomGroupe ? GROUPES.find((g) => g.nom === nomGroupe) : null;
+
+  boite.innerHTML = (groupe ? `
+    <article class="fiche fiche-groupe" data-fiche-groupe="${esc(groupe.nom)}">
+      <div class="fiche-tete">
+        <span class="nom">Message commun aux ${groupe.invites} invité${groupe.invites > 1 ? 's' : ''} du groupe « ${esc(groupe.nom)} »</span>
+        <span class="etat-fiche"><span class="tag ${groupe.a_message ? 'groupe' : 'warn'}">${
+          groupe.a_message ? 'écrit' : 'à écrire'}</span></span>
+      </div>
+      <p class="aide">Reçu par ceux d'entre eux qui n'ont pas de message à eux. Un mot
+        individuel, quand il existe, passe toujours devant.</p>
+      ${editeurHtml(groupe.message, '', null)}
+    </article>` : '') + visibles.map((c) => `
     <article class="fiche" data-fiche="${esc(c.id)}">
       <div class="fiche-tete">
         <span class="nom">${esc(nomComplet(c))}</span>
@@ -1383,6 +1425,23 @@ function fiches() {
       </div>
       ${editeurHtml(c.message_perso, '', { url: c.photo_url, champId: `fiche-photo-${c.id}` })}
     </article>`).join('');
+
+  if (groupe) {
+    const article = boite.querySelector(`[data-fiche-groupe="${CSS.escape(groupe.nom)}"]`);
+    brancherEditeur(article, `/api/tableau/groupes/${encodeURIComponent(groupe.nom)}/message`, (aMessage, texte) => {
+      groupe.a_message = aMessage;
+      groupe.message = texte || null;
+      article.querySelector('.etat-fiche').innerHTML =
+        `<span class="tag ${aMessage ? 'groupe' : 'warn'}">${aMessage ? 'écrit' : 'à écrire'}</span>`;
+      // Les invités du groupe changent d'état sans qu'on y touche.
+      boite.querySelectorAll('[data-fiche]').forEach((el) => {
+        const c = CONVIVES.find((x) => x.id === el.dataset.fiche);
+        if (c) el.querySelector('.etat-fiche').innerHTML = etiquetteRetour(c);
+      });
+      majCompteFiches();
+      messages();
+    }, false);
+  }
 
   for (const c of visibles) {
     const article = boite.querySelector(`[data-fiche="${CSS.escape(c.id)}"]`);

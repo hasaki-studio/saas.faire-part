@@ -147,7 +147,15 @@ page demande quelle colonne est quoi, plutôt que de deviner — imposer l'ordre
 garantirait l'inversion prénom / nom un jour ou l'autre.
 
 **Rien n'entre en base sans aperçu** : les premières lignes, les alertes
-(prénom manquant, doublon, étiquettes de groupe voisines) et le bilan.
+(prénom manquant, doublon, étiquettes de groupe voisines) et le bilan. L'aperçu
+dit aussi **quelles colonnes ont été lues et lesquelles ont été écartées** —
+sans ça, on ne sait pas si une colonne a été comprise puis ignorée ou
+simplement perdue, et dans un champ de collage les tabulations ne s'alignent
+pas, ce qui donne l'impression d'un décalage qui n'existe pas.
+
+Les colonnes `email` et `telephone` sont couramment présentes dans les listes
+des couples : elles sont reconnues et écartées. Le produit n'a pas de champ
+email — les liens partent par WhatsApp, à l'initiative du couple.
 
 Et le contrôle qui compte vraiment : **réimporter ne régénère jamais un
 token**. Un couple qui ajoute dix personnes en mars redépose souvent sa liste
@@ -167,7 +175,10 @@ en cachant l'écriture derrière un clic sur une cellule que personne ne devine.
 - **Messages** — une fiche par invité : le prénom, son groupe, un grand champ de
   texte, la photo à côté. Filtre par défaut « à écrire », donc la page s'ouvre
   sur le travail qui reste. Dans cet onglet, les invités ne sont pas à trouver,
-  ils *sont* la page.
+  ils *sont* la page. **Filtrer sur un groupe place son message commun en tête
+  de la liste** : on écrit le message du groupe là où l'on regarde ses invités,
+  et l'on voit aussitôt lesquels basculent de « générique » à « message de
+  groupe ».
 - **Réponses** — le tableau de suivi, ses filtres, ses graphiques et l'export
   traiteur.
 
