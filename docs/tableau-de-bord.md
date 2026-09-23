@@ -126,8 +126,25 @@ demanderait d'abord de décider ce qu'on enregistre — date d'envoi du lien, da
 de chaque relance — et où. À trancher quand le besoin se posera pour de vrai,
 c'est-à-dire en avril.
 
-Pas encore fait : **aucune écriture**. Les messages personnalisés et les photos
-se saisissent encore en base. C'est délibéré pour cette première tranche : une
-route d'écriture mal cadrée est plus coûteuse qu'une lecture mal cadrée, et les
-indicateurs du tableau de bord seront choisis une fois les vraies données sous
-les yeux.
+**L'écriture des messages**, au fil de l'eau : on clique sur ce que la cellule
+« Retour prévu » annonce, l'éditeur se déplie sous la ligne, et le texte part
+tout seul 700 ms après la dernière frappe — ainsi qu'à la sortie du champ, pour
+qu'un onglet fermé dans la seconde ne perde rien. Pas de bouton Enregistrer :
+un couple qui rédige trente messages ne doit jamais se demander s'il a perdu le
+précédent (CLAUDE.md §4). Les messages de groupe s'écrivent en cliquant leur
+pastille. Vider un champ est une action légitime : l'invité revient à la
+réponse générique, et le groupe vidé disparaît de la table.
+
+Trois contrôles sur les routes d'écriture, chacun pour une raison distincte :
+
+- le `mariage_id` de la clause `WHERE` vient de l'identité authentifiée, jamais
+  de l'URL — l'id d'un convive envoyé par le navigateur ne suffit pas à écrire
+  chez un autre couple ;
+- l'en-tête `Origin` doit être celui du tableau de bord. Le jeton d'Access vit
+  dans un cookie : sans ce contrôle, une page ouverte dans le même navigateur
+  pourrait déclencher une écriture à l'insu du couple ;
+- un groupe doit déjà compter au moins un invité, sinon la route permettrait de
+  remplir la table de groupes fantômes.
+
+Pas encore fait : **les photos**. Elles se renseignent encore en base, en
+attendant l'upload R2 avec redimensionnement dans le navigateur (§4).

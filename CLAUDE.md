@@ -295,10 +295,10 @@ Phase actuelle : **fondations**. Construit : schéma D1, Worker (lookup token +
 RSVP), premier thème (`botanique`) branché dessus, deux messagers (`montgolfiere`,
 `voiture`), import d'une liste d'invités, déploiement dev réel sur
 `dev.faire-part.hasakistudio.fr`, tableau de bord couple **en lecture seule**
-(liste, réponses, avancement des messages, export traiteur), réponses de
-groupe, aperçu WhatsApp (Open Graph rendu côté serveur). Pas encore construit :
-upload photos vers R2, saisie des messages depuis le tableau de bord, cron de
-suppression RGPD, limitation de débit sur le lookup. Le tableau de bord existe
+(liste, réponses, avancement des messages, export traiteur), écriture des
+messages au fil de l'eau depuis le tableau de bord, réponses de groupe, aperçu
+WhatsApp (Open Graph rendu côté serveur). Pas encore construit : upload photos
+vers R2, cron de suppression RGPD, limitation de débit sur le lookup. Le tableau de bord existe
 mais n'est déployé nulle part : il lui manque son projet Pages et son
 application Access (cf. `docs/tableau-de-bord.md`).
 

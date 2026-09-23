@@ -3,11 +3,14 @@ import {
   type Origine,
   getAccompagnants,
   getConviveByToken,
+  ecrireMessagePerso,
+  ecrireReponseGroupe,
   getMariageByEmail,
   getReponseGroupe,
   listerConvives,
   listerGroupes,
   resolveMariageByHost,
+  supprimerReponseGroupe,
   type Mariage,
 } from "./db";
 import { token as genToken } from "./token";
@@ -235,6 +238,86 @@ async function handleRsvp(request: Request, env: Env, mariageToken: string): Pro
 }
 
 
+// Longueur d'un message. Ce n'est pas une limite de stockage — c'est qu'au-delà,
+// ce n'est plus un mot glissé dans un faire-part, et l'écran de retour devient
+// illisible sur un téléphone.
+const MAX_MESSAGE = 1500;
+
+/**
+ * Une écriture doit venir du tableau de bord lui-même. Le jeton d'Access vit
+ * dans un cookie : sans ce contrôle, une page malveillante ouverte dans le même
+ * navigateur pourrait déclencher une écriture avec ce cookie à l'insu du couple.
+ */
+function origineLegitime(request: Request, env: Env): boolean {
+  const origine = request.headers.get("origin");
+  if (!origine) return false;
+  try {
+    const hote = new URL(origine).hostname;
+    return hote === env.DASHBOARD_HOSTNAME || hote === "localhost" || hote === "127.0.0.1";
+  } catch {
+    return false;
+  }
+}
+
+async function handleEcrireMessage(request: Request, env: Env, conviveId: string): Promise<Response> {
+  const mariage = await mariageDuCouple(request, env);
+  if (mariage instanceof Response) return mariage;
+  if (!origineLegitime(request, env)) return json({ erreur: "Origine refusée" }, 403);
+
+  let payload: unknown;
+  try {
+    payload = await request.json();
+  } catch {
+    return json({ erreur: "JSON invalide" }, 400);
+  }
+  const brut = (payload as { message?: unknown }).message;
+  if (brut != null && typeof brut !== "string") return json({ erreur: "Message invalide" }, 400);
+
+  const message = typeof brut === "string" ? brut.trim() : "";
+  if (message.length > MAX_MESSAGE) {
+    return json({ erreur: `Message trop long (${MAX_MESSAGE} caractères maximum).` }, 400);
+  }
+
+  // Vider le champ est une action légitime : le couple revient à la réponse
+  // générique. '' et NULL doivent donc dire la même chose en base.
+  const ok = await ecrireMessagePerso(env.DB, mariage.id, conviveId, message || null);
+  if (!ok) return json({ erreur: "Invité introuvable" }, 404);
+
+  return json({ enregistre: true, a_message: Boolean(message) });
+}
+
+async function handleEcrireGroupe(request: Request, env: Env, groupe: string): Promise<Response> {
+  const mariage = await mariageDuCouple(request, env);
+  if (mariage instanceof Response) return mariage;
+  if (!origineLegitime(request, env)) return json({ erreur: "Origine refusée" }, 403);
+
+  let payload: unknown;
+  try {
+    payload = await request.json();
+  } catch {
+    return json({ erreur: "JSON invalide" }, 400);
+  }
+  const brut = (payload as { message?: unknown }).message;
+  if (brut != null && typeof brut !== "string") return json({ erreur: "Message invalide" }, 400);
+
+  const message = typeof brut === "string" ? brut.trim() : "";
+  if (message.length > MAX_MESSAGE) {
+    return json({ erreur: `Message trop long (${MAX_MESSAGE} caractères maximum).` }, 400);
+  }
+
+  if (!message) {
+    // Groupe vidé : la ligne disparaît plutôt que de garder un message vide,
+    // sans quoi le tableau de bord afficherait « message écrit » pour rien.
+    await supprimerReponseGroupe(env.DB, mariage.id, groupe);
+    return json({ enregistre: true, a_message: false });
+  }
+
+  const ok = await ecrireReponseGroupe(env.DB, mariage.id, groupe, message);
+  if (!ok) return json({ erreur: "Groupe introuvable" }, 404);
+
+  return json({ enregistre: true, a_message: true });
+}
+
 // ── Aperçu WhatsApp ───────────────────────────────────────────────
 //
 // Le robot de WhatsApp n'exécute pas de JavaScript : il ne voit que le HTML
@@ -347,6 +430,7 @@ async function handleTableauConvives(request: Request, env: Env): Promise<Respon
       const reponse = groupes.find((g) => g.groupe === nom);
       return {
         nom,
+        message: reponse?.message ?? null,
         a_message: Boolean(reponse),
         a_photo: Boolean(reponse?.photo_key),
         invites: convives.filter((c) => c.groupe === nom && !c.accompagnant_de).length,
@@ -362,6 +446,9 @@ async function handleTableauConvives(request: Request, env: Env): Promise<Respon
       // lien — sa ligne existe pour le plan de table (cf. CLAUDE.md §4).
       lien: c.accompagnant_de ? null : `https://${domaine}/${slugPrenom(c.prenom)}-${c.token}`,
       a_message: Boolean(c.message_perso),
+      // Le texte lui-même, pour pouvoir le relire et le corriger. C'est la
+      // donnée du couple, sur une surface authentifiée et bornée à son mariage.
+      message_perso: c.message_perso,
       a_photo: Boolean(c.photo_key),
       hors_liste: c.origine === "hors_liste",
       groupe: c.groupe,
@@ -419,6 +506,16 @@ export default {
       }
       if (url.pathname === "/api/tableau/convives" && request.method === "GET") {
         return handleTableauConvives(request, env);
+      }
+
+      const message = url.pathname.match(/^\/api\/tableau\/convives\/([^/]+)\/message$/);
+      if (message && request.method === "PUT") {
+        return handleEcrireMessage(request, env, decodeURIComponent(message[1]!));
+      }
+
+      const groupe = url.pathname.match(/^\/api\/tableau\/groupes\/([^/]+)\/message$/);
+      if (groupe && request.method === "PUT") {
+        return handleEcrireGroupe(request, env, decodeURIComponent(groupe[1]!));
       }
     }
 
