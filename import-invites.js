@@ -4,8 +4,11 @@
 //   node import-invites.js liste.csv <mariage_id> <domaine>
 //   node import-invites.js liste.csv m1 dev.faire-part.hasakistudio.fr
 //
-// Colonnes attendues : prénom, nom, message_perso (message_perso peut être vide
-// — c'est ce qui distingue l'offre catalogue du sur-mesure, cf. CLAUDE.md §1).
+// Colonnes attendues : prénom, nom, message_perso, groupe.
+// message_perso peut être vide — c'est ce qui distingue l'offre catalogue du
+// sur-mesure (cf. CLAUDE.md §1). groupe est facultatif : un invité sans message
+// à lui reçoit la réponse écrite pour son groupe, à défaut la générique
+// (cf. schema/005_groupes.sql).
 //
 // Les deux fichiers produits vont dans prive/, ignoré par git : ils contiennent
 // des données d'invités réelles, qui ne doivent jamais entrer dans le dépôt
@@ -85,14 +88,24 @@ lignes.forEach((ligne, i) => {
   const prenom = (ligne[0] || '').trim();
   const nom = (ligne[1] || '').trim();
   const message = (ligne[2] || '').trim();
+  const groupe = (ligne[3] || '').trim();
   const numero = i + 2; // +2 : l'en-tête et l'indexation à partir de 1
 
   if (!prenom) { alertes.push(`ligne ${numero} : prénom vide, ignorée`); return; }
   if (!nom) alertes.push(`ligne ${numero} : ${prenom} n'a pas de nom`);
-  if (!message) alertes.push(`ligne ${numero} : ${prenom} n'a pas de message (réponse générique)`);
+  if (!message && !groupe) alertes.push(`ligne ${numero} : ${prenom} n'a ni message ni groupe (réponse générique)`);
 
-  invites.push({ prenom, nom, message: message || null, token: token(), id: crypto.randomUUID() });
+  invites.push({ prenom, nom, message: message || null, groupe: groupe || null, token: token(), id: crypto.randomUUID() });
 });
+
+const groupes = [...new Set(invites.map((i) => i.groupe).filter(Boolean))];
+const normalise = (g) => g.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+const collisions = groupes.filter((g, i) => groupes.findIndex((h) => normalise(h) === normalise(g)) !== i);
+if (collisions.length) {
+  // Deux étiquettes voisines font deux groupes, donc deux messages à écrire et
+  // un invité qui reçoit la mauvaise réponse.
+  alertes.push(`étiquettes de groupe presque identiques : ${[...new Set(collisions)].join(', ')}`);
+}
 
 const doublons = invites
   .map((i) => `${i.prenom} ${i.nom}`.toLowerCase())
@@ -107,8 +120,8 @@ fs.mkdirSync(dossier, { recursive: true });
 // lien envoyé (CLAUDE.md §3) — deux lignes pour la même personne, ce sont deux
 // liens en circulation et un plan de table faux.
 const insertions = invites.map((inv) =>
-  `INSERT INTO convives (id, mariage_id, token, prenom, nom, message_perso)\n` +
-  `SELECT ${sql(inv.id)}, ${sql(mariageId)}, ${sql(inv.token)}, ${sql(inv.prenom)}, ${sql(inv.nom)}, ${sql(inv.message)}\n` +
+  `INSERT INTO convives (id, mariage_id, token, prenom, nom, message_perso, groupe, origine)\n` +
+  `SELECT ${sql(inv.id)}, ${sql(mariageId)}, ${sql(inv.token)}, ${sql(inv.prenom)}, ${sql(inv.nom)}, ${sql(inv.message)}, ${sql(inv.groupe)}, 'liste'\n` +
   `WHERE NOT EXISTS (SELECT 1 FROM convives WHERE mariage_id = ${sql(mariageId)} AND prenom = ${sql(inv.prenom)} AND nom = ${sql(inv.nom)});`
 );
 
@@ -125,6 +138,7 @@ fs.writeFileSync(
 );
 
 console.log(`\n${invites.length} invités préparés.`);
+if (groupes.length) console.log(`Groupes rencontrés : ${groupes.join(', ')}`);
 if (alertes.length) console.log('\nÀ vérifier :\n' + alertes.map((a) => `  - ${a}`).join('\n'));
 console.log(`\nÉcrit :\n  ${cheminSql}\n  ${cheminLiens}`);
 console.log(`\nPour appliquer (depuis worker/) :\n  npx wrangler d1 execute DB --remote --file=../prive/import-${mariageId}.sql`);

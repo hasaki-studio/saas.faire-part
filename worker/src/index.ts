@@ -1,4 +1,15 @@
-import { getAccompagnants, getConviveByToken, resolveMariageByHost, type Mariage } from "./db";
+import { emailAuthentifie } from "./acces";
+import {
+  type Origine,
+  getAccompagnants,
+  getConviveByToken,
+  getMariageByEmail,
+  getReponseGroupe,
+  listerConvives,
+  listerGroupes,
+  resolveMariageByHost,
+  type Mariage,
+} from "./db";
 import { token as genToken } from "./token";
 
 export interface Env {
@@ -6,9 +17,24 @@ export interface Env {
   PHOTOS: R2Bucket;
   SHARED_DOMAIN: string;
   PHOTOS_PUBLIC_URL: string;
+  // Hôte du tableau de bord. Les routes /api/tableau/* n'existent que là :
+  // sur le domaine des invités, elles répondent 404 comme n'importe quelle
+  // autre URL inconnue. Une route authentifiée qui n'est pas joignable est
+  // une route qu'on ne peut pas mal protéger.
+  DASHBOARD_HOSTNAME: string;
+  ACCESS_TEAM_DOMAIN: string;
+  ACCESS_AUD: string;
+  // Confort de développement local uniquement (cf. emailTableau).
+  DEV_EMAIL?: string;
 }
 
 const REGIMES_VALIDES = new Set(["vegetarien", "vegan", "halal", "casher", "sans_gluten"]);
+
+// Plafond d'accompagnants annonçables par un invité. Ce n'est pas une limite
+// technique : c'est le couple qui décide qui vient, et une liste ouverte laisse
+// un invité amener une tablée entière sans prévenir — le traiteur est confirmé
+// en avril, pas la veille. Au-delà, la conversation passe par les mariés.
+const MAX_ACCOMPAGNANTS = 4;
 
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -121,7 +147,24 @@ async function handleRsvp(request: Request, env: Env, mariageToken: string): Pro
     return json({ erreur: "Réponse invalide" }, 400);
   }
 
+  const accompagnants = payload.accompagnants ?? [];
+  if (accompagnants.length > MAX_ACCOMPAGNANTS) {
+    return json(
+      {
+        erreur: `Vous pouvez annoncer au maximum ${MAX_ACCOMPAGNANTS} accompagnants. Au-delà, écrivez directement aux mariés.`,
+      },
+      400,
+    );
+  }
+
   const now = new Date().toISOString();
+
+  // L'hôte de la réponse : la ligne existante, ou celle qu'on vient de créer
+  // pour un token inconnu. Les accompagnants se rattachent à elle dans les deux
+  // cas — avant, le chemin « hors liste » les jetait en silence, et le couple
+  // confirmait au traiteur un effectif amputé de ces couverts-là.
+  let hote: { id: string; origine: Origine };
+  let reconnu: boolean;
 
   if (!convive) {
     // Lien mal recopié ou personne non prévue sur la liste : on la laisse quand même
@@ -134,43 +177,181 @@ async function handleRsvp(request: Request, env: Env, mariageToken: string): Pro
       return json({ erreur: "Merci d'indiquer votre prénom et votre nom." }, 400);
     }
 
+    const id = crypto.randomUUID();
     await env.DB.prepare(
-      "INSERT INTO convives (id, mariage_id, token, prenom, nom, presence, regime_alimentaire, message_invite, repondu_le) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+      "INSERT INTO convives (id, mariage_id, token, prenom, nom, presence, regime_alimentaire, message_invite, repondu_le, origine) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 'hors_liste')",
     )
-      .bind(crypto.randomUUID(), mariage.id, genToken(), prenom, nom, payload.presence, payload.regime_alimentaire ?? null, payload.message ?? null, now)
+      .bind(id, mariage.id, genToken(), prenom, nom, payload.presence, payload.regime_alimentaire ?? null, payload.message ?? null, now)
       .run();
 
-    const retourInconnu =
-      payload.presence === "oui" ? mariage.reponse_generique_oui : mariage.reponse_generique_non;
-    return json({ reconnu: false, enregistre: true, retour: { message: retourInconnu, photo_url: null } });
-  }
+    hote = { id, origine: "hors_liste" };
+    reconnu = false;
+  } else {
+    await env.DB.prepare(
+      "UPDATE convives SET presence = ?1, regime_alimentaire = ?2, message_invite = ?3, repondu_le = ?4 WHERE id = ?5",
+    )
+      .bind(payload.presence, payload.regime_alimentaire ?? null, payload.message ?? null, now, convive.id)
+      .run();
 
-  await env.DB.prepare(
-    "UPDATE convives SET presence = ?1, regime_alimentaire = ?2, message_invite = ?3, repondu_le = ?4 WHERE id = ?5",
-  )
-    .bind(payload.presence, payload.regime_alimentaire ?? null, payload.message ?? null, now, convive.id)
-    .run();
+    hote = { id: convive.id, origine: convive.origine };
+    reconnu = true;
+  }
 
   // La liste d'accompagnants remplace la précédente à chaque envoi (un RSVP est modifiable,
   // cf. FAQ). Chaque accompagnant reste sa propre ligne, jamais un compteur (cf. CLAUDE.md §4).
-  await env.DB.prepare("DELETE FROM convives WHERE accompagnant_de = ?1").bind(convive.id).run();
-  for (const a of payload.accompagnants ?? []) {
+  await env.DB.prepare("DELETE FROM convives WHERE accompagnant_de = ?1").bind(hote.id).run();
+  for (const a of accompagnants) {
     await env.DB.prepare(
-      "INSERT INTO convives (id, mariage_id, token, accompagnant_de, prenom, nom, presence, repondu_le) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+      // Le +1 d'un inconnu n'est pas davantage sur la liste que lui.
+      "INSERT INTO convives (id, mariage_id, token, accompagnant_de, prenom, nom, presence, repondu_le, origine) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
     )
-      .bind(crypto.randomUUID(), mariage.id, genToken(), convive.id, a.prenom.trim(), a.nom.trim(), payload.presence, now)
+      .bind(crypto.randomUUID(), mariage.id, genToken(), hote.id, a.prenom.trim(), a.nom.trim(), payload.presence, now, hote.origine)
       .run();
   }
 
-  const retour =
-    payload.presence === "oui" && convive.message_perso
-      ? { message: convive.message_perso, photo_url: photoUrl(env, convive.photo_key) }
-      : {
-          message: payload.presence === "oui" ? mariage.reponse_generique_oui : mariage.reponse_generique_non,
-          photo_url: null,
-        };
+  const oui = payload.presence === "oui";
 
-  return json({ reconnu: true, retour });
+  // Résolution en cascade : message_perso → réponse du groupe → générique.
+  // Le groupe est un filet SOUS l'individuel (cf. schema/005_groupes.sql), il ne
+  // le remplace jamais. Rien de tout ça sur un « non » : toujours la réponse
+  // générique, un mot écrit pour quelqu'un devient cruel quand il décline (§4).
+  const groupe =
+    convive && oui && !convive.message_perso && convive.groupe
+      ? await getReponseGroupe(env.DB, mariage.id, convive.groupe)
+      : null;
+
+  // message_perso et photo_key sont deux champs indépendants (cf. CLAUDE.md §1) :
+  // une photo sans texte accompagne la réponse générique plutôt que de disparaître.
+  // Les coupler, c'est perdre sans erreur une photo que le couple a pris la peine
+  // de choisir.
+  const retour = {
+    message: oui
+      ? convive?.message_perso || groupe?.message || mariage.reponse_generique_oui
+      : mariage.reponse_generique_non,
+    photo_url: oui ? photoUrl(env, convive?.photo_key ?? groupe?.photo_key ?? null) : null,
+  };
+
+  return json({ reconnu, enregistre: true, retour });
+}
+
+
+// ── Tableau de bord ───────────────────────────────────────────────
+
+/**
+ * Email du couple connecté, ou null. En local (`wrangler dev`) il n'y a pas
+ * d'Access devant le Worker, donc DEV_EMAIL sert de connexion simulée — mais
+ * uniquement sur localhost, et la variable est absente de [env.prod.vars].
+ * Deux verrous plutôt qu'un : une variable oubliée en prod ne suffirait pas à
+ * ouvrir le tableau de bord.
+ */
+async function emailTableau(request: Request, env: Env): Promise<string | null> {
+  const hostname = new URL(request.url).hostname;
+  if (env.DEV_EMAIL && (hostname === "localhost" || hostname === "127.0.0.1")) {
+    return env.DEV_EMAIL.toLowerCase();
+  }
+  return emailAuthentifie(request, env.ACCESS_TEAM_DOMAIN, env.ACCESS_AUD);
+}
+
+/**
+ * Résout le mariage du couple connecté. Le `mariage_id` est déduit de
+ * l'identité authentifiée, jamais d'un paramètre envoyé par le navigateur :
+ * c'est tout ce qui sépare le tableau de bord d'un point d'entrée qui listerait
+ * les invités de n'importe qui (D1 n'a pas de RLS, cf. CLAUDE.md §2).
+ */
+async function mariageDuCouple(request: Request, env: Env): Promise<Mariage | Response> {
+  const email = await emailTableau(request, env);
+  if (!email) return json({ erreur: "Non authentifié" }, 403);
+
+  const mariage = await getMariageByEmail(env.DB, email);
+  // Compte valide chez Access mais rattaché à aucun mariage : même réponse
+  // qu'une absence d'authentification, pour ne pas confirmer quels emails
+  // existent en base.
+  if (!mariage) return json({ erreur: "Non authentifié" }, 403);
+
+  return mariage;
+}
+
+async function handleTableauMariage(request: Request, env: Env): Promise<Response> {
+  const mariage = await mariageDuCouple(request, env);
+  if (mariage instanceof Response) return mariage;
+
+  return json({
+    mariage: {
+      prenom_1: mariage.prenom_1,
+      prenom_2: mariage.prenom_2,
+      date_mariage: mariage.date_mariage,
+      date_limite_rsvp: mariage.date_limite_rsvp,
+      slug: mariage.slug,
+      domaine: mariage.domaine_personnalise ?? `${mariage.slug}.${env.SHARED_DOMAIN}`,
+    },
+  });
+}
+
+async function handleTableauConvives(request: Request, env: Env): Promise<Response> {
+  const mariage = await mariageDuCouple(request, env);
+  if (mariage instanceof Response) return mariage;
+
+  const [convives, groupes] = await Promise.all([
+    listerConvives(env.DB, mariage.id),
+    listerGroupes(env.DB, mariage.id),
+  ]);
+  const domaine = mariage.domaine_personnalise ?? `${mariage.slug}.${env.SHARED_DOMAIN}`;
+
+  // Un groupe existe dès qu'un invité y est rattaché, même sans réponse écrite :
+  // c'est précisément ce que le couple doit voir pour savoir ce qui lui reste
+  // à faire.
+  const nomsGroupes = [...new Set(convives.map((c) => c.groupe).filter((g): g is string => !!g))];
+
+  return json({
+    groupes: nomsGroupes.sort((a, b) => a.localeCompare(b, "fr")).map((nom) => {
+      const reponse = groupes.find((g) => g.groupe === nom);
+      return {
+        nom,
+        a_message: Boolean(reponse),
+        a_photo: Boolean(reponse?.photo_key),
+        invites: convives.filter((c) => c.groupe === nom && !c.accompagnant_de).length,
+      };
+    }),
+    convives: convives.map((c) => ({
+      id: c.id,
+      prenom: c.prenom,
+      nom: c.nom,
+      accompagnant_de: c.accompagnant_de,
+      // Le lien personnel : le couple en a besoin pour l'envoyer lui-même.
+      // Un accompagnant est annoncé par quelqu'un d'autre, il ne reçoit pas de
+      // lien — sa ligne existe pour le plan de table (cf. CLAUDE.md §4).
+      lien: c.accompagnant_de ? null : `https://${domaine}/${slugPrenom(c.prenom)}-${c.token}`,
+      a_message: Boolean(c.message_perso),
+      a_photo: Boolean(c.photo_key),
+      hors_liste: c.origine === "hors_liste",
+      groupe: c.groupe,
+      presence: c.presence,
+      regime_alimentaire: c.regime_alimentaire,
+      message_invite: c.message_invite,
+      repondu_le: c.repondu_le,
+    })),
+  });
+}
+
+/**
+ * Le tableau de bord n'est servi que sur son propre hôte. `wrangler dev` sert
+ * tout sur localhost, d'où la seconde branche — conditionnée à DEV_EMAIL, qui
+ * n'existe pas en production.
+ */
+function estHoteTableau(url: URL, env: Env): boolean {
+  if (url.hostname === env.DASHBOARD_HOSTNAME) return true;
+  return Boolean(env.DEV_EMAIL) && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+}
+
+// Partie décorative du lien (cf. import-invites.js) : toute la sécurité est
+// dans le token qui suit.
+function slugPrenom(prenom: string): string {
+  return prenom
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 export default {
@@ -185,6 +366,16 @@ export default {
     const rsvp = url.pathname.match(/^\/api\/rsvp\/([^/]+)$/);
     if (rsvp && request.method === "POST") {
       return handleRsvp(request, env, rsvp[1]!);
+    }
+
+    // Les routes du tableau de bord ne sont servies que sur son propre hôte.
+    if (url.pathname.startsWith("/api/tableau/") && estHoteTableau(url, env)) {
+      if (url.pathname === "/api/tableau/mariage" && request.method === "GET") {
+        return handleTableauMariage(request, env);
+      }
+      if (url.pathname === "/api/tableau/convives" && request.method === "GET") {
+        return handleTableauConvives(request, env);
+      }
     }
 
     return new Response("Not found", { status: 404 });

@@ -1,13 +1,22 @@
-// Sert themes/botanique/ en local et relaie /api/* vers `wrangler dev` (port 8787),
-// pour tester un thème et le Worker ensemble sans dépendre du routage Cloudflare
+// Sert le front en local et relaie /api/* vers `wrangler dev` (port 8787), pour
+// tester une page et le Worker ensemble sans dépendre du routage Cloudflare
 // Pages + Worker Route qui les réunira en production sur le même hostname.
-// Usage : node proxy-local.js, puis http://localhost:8080/<prenom>-<token>
+//
+//   node proxy-local.js              → thème invité, http://localhost:8080/<prenom>-<token>
+//   node proxy-local.js --tableau    → tableau de bord, http://localhost:8081/
+//
+// Les deux modes écoutent sur des ports différents et peuvent tourner ensemble.
+// En --tableau, le Host relayé au Worker reste localhost : c'est ce qui active
+// la connexion simulée par DEV_EMAIL (cf. worker/src/index.ts, emailTableau).
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = path.join(__dirname, 'themes', 'botanique');
+const TABLEAU = process.argv.includes('--tableau');
+const ROOT = TABLEAU ? path.join(__dirname, 'dashboard') : path.join(__dirname, 'themes', 'botanique');
 const MESSAGERS_ROOT = path.join(__dirname, 'messagers');
+const HOST_API = TABLEAU ? 'localhost' : 'justine-raphael.faire-part.exemple';
+const PORT = TABLEAU ? 8081 : 8080;
 
 http.createServer((req, res) => {
   if (req.url.startsWith('/messagers/')) {
@@ -24,7 +33,7 @@ http.createServer((req, res) => {
   }
   if (req.url.startsWith('/api/')) {
     const proxyReq = http.request(
-      { hostname: 'localhost', port: 8787, path: req.url, method: req.method, headers: { ...req.headers, host: 'justine-raphael.faire-part.exemple' } },
+      { hostname: 'localhost', port: 8787, path: req.url, method: req.method, headers: { ...req.headers, host: HOST_API } },
       (proxyRes) => { res.writeHead(proxyRes.statusCode, proxyRes.headers); proxyRes.pipe(res); }
     );
     proxyReq.on('error', (err) => {
@@ -41,4 +50,4 @@ http.createServer((req, res) => {
   const types = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.png': 'image/png' };
   res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream' });
   fs.createReadStream(filePath).pipe(res);
-}).listen(8080, () => console.log('Pret sur http://localhost:8080'));
+}).listen(PORT, () => console.log(`Pret sur http://localhost:${PORT}` + (TABLEAU ? ' (tableau de bord)' : '')));

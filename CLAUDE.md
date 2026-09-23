@@ -107,6 +107,14 @@ export function token(n = 8): string {
 4. Token inconnu → **faire-part générique** avec une ligne sobre (« nous n'avons pas
    reconnu votre lien, vous pouvez répondre ci-dessous »), jamais un 404. Un 404
    confirme le format à un attaquant et bloque un invité qui a mal recopié.
+   La ligne créée porte `origine = 'hors_liste'` (et ses accompagnants en
+   héritent) : c'est le seul moment où l'information existe, après elle est
+   indistinguable d'un invité importé.
+   Corollaire à dire au couple : **le lien est un droit au porteur**. Un invité
+   qui fait suivre son lien donne son identité avec — le destinataire répond à
+   sa place et lit le message écrit pour lui. Aucune parade technique sans
+   demander à l'invité de s'identifier, ce que le produit refuse. Un lien par
+   personne, et le tableau de bord montre qui a déjà répondu.
 5. Limitation de débit sur la route de lookup (règle Cloudflare, ~10 req/min/IP).
 
 ---
@@ -119,12 +127,34 @@ Elles viennent d'arbitrages déjà faits. Les changer change le produit.
   compte sur toi pour le discours » affiché à quelqu'un qui décline est cruel.
   Sur un « non », toujours la réponse générique.
 - **Deux réponses génériques obligatoires** par mariage : une « oui », une « non ».
+- **Trois niveaux de retour, dans cet ordre : message individuel → réponse du
+  groupe → réponse générique du mariage.** Le groupe (`convives.groupe`, libre :
+  « témoins », « collègues ») est un filet *sous* l'individuel, jamais un
+  remplacement — six groupes couvrent trente invités pour une fraction des 3–5 h,
+  mais si le groupe devient le mode par défaut, on revend du Canva avec plus
+  d'étapes. Pas de variante « non » pour un groupe : sur un refus, toujours la
+  générique. Étiquettes voisines (`Témoins` / `temoins`) = deux groupes, donc
+  deux messages à écrire et un invité qui reçoit le mauvais ; l'import alerte.
+- **Le quota de 30 messages n'existe nulle part dans le code**, et ne doit pas y
+  entrer. C'est une promesse commerciale adossée au temps passé, pas une
+  contrainte technique. Refuser le 31ᵉ message à un client qui a payé 350 € se
+  paie en litige, pas en temps gagné : un compteur dans le tableau de bord suffit.
+- **`photo_key` et `message_perso` sont indépendants.** Une photo sans message
+  accompagne la réponse générique. Les coupler faisait disparaître sans erreur
+  une photo que le couple avait pris la peine de choisir — corrigé, mais l'erreur
+  est facile à réintroduire en réécrivant la construction du retour. Sur un
+  « non », ni photo ni message perso : même raison que ci-dessus.
 - **Régime alimentaire = liste fermée.** Jamais de champ libre. Une allergie est une
   donnée de santé (RGPD art. 9), régime juridique renforcé. « Halal » ou « casher »
   formulés comme choix de menu, jamais comme question sur la religion.
 - **Un accompagnant est une ligne `convives`, pas un compteur.** On demande son prénom
   et son nom — c'est ce qui permet le plan de table et les marque-places sans
-  relancer tout le monde en avril.
+  relancer tout le monde en avril. **Quatre au maximum** par invité
+  (`MAX_ACCOMPAGNANTS`, refusé par le Worker et masqué dans le formulaire) : le
+  couple décide qui vient, et une liste ouverte laisse un invité amener une
+  tablée sans prévenir, alors que le traiteur est confirmé en avril. Un invité
+  hors liste peut en annoncer aussi — ses accompagnants héritent de son origine
+  et apparaissent comme lui dans le tableau de bord.
 - **Les photos vivent dans R2**, jamais en base64 dans la page. Nom de fichier dérivé
   du token, jamais séquentiel (`1.jpg`, `2.jpg` s'énumèrent).
 - **Les photos sont redimensionnées dans le navigateur (API Canvas) avant l'envoi**,
@@ -259,8 +289,11 @@ Repris du projet `Mon-Mariage`. Ils ont tous coûté du temps une première fois
 
 Phase actuelle : **fondations**. Construit : schéma D1, Worker (lookup token +
 RSVP), premier thème (`botanique`) branché dessus, deux messagers (`montgolfiere`,
-`voiture`). Pas encore construit : upload photos vers R2, tableau de bord couple,
-déploiement réel, cron de suppression RGPD.
+`voiture`), import d'une liste d'invités, déploiement dev réel sur
+`dev.faire-part.hasakistudio.fr`, tableau de bord couple **en lecture seule**
+(liste, réponses, avancement des messages, export traiteur). Pas encore
+construit : upload photos vers R2, saisie des messages depuis le tableau de
+bord, balises Open Graph pour l'aperçu WhatsApp, cron de suppression RGPD.
 
 | Phase | Période | État |
 |---|---|---|
