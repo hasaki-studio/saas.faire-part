@@ -298,9 +298,17 @@ RSVP), premier thème (`botanique`) branché dessus, deux messagers (`montgolfie
 (liste, réponses, avancement des messages, export traiteur), écriture des
 messages au fil de l'eau depuis le tableau de bord, réponses de groupe, aperçu
 WhatsApp (Open Graph rendu côté serveur). Pas encore construit : upload photos
-vers R2, cron de suppression RGPD, limitation de débit sur le lookup. Le tableau de bord existe
-mais n'est déployé nulle part : il lui manque son projet Pages et son
-application Access (cf. `docs/tableau-de-bord.md`).
+vers R2, cron de suppression RGPD, limitation de débit sur le lookup.
+
+**Attention à ne pas confondre deux tableaux de bord.** Celui qui est en ligne
+aujourd'hui vient du projet `Mon-Mariage` (n8n + NAS) et ne sert qu'au suivi du
+mariage de l'auteur : il ne fait pas partie du produit, ne connaît pas
+`mariage_id`, et n'a pas vocation à être livré à un client. Celui de cette
+solution est `dashboard/`, défini et construit ici — lecture, écriture des
+messages, réponses de groupe — et **n'est encore déployé nulle part** : il lui
+manque son projet Pages, son sous-domaine et son application Access
+(cf. `docs/tableau-de-bord.md`). Ne pas prendre l'un pour l'autre en lisant une
+capture d'écran.
 
 | Phase | Période | État |
 |---|---|---|

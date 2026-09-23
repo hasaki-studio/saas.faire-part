@@ -1,5 +1,9 @@
 # Tableau de bord du couple — mise en service
 
+> À ne pas confondre avec le tableau de bord n8n du projet `Mon-Mariage`, qui
+> est en ligne et ne sert qu'au suivi du mariage de l'auteur. Celui-ci est
+> celui du produit, multi-tenant, et n'est pas encore déployé.
+
 Le tableau de bord est la deuxième surface du produit. Il ne partage **ni son
 hôte ni son régime d'authentification** avec la page des invités :
 
