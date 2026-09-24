@@ -77,7 +77,7 @@ ACCESS_AUD = "3f1b10304ccb380a17175c4237ee8f875381e8447f97329eb172548cacd76b87"
 # variable et non en base : on ne fait pas d'UI pour gérer des admins qu'on
 # est un.
 ADMIN_HOSTNAME = "admin.dev.faire-part.hasakistudio.fr"
-ADMIN_ACCESS_AUD = "REMPLACER_PAR_L_AUD_DE_L_APPLICATION_ACCESS_ADMIN"
+ADMIN_ACCESS_AUD = "afbd678b392140f689739907f915172cb6a796821177ba03eb34d22d32c728d5"
 ADMIN_EMAILS = "azouzi.achraf@gmail.com"
 
 # Connexion simulée pour `wrangler dev` : sans Access devant le Worker en local,
