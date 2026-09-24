@@ -15,6 +15,7 @@ import {
   getReponseGroupe,
   listerConvives,
   listerGroupes,
+  listerMariagesPourAdmin,
   mariagesAPurger,
   purgerConvives,
   resolveMariageByHost,
@@ -37,6 +38,15 @@ export interface Env {
   ACCESS_AUD: string;
   // Confort de développement local uniquement (cf. emailTableau).
   DEV_EMAIL?: string;
+  // Vue de suivi admin (CLAUDE.md §2). Hôte, AUD Access et allowlist séparés
+  // du tableau de bord des couples : un jeton du tableau ne doit pas ouvrir
+  // les portes admin, un couple non admin ne doit pas y entrer même si
+  // l'application Access était mal configurée.
+  ADMIN_HOSTNAME: string;
+  ADMIN_ACCESS_AUD: string;
+  ADMIN_EMAILS: string;
+  // Idem DEV_EMAIL pour l'hôte admin en local. Absent en prod.
+  DEV_ADMIN_EMAIL?: string;
   // Limitation de débit du lookup public (CLAUDE.md §3, règle 5). Le binding
   // est déclaré dans wrangler.toml — voir aussi les commentaires y afférents.
   LOOKUP_RATE: RateLimit;
@@ -705,6 +715,51 @@ function estHoteTableau(url: URL, env: Env): boolean {
   return Boolean(env.DEV_EMAIL) && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
 }
 
+// ── Vue de suivi admin ────────────────────────────────────────────
+//
+// Trois portes, dans cet ordre, avant qu'une requête arrive au handler :
+//   1. l'hôte doit être ADMIN_HOSTNAME (ou localhost avec DEV_ADMIN_EMAIL) ;
+//   2. le jeton Access doit être signé pour ADMIN_ACCESS_AUD, distinct de
+//      celui du tableau de bord des couples — le jeton d'un couple valide
+//      chez Access ne doit jamais ouvrir /api/admin/* ;
+//   3. l'email vérifié doit figurer dans ADMIN_EMAILS.
+//
+// La vue ne renvoie que des agrégats (cf. listerMariagesPourAdmin) : même si
+// une bévue future modifiait le SELECT, elle ne pourrait pas exposer un nom
+// d'invité ou un message sans passer d'abord par le type, la revue et cette
+// note. C'est ce qui rend l'admin compatible avec §2 : les invités qu'on
+// compte ne sont pas listés.
+
+function estHoteAdmin(url: URL, env: Env): boolean {
+  if (url.hostname === env.ADMIN_HOSTNAME) return true;
+  return Boolean(env.DEV_ADMIN_EMAIL) && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+}
+
+async function emailAdmin(request: Request, env: Env): Promise<string | null> {
+  const hostname = new URL(request.url).hostname;
+  const email =
+    env.DEV_ADMIN_EMAIL && (hostname === "localhost" || hostname === "127.0.0.1")
+      ? env.DEV_ADMIN_EMAIL.toLowerCase()
+      : await emailAuthentifie(request, env.ACCESS_TEAM_DOMAIN, env.ADMIN_ACCESS_AUD);
+  if (!email) return null;
+
+  // Allowlist inline plutôt qu'une table : un seul admin aujourd'hui, et une
+  // UI pour gérer ceux qui ne changent jamais est un vecteur de bug sans
+  // valeur. Comparaison insensible à la casse et aux espaces autour.
+  const autorises = new Set(
+    env.ADMIN_EMAILS.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean),
+  );
+  return autorises.has(email) ? email : null;
+}
+
+async function handleAdminMariages(request: Request, env: Env): Promise<Response> {
+  const email = await emailAdmin(request, env);
+  if (!email) return json({ erreur: "Non authentifié" }, 403);
+
+  const mariages = await listerMariagesPourAdmin(env.DB);
+  return json({ mariages });
+}
+
 // Partie décorative du lien (cf. import-invites.js) : toute la sécurité est
 // dans le token qui suit.
 function slugPrenom(prenom: string): string {
@@ -784,6 +839,13 @@ export default {
     const rsvp = url.pathname.match(/^\/api\/rsvp\/([^/]+)$/);
     if (rsvp && request.method === "POST") {
       return handleRsvp(request, env, rsvp[1]!);
+    }
+
+    // Vue de suivi admin, sur son propre hôte. Cf. estHoteAdmin.
+    if (url.pathname.startsWith("/api/admin/") && estHoteAdmin(url, env)) {
+      if (url.pathname === "/api/admin/mariages" && request.method === "GET") {
+        return handleAdminMariages(request, env);
+      }
     }
 
     // Les routes du tableau de bord ne sont servies que sur son propre hôte.

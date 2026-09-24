@@ -416,3 +416,63 @@ export async function purgerConvives(
     clesPhotos: photos.map((p) => p.photo_key),
   };
 }
+
+
+// ── Vue de suivi opérationnel (super admin) ───────────────────────
+//
+// Un ligne par mariage, des agrégats plutôt que des lignes de convives : la
+// vue admin n'a jamais besoin de nommer un invité, et si elle en avait besoin,
+// c'est cette absence qui empêcherait le glissement (cf. CLAUDE.md §2 :
+// aucun point d'entrée ne liste les invités). Une seule requête, un JOIN
+// agrégé côté SQL — on évite N+1 même à 200 mariages.
+
+export interface AdminMariage {
+  id: string;
+  slug: string;
+  prenom_1: string;
+  prenom_2: string;
+  date_mariage: string;
+  date_limite_rsvp: string;
+  email_proprietaire: string | null;
+  a_photo_couple: number;   // 0 ou 1 côté SQLite
+  a_photo_lieu: number;
+  a_photo_og: number;
+  a_contact_rgpd: number;
+  purge_le: string;         // date_mariage + 90 jours
+  n_invites: number;        // invités principaux seulement, cohérent avec §4
+  n_accompagnants: number;
+  n_oui: number;
+  n_non: number;
+  n_sans_reponse: number;
+  n_messages_perso: number;
+  n_photos_perso: number;
+  n_reponses_groupe: number;
+}
+
+export async function listerMariagesPourAdmin(db: D1Database): Promise<AdminMariage[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT
+         m.id, m.slug, m.prenom_1, m.prenom_2,
+         m.date_mariage, m.date_limite_rsvp, m.email_proprietaire,
+         (m.photo_couple_key IS NOT NULL) AS a_photo_couple,
+         (m.cocktail_photo_key IS NOT NULL) AS a_photo_lieu,
+         (m.og_image_key IS NOT NULL) AS a_photo_og,
+         (m.contact_rgpd IS NOT NULL) AS a_contact_rgpd,
+         date(m.date_mariage, '+90 days') AS purge_le,
+         COALESCE(SUM(CASE WHEN c.accompagnant_de IS NULL THEN 1 ELSE 0 END), 0) AS n_invites,
+         COALESCE(SUM(CASE WHEN c.accompagnant_de IS NOT NULL THEN 1 ELSE 0 END), 0) AS n_accompagnants,
+         COALESCE(SUM(CASE WHEN c.accompagnant_de IS NULL AND c.presence = 'oui' THEN 1 ELSE 0 END), 0) AS n_oui,
+         COALESCE(SUM(CASE WHEN c.accompagnant_de IS NULL AND c.presence = 'non' THEN 1 ELSE 0 END), 0) AS n_non,
+         COALESCE(SUM(CASE WHEN c.accompagnant_de IS NULL AND c.presence IS NULL THEN 1 ELSE 0 END), 0) AS n_sans_reponse,
+         COALESCE(SUM(CASE WHEN c.accompagnant_de IS NULL AND c.message_perso IS NOT NULL THEN 1 ELSE 0 END), 0) AS n_messages_perso,
+         COALESCE(SUM(CASE WHEN c.photo_key IS NOT NULL THEN 1 ELSE 0 END), 0) AS n_photos_perso,
+         (SELECT COUNT(*) FROM reponses_groupe WHERE mariage_id = m.id) AS n_reponses_groupe
+       FROM mariages m
+       LEFT JOIN convives c ON c.mariage_id = m.id
+       GROUP BY m.id
+       ORDER BY m.date_mariage ASC`,
+    )
+    .all<AdminMariage>();
+  return results;
+}
