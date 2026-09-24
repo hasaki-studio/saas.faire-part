@@ -554,6 +554,13 @@ export async function listerCodesActivation(db: D1Database): Promise<CodeActivat
   return results;
 }
 
+// Durée pendant laquelle un code déjà consommé reste modifiable : l'acheteur
+// qui se trompe de date ou veut changer une photo n'a pas à nous écrire sur
+// Etsy pour ça. Passé ce délai, le code se comporte comme définitivement
+// utilisé — une correction tardive passe par le tableau de bord une fois
+// l'accès Access ouvert (cf. docs/commande.md).
+const FENETRE_MODIFICATION_HEURES = 48;
+
 /**
  * Vérifie un couple {numéro de commande, email} sans rien modifier. Utilisée
  * pour l'étape 1 du tunnel, avant de montrer le formulaire — un acheteur qui
@@ -563,12 +570,21 @@ export async function listerCodesActivation(db: D1Database): Promise<CodeActivat
  * peuvent capitaliser différemment), jamais au numéro de commande (Etsy ne
  * mélange pas la casse dans ses numéros, un espace mal recopié doit rester
  * une erreur signalée plutôt que silencieusement tolérée).
+ *
+ * Un code déjà consommé n'est pas forcément une erreur : dans les
+ * `FENETRE_MODIFICATION_HEURES` qui suivent la création, il désigne une
+ * correction légitime du même mariage — `modification: true` le signale à
+ * l'appelant, qui pré-remplit le formulaire au lieu d'un en repartir à vide.
  */
 export async function verifierCodeActivation(
   db: D1Database,
   commandeEtsy: string,
   email: string,
-): Promise<{ valide: true; id: string } | { valide: false; erreur: string }> {
+): Promise<
+  | { valide: true; id: string; modification: false }
+  | { valide: true; id: string; modification: true; mariageId: string }
+  | { valide: false; erreur: string }
+> {
   const code = await db
     .prepare("SELECT * FROM codes_activation WHERE commande_etsy = ?1")
     .bind(commandeEtsy)
@@ -578,10 +594,38 @@ export async function verifierCodeActivation(
   if (code.email !== email.toLowerCase()) {
     return { valide: false, erreur: "Cet email ne correspond pas à cette commande." };
   }
-  if (code.consomme_le) {
-    return { valide: false, erreur: "Cette commande a déjà été utilisée pour créer un site." };
+  if (!code.consomme_le) return { valide: true, id: code.id, modification: false };
+
+  const dansLaFenetre = await estDansLaFenetreDeModification(db, code.consomme_le);
+  if (!dansLaFenetre) {
+    return {
+      valide: false,
+      erreur: `Cette commande a déjà été utilisée pour créer un site, et le délai de correction de ${FENETRE_MODIFICATION_HEURES} h est dépassé.`,
+    };
   }
-  return { valide: true, id: code.id };
+  // mariage_id est forcément renseigné dès qu'un code est consommé (les deux
+  // s'écrivent dans la même opération, cf. creerOuMettreAJourMariageSelfService) ;
+  // le "!" documente cette invariante plutôt que de la re-tester en silence.
+  return { valide: true, id: code.id, modification: true, mariageId: code.mariage_id! };
+}
+
+/**
+ * Calcule côté SQL plutôt qu'en JS, pour la même raison que `supprimer_le` :
+ * une seule expression de référence pour "combien de temps s'est écoulé",
+ * reprise à l'identique dans `creerOuMettreAJourMariageSelfService` — cette
+ * dernière ne doit jamais faire confiance à un contrôle déjà fait par un
+ * appel précédent pour une action qui, elle, écrit.
+ */
+async function estDansLaFenetreDeModification(db: D1Database, consommeLe: string): Promise<boolean> {
+  const ligne = await db
+    .prepare("SELECT (julianday('now') - julianday(?1)) * 24 <= ?2 AS dans_fenetre")
+    .bind(consommeLe, FENETRE_MODIFICATION_HEURES)
+    .first<{ dans_fenetre: number }>();
+  return Boolean(ligne?.dans_fenetre);
+}
+
+export async function getMariageParId(db: D1Database, id: string): Promise<Mariage | null> {
+  return db.prepare("SELECT * FROM mariages WHERE id = ?1").bind(id).first<Mariage>();
 }
 
 export interface NouveauMariage {
@@ -625,26 +669,71 @@ async function genererSlugMariage(db: D1Database, prenom1: string, prenom2: stri
 }
 
 /**
- * Crée un mariage depuis le tunnel self-service et consomme le code
- * d'activation dans la même opération logique. `codeId` vient d'un appel à
- * `verifierCodeActivation` réussi juste avant — revérifié ici par le WHERE
- * `consomme_le IS NULL`, pour qu'un double clic sur "Terminer" ne crée pas
- * deux mariages pour la même vente (cf. meta.changes).
+ * Crée un mariage depuis le tunnel self-service, ou met à jour celui déjà créé
+ * par ce même code si on est dans `FENETRE_MODIFICATION_HEURES` — c'est ce qui
+ * permet à l'acheteur de corriger une date ou une photo sans nous écrire sur
+ * Etsy. `codeId` vient d'un appel à `verifierCodeActivation` réussi juste
+ * avant, mais **jamais fait confiance** ici : la fenêtre et la consommation
+ * sont revérifiées dans la même transaction logique que l'écriture, pour
+ * qu'un appel concurrent (double clic, deux onglets, ou l'expiration de la
+ * fenêtre pile entre les deux appels) ne puisse jamais écrire n'importe quoi.
  *
- * `email_proprietaire` est renseigné tout de suite : c'est ce qui rattachera
- * le compte Access de l'acheteur à ce mariage, le jour où son email aura été
- * ajouté à la policy Allow (étape manuelle pour l'instant, cf. docs/commande.md).
+ * Le slug d'un mariage existant n'est **jamais** régénéré à la modification :
+ * le lien a pu être déjà partagé aux invités, même reçu quelques minutes plus
+ * tôt (même principe que l'immutabilité du token, §3 règle 3).
  *
- * `supprimer_le` est calculé en SQL (`date(?, '+90 days')`), pas en JS : même
- * expression que celle utilisée par la purge (mariagesAPurger), une seule
- * source de vérité pour "90 jours après le mariage".
+ * `supprimer_le` est recalculé à chaque modification (la date du mariage a pu
+ * changer) avec la même expression SQL que la purge (`mariagesAPurger`), une
+ * seule source de vérité pour "90 jours après le mariage".
  */
-export async function creerMariageSelfService(
+export async function creerOuMettreAJourMariageSelfService(
   db: D1Database,
   codeId: string,
   email: string,
   data: NouveauMariage,
-): Promise<{ ok: true; id: string; slug: string } | { ok: false; erreur: string }> {
+): Promise<{ ok: true; id: string; slug: string; modification: boolean } | { ok: false; erreur: string }> {
+  const code = await db.prepare("SELECT * FROM codes_activation WHERE id = ?1").bind(codeId).first<CodeActivation>();
+  if (!code) return { ok: false, erreur: "Commande introuvable, rechargez la page." };
+
+  if (code.consomme_le) {
+    // Chemin modification.
+    if (!(await estDansLaFenetreDeModification(db, code.consomme_le))) {
+      return { ok: false, erreur: `Le délai de correction de ${FENETRE_MODIFICATION_HEURES} h est dépassé.` };
+    }
+    const mariage = code.mariage_id ? await getMariageParId(db, code.mariage_id) : null;
+    if (!mariage) return { ok: false, erreur: "Le site associé à cette commande est introuvable." };
+
+    await db
+      .prepare(
+        `UPDATE mariages SET
+           theme = ?1, messager = ?2, prenom_1 = ?3, prenom_2 = ?4,
+           date_mariage = ?5, date_limite_rsvp = ?6,
+           ceremonie_nom = ?7, ceremonie_adresse = ?8, cocktail_nom = ?9, cocktail_adresse = ?10,
+           reponse_generique_oui = ?11, reponse_generique_non = ?12,
+           supprimer_le = date(?5, '+90 days')
+         WHERE id = ?13`,
+      )
+      .bind(
+        data.theme,
+        data.messager,
+        data.prenom_1,
+        data.prenom_2,
+        data.date_mariage,
+        data.date_limite_rsvp,
+        data.ceremonie_nom,
+        data.ceremonie_adresse,
+        data.cocktail_nom,
+        data.cocktail_adresse,
+        data.reponse_generique_oui,
+        data.reponse_generique_non,
+        mariage.id,
+      )
+      .run();
+
+    return { ok: true, id: mariage.id, slug: mariage.slug, modification: true };
+  }
+
+  // Chemin création.
   const id = crypto.randomUUID();
   const slug = await genererSlugMariage(db, data.prenom_1, data.prenom_2);
 
@@ -692,5 +781,5 @@ export async function creerMariageSelfService(
     return { ok: false, erreur: "Cette commande vient d'être utilisée. Rafraîchissez la page." };
   }
 
-  return { ok: true, id, slug };
+  return { ok: true, id, slug, modification: false };
 }

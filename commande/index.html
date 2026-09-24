@@ -267,8 +267,8 @@
 
   <!-- Étape 2 : formulaire -->
   <section class="carte" id="etape-2" hidden>
-    <h1>Vos informations</h1>
-    <p class="aide">Tout ce qui suit apparaîtra sur votre site. Vous pourrez
+    <h1 id="etape-2-titre">Vos informations</h1>
+    <p class="aide" id="etape-2-aide">Tout ce qui suit apparaîtra sur votre site. Vous pourrez
       corriger une information plus tard depuis votre tableau de bord.</p>
 
     <form id="form-creer">
@@ -348,12 +348,15 @@
       </div>
 
       <button class="bouton-principal" type="submit" id="btn-creer" style="margin-top:12px">Terminer</button>
+      <p class="note" id="fenetre-modification" style="margin-top:10px; text-align:center" hidden>
+        Vous pouvez revenir corriger ces informations avec le même numéro de
+        commande pendant 48 h après la création de votre site.</p>
     </form>
   </section>
 
   <!-- Étape 3 : terminé -->
   <section class="carte" id="etape-3" hidden>
-    <h1>Votre faire-part est prêt !</h1>
+    <h1 id="etape-3-titre">Votre faire-part est prêt !</h1>
     <p class="aide">Notez ces deux liens avant de quitter cette page — vous ne les
       reverrez qu'ici.</p>
 
@@ -388,6 +391,10 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
 
 let COMMANDE_ETSY = '';
 let EMAIL = '';
+// true si ce code a déjà servi et qu'on est dans la fenêtre de correction de
+// 48 h (cf. worker/src/db.ts, FENETRE_MODIFICATION_HEURES) : le formulaire se
+// pré-remplit et la photo du couple n'est plus obligatoire.
+let MODIFICATION = false;
 
 function afficherEtape(n) {
   ['etape-1', 'etape-2', 'etape-3'].forEach((id, i) => {
@@ -434,6 +441,9 @@ $('form-verifier').addEventListener('submit', async (e) => {
 
     COMMANDE_ETSY = commande;
     EMAIL = email;
+    MODIFICATION = Boolean(data.modification);
+    if (MODIFICATION) preRemplir(data.mariage);
+    else $('fenetre-modification').hidden = false; // annoncé seulement à la première création
     afficherEtape(2);
   } catch (err) {
     afficherErreur(err.message);
@@ -442,6 +452,39 @@ $('form-verifier').addEventListener('submit', async (e) => {
     btn.textContent = 'Continuer';
   }
 });
+
+/**
+ * Remplit le formulaire avec ce qui existe déjà, pour le mode correction.
+ * Indispensable : le serveur écrit ce qu'on lui envoie sans le fusionner
+ * avec l'existant (cf. worker/src/index.ts, handleCommandeCreer) — laisser
+ * un champ facultatif vide à la deuxième saisie l'effacerait pour de vrai.
+ */
+function preRemplir(m) {
+  $('etape-2-titre').textContent = 'Corrigez vos informations';
+  $('etape-2-aide').textContent = 'Vous avez déjà créé ce site. Les champs ci-dessous reprennent ce que vous aviez saisi — modifiez ce qui doit changer.';
+  $('btn-creer').textContent = 'Mettre à jour';
+
+  $('c-prenom-1').value = m.prenom_1;
+  $('c-prenom-2').value = m.prenom_2;
+  $('c-date-mariage').value = m.date_mariage;
+  $('c-date-rsvp').value = m.date_limite_rsvp;
+  $('c-animation').value = m.messager;
+  $('c-ceremonie-nom').value = m.ceremonie_nom || '';
+  $('c-ceremonie-adresse').value = m.ceremonie_adresse || '';
+  $('c-cocktail-nom').value = m.cocktail_nom || '';
+  $('c-cocktail-adresse').value = m.cocktail_adresse || '';
+  $('c-oui').value = m.reponse_generique_oui;
+  $('c-non').value = m.reponse_generique_non;
+
+  if (m.photo_couple_url) {
+    $('apercu-couple').innerHTML = `<img src="${esc(m.photo_couple_url)}" alt="">`;
+    $('btn-choisir-couple').textContent = 'Remplacer';
+  }
+  if (m.photo_lieu_url) {
+    $('apercu-lieu').innerHTML = `<img src="${esc(m.photo_lieu_url)}" alt="">`;
+    $('btn-choisir-lieu').textContent = 'Remplacer';
+  }
+}
 
 
 /* ---------- Étape 2 : photos ----------
@@ -522,7 +565,9 @@ $('form-creer').addEventListener('submit', async (e) => {
   e.preventDefault();
   afficherErreur('');
 
-  if (!BLOB_COUPLE) {
+  // Obligatoire seulement à la création : en correction, ne pas en choisir
+  // une nouvelle veut dire "garder l'actuelle" (cf. handleCommandeCreer).
+  if (!BLOB_COUPLE && !MODIFICATION) {
     afficherErreur('La photo du couple est requise.');
     return;
   }
@@ -534,8 +579,9 @@ $('form-creer').addEventListener('submit', async (e) => {
   }
 
   const btn = $('btn-creer');
+  const libelleRepos = MODIFICATION ? 'Mettre à jour' : 'Terminer';
   btn.disabled = true;
-  btn.textContent = 'Création en cours…';
+  btn.textContent = MODIFICATION ? 'Mise à jour en cours…' : 'Création en cours…';
 
   const form = new FormData();
   form.set('commande_etsy', COMMANDE_ETSY);
@@ -551,7 +597,7 @@ $('form-creer').addEventListener('submit', async (e) => {
   form.set('ceremonie_adresse', $('c-ceremonie-adresse').value.trim());
   form.set('cocktail_nom', $('c-cocktail-nom').value.trim());
   form.set('cocktail_adresse', $('c-cocktail-adresse').value.trim());
-  form.set('photo_couple', BLOB_COUPLE, 'couple.jpg');
+  if (BLOB_COUPLE) form.set('photo_couple', BLOB_COUPLE, 'couple.jpg');
   if (BLOB_LIEU) form.set('photo_lieu', BLOB_LIEU, 'lieu.jpg');
 
   try {
@@ -559,6 +605,9 @@ $('form-creer').addEventListener('submit', async (e) => {
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.enregistre) throw new Error(data.erreur || 'Le serveur a répondu ' + res.status);
 
+    $('etape-3-titre').textContent = data.modification
+      ? 'Vos modifications sont enregistrées !'
+      : 'Votre faire-part est prêt !';
     $('lien-site').value = data.site_url;
     $('lien-tableau').value = data.tableau_url;
     afficherEtape(3);
@@ -566,7 +615,7 @@ $('form-creer').addEventListener('submit', async (e) => {
     afficherErreur(err.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Terminer';
+    btn.textContent = libelleRepos;
   }
 });
 

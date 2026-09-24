@@ -33,16 +33,50 @@ Trois étapes côté acheteur :
   bord — mais ici sans cookie de session à protéger : c'est un filtre bon
   marché contre un site tiers qui imiterait le formulaire, pas une défense
   CSRF au sens strict.
-- **Consommation atomique du code** : `creerMariageSelfService` réécrit
-  `consomme_le` avec une clause `WHERE consomme_le IS NULL`. Un double clic ou
-  deux onglets ouverts sur la même commande ne créent jamais deux mariages —
-  le second appel échoue et le mariage qu'il venait d'insérer est retiré.
+- **Consommation atomique du code** : `creerOuMettreAJourMariageSelfService`
+  réécrit `consomme_le` avec une clause `WHERE consomme_le IS NULL`. Un double
+  clic ou deux onglets ouverts sur la même commande, lors de la création
+  initiale, ne créent jamais deux mariages — le second appel échoue et le
+  mariage qu'il venait d'insérer est retiré.
 - **Un slug jamais réutilisé** : `genererSlugMariage` vérifie l'unicité et
   ajoute un suffixe numérique en cas de collision (deux couples "Léa & Tom"
   un jour donné ne sont pas un cas si rare qu'on puisse l'ignorer).
 - **`supprimer_le` calculé en SQL** (`date(?, '+90 days')`), pas en JS — même
   expression que celle utilisée par la purge automatique (`mariagesAPurger`),
   une seule source de vérité.
+
+## La fenêtre de correction de 48 h
+
+Un code consommé n'est pas mort pour autant : pendant 48 h après sa première
+consommation (`FENETRE_MODIFICATION_HEURES` dans `worker/src/db.ts`),
+retaper le même couple `{numéro de commande, email}` sur `/api/commande/verifier`
+n'affiche pas « déjà utilisé » — ça rouvre le tunnel en mode modification sur
+le mariage déjà créé.
+
+- **Jamais une deuxième ligne `mariages`, jamais un nouveau slug.** Le chemin
+  modification fait un `UPDATE ... WHERE id = ?`, jamais un `INSERT`. Le lien
+  envoyé aux invités et celui du tableau de bord restent valables même après
+  correction — cf. §3 règle 3, le même principe qui interdit de régénérer un
+  token d'invité s'applique ici au slug.
+- **La fenêtre est revérifiée en SQL au moment de l'écriture**
+  (`(julianday('now') - julianday(consomme_le)) * 24 <= 48`), jamais faite
+  confiance depuis la lecture précédente : `verifier` et `creer` peuvent être
+  appelés à plusieurs minutes d'écart.
+- **Le formulaire est pré-rempli** avec les données existantes du mariage
+  (`GET` implicite via la réponse de `verifier`) : comme `UPDATE` écrit
+  exactement ce qu'on lui donne, un champ facultatif non retouché
+  (`ceremonie_nom`, par exemple) doit repartir avec sa valeur actuelle, jamais
+  avec un champ vide.
+- **Les photos sont optionnelles en modification, obligatoires à la
+  création.** Ne pas redéposer la photo du couple ne l'efface pas — la
+  colonne n'est simplement pas touchée. Si une nouvelle photo est envoyée,
+  elle est écrite dans R2 et la ligne mise à jour *avant* que l'ancien objet
+  R2 soit supprimé, jamais l'inverse (un objet orphelin est moins grave qu'une
+  ligne qui pointe sur un fichier disparu).
+- **Passé le délai**, le code redevient un « déjà utilisé » classique : même
+  message d'erreur, sur `verifier` comme sur `creer`. Il n'y a pas de
+  prolongation ni d'exception manuelle — la ligne `mariages` reste éditable
+  ensuite depuis le tableau de bord, comme pour n'importe quel client.
 
 ## Ce qui n'est PAS automatisé (limite connue, à lire avant de publier la Fiche B)
 
