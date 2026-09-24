@@ -115,7 +115,13 @@ export function token(n = 8): string {
    sa place et lit le message écrit pour lui. Aucune parade technique sans
    demander à l'invité de s'identifier, ce que le produit refuse. Un lien par
    personne, et le tableau de bord montre qui a déjà répondu.
-5. Limitation de débit sur la route de lookup (règle Cloudflare, ~10 req/min/IP).
+5. **Limitation de débit sur la route de lookup** : 10 req/min/IP via le
+   binding `LOOKUP_RATE` (Workers Rate Limiting), déclaré dans `wrangler.toml`
+   avec un `namespace_id` distinct dev/prod pour ne pas que dev partage un
+   compteur avec prod. La clé est l'IP lue dans `cf-connecting-ip` — l'unique
+   en-tête que Cloudflare pose lui-même ; `x-forwarded-for` s'écrit et donnerait
+   un compteur neuf à chaque requête. Sans cet en-tête, on refuse plutôt que de
+   laisser passer sans compter.
 
 ---
 
@@ -366,8 +372,9 @@ Actions, import de la liste par le couple lui-même depuis le tableau de bord
 (collage depuis un tableur ou fichier CSV), tableau de bord déployé sur
 `tableau.dev.faire-part.hasakistudio.fr` derrière Cloudflare Access, mention
 d'information RGPD sur le formulaire RSVP, effacement automatique des données
-d'invités à J+90 (Cron Trigger). Pas encore construit : photos du couple et du
-lieu, limitation de débit sur le lookup, contrat de sous-traitance écrit.
+d'invités à J+90 (Cron Trigger), limitation de débit sur le lookup public
+(10 req/min/IP). Pas encore construit : photos du couple et du lieu, contrat
+de sous-traitance écrit.
 
 **Attention à ne pas confondre deux tableaux de bord.** Celui qui est en ligne
 aujourd'hui vient du projet `Mon-Mariage` (n8n + NAS) et ne sert qu'au suivi du

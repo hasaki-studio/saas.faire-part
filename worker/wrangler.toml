@@ -21,6 +21,24 @@ database_id = "e4fd5d58-53aa-408c-9b07-7a07974df238"
 binding = "PHOTOS"
 bucket_name = "faire-part-photos-dev"
 
+# Limitation de débit du lookup public (CLAUDE.md §3, règle 5). 10 requêtes par
+# minute et par IP : très largement au-dessus d'un invité qui ouvre son lien et
+# le recharge deux fois, très largement en dessous du seuil qui rend le
+# brute-force économique — l'alphabet à 30 caractères sur 8 positions donne
+# 6,5·10¹¹ combinaisons, un attaquant limité à 10/min mettrait 45 millions
+# d'années. C'est là contre les balayages automatiques et les moments de
+# tension serveur, pas contre un scénario réaliste de devinette.
+#
+# `period` doit valoir 10 ou 60 : ce sont les deux seules valeurs qu'accepte
+# l'API de Cloudflare aujourd'hui. `namespace_id` identifie la file de
+# compteurs — il vit ici, ce n'est pas un secret, mais il doit rester unique
+# sur le compte.
+[[unsafe.bindings]]
+name = "LOOKUP_RATE"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 10, period = 60 }
+
 [vars]
 # Domaine partagé pour l'offre catalogue : <slug>.SHARED_DOMAIN. Provisoire sur
 # hasakistudio.fr (déjà possédé, coût 0) ; migration vers une marque dédiée
@@ -70,6 +88,14 @@ database_id = "REMPLACER_APRES_wrangler_d1_create"
 [[env.prod.r2_buckets]]
 binding = "PHOTOS"
 bucket_name = "faire-part-photos-prod"
+
+# Namespace distinct de dev : sans quoi une attaque en dev partagerait le
+# compteur avec la prod et bloquerait de vrais invités.
+[[env.prod.unsafe.bindings]]
+name = "LOOKUP_RATE"
+type = "ratelimit"
+namespace_id = "1002"
+simple = { limit = 10, period = 60 }
 
 [env.prod.vars]
 SHARED_DOMAIN = "faire-part.hasakistudio.fr"
