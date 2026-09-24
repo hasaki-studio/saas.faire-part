@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Créer votre faire-part — Un Oui, Une Histoire</title>
+<!-- Page publique, mais pas destinée aux moteurs de recherche : personne n'y
+     arrive autrement qu'en suivant le PDF reçu après son achat Etsy. -->
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Mêmes polices que le thème et le tableau de bord : le parcours doit se
+     ressembler du premier clic Etsy jusqu'au site fini. -->
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Mêmes jetons que dashboard/index.html — cf. CLAUDE.md §6 pour les
+       ratios de contraste mesurés. */
+    --ink: #2e2a25;
+    --ink-2: #554f47;
+    --aide: #6b645a;
+    --sage: #5b7555;
+    --sage-dark: #446042;
+    --sage-light: #a8c4a2;
+    --cream: #f7f3ec;
+    --cream-dark: #ede6d8;
+    --gold: #c9a96e;
+    --gold-texte: #7d6a3c;
+    --ambre: #8a6a2c;
+    --rose: #c98f8f;
+    --rose-texte: #9c5a5a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--cream);
+    color: var(--ink-2);
+    font-family: 'Jost', sans-serif;
+    font-weight: 400;
+    line-height: 1.6;
+  }
+
+  main {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 48px 20px 100px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  header .marque {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 1.9rem;
+    color: var(--sage-dark);
+  }
+  header p {
+    color: var(--aide);
+    font-size: 0.88rem;
+    margin-top: 6px;
+  }
+
+  /* Trois puces d'avancement : l'acheteur doit toujours savoir où il en est
+     dans un parcours qu'il ne fera qu'une fois. */
+  .etapes {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 36px;
+  }
+  .etapes span {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--cream-dark);
+  }
+  .etapes span.faite { background: var(--sage); }
+  .etapes span.active { background: var(--gold); }
+
+  .carte {
+    background: #fff;
+    border: 1px solid var(--cream-dark);
+    padding: 28px 24px;
+  }
+  .carte h1, .carte h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500;
+    color: var(--ink);
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+  }
+  .carte .aide {
+    color: var(--aide);
+    font-size: 0.88rem;
+    margin-bottom: 22px;
+    line-height: 1.55;
+  }
+
+  .champ { margin-bottom: 18px; }
+  .champ label {
+    display: block;
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--sage);
+    margin-bottom: 6px;
+  }
+  .champ .note {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--aide);
+    margin-top: 4px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+  .champ input[type="text"],
+  .champ input[type="email"],
+  .champ input[type="date"],
+  .champ textarea,
+  .champ select {
+    width: 100%;
+    font-family: 'Jost', sans-serif;
+    font-size: 0.95rem;
+    color: var(--ink);
+    background: var(--cream);
+    border: 1px solid var(--cream-dark);
+    padding: 11px 13px;
+  }
+  .champ input:focus, .champ textarea:focus, .champ select:focus {
+    outline: none;
+    border-color: var(--gold);
+  }
+  .champ textarea { resize: vertical; min-height: 70px; }
+
+  .deux-colonnes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  @media (max-width: 480px) {
+    .deux-colonnes { grid-template-columns: 1fr; }
+  }
+
+  .photo-champ {
+    border: 1px dashed var(--cream-dark);
+    padding: 16px;
+    text-align: center;
+  }
+  .photo-champ .apercu {
+    width: 100%;
+    max-width: 200px;
+    margin: 0 auto 12px;
+    background: var(--cream-dark);
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .photo-champ.couple .apercu { aspect-ratio: 640 / 840; }
+  .photo-champ.lieu .apercu { aspect-ratio: 1120 / 520; max-width: 100%; }
+  .photo-champ .apercu img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo-champ .apercu .vide { font-size: 0.72rem; color: var(--aide); padding: 0 10px; }
+  .photo-champ input[type="file"] { display: none; }
+
+  button {
+    font-family: 'Jost', sans-serif;
+    cursor: pointer;
+  }
+  .bouton-principal {
+    display: block;
+    width: 100%;
+    background: var(--sage-dark);
+    color: #fff;
+    border: none;
+    padding: 15px;
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+  .bouton-principal:hover { background: var(--ink); }
+  .bouton-principal:disabled { background: var(--cream-dark); color: var(--aide); cursor: not-allowed; }
+  .bouton-secondaire {
+    background: transparent;
+    border: 1px solid var(--gold);
+    color: var(--gold-texte);
+    padding: 9px 16px;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .bouton-secondaire:hover { background: var(--gold); color: #fff; }
+
+  .message-erreur {
+    background: #fdf0f0;
+    border-left: 3px solid var(--rose-texte);
+    color: var(--ink);
+    padding: 12px 14px;
+    font-size: 0.85rem;
+    margin-bottom: 18px;
+  }
+  .message-erreur.masque { display: none; }
+
+  /* Écran final : les deux liens sont ce que l'acheteur emporte de cette
+     page — ils doivent être impossibles à manquer et faciles à copier. */
+  .lien-final {
+    margin-bottom: 20px;
+  }
+  .lien-final .lbl {
+    font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--sage); display: block; margin-bottom: 6px;
+  }
+  .lien-final .ligne {
+    display: flex; gap: 8px; align-items: stretch;
+  }
+  .lien-final input {
+    flex: 1; font-size: 0.85rem; color: var(--ink);
+    background: var(--cream); border: 1px solid var(--cream-dark);
+    padding: 10px 12px;
+  }
+  .rappel-acces {
+    background: var(--cream);
+    border-left: 3px solid var(--gold);
+    padding: 14px 16px;
+    font-size: 0.85rem;
+    color: var(--ink-2);
+    margin-top: 24px;
+    line-height: 1.55;
+  }
+
+  .chargement { text-align: center; color: var(--aide); font-size: 0.85rem; padding: 20px 0; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="marque">Un Oui, Une Histoire</div>
+    <p>Créez votre faire-part en quelques minutes</p>
+  </header>
+
+  <div class="etapes" id="etapes">
+    <span data-etape="1"></span>
+    <span data-etape="2"></span>
+    <span data-etape="3"></span>
+  </div>
+
+  <div id="message-erreur" class="message-erreur masque"></div>
+
+  <!-- Étape 1 : vérification -->
+  <section class="carte" id="etape-1">
+    <h1>Votre commande</h1>
+    <p class="aide">Retrouvez votre numéro de commande dans le mail de confirmation
+      Etsy, ou dans « Vos achats » sur Etsy.</p>
+
+    <form id="form-verifier">
+      <div class="champ">
+        <label for="v-commande">Numéro de commande Etsy</label>
+        <input type="text" id="v-commande" placeholder="1234567890" required autocomplete="off">
+      </div>
+      <div class="champ">
+        <label for="v-email">Email utilisé pour la commande</label>
+        <input type="email" id="v-email" required autocomplete="email">
+      </div>
+      <button class="bouton-principal" type="submit" id="btn-verifier">Continuer</button>
+    </form>
+  </section>
+
+  <!-- Étape 2 : formulaire -->
+  <section class="carte" id="etape-2" hidden>
+    <h1>Vos informations</h1>
+    <p class="aide">Tout ce qui suit apparaîtra sur votre site. Vous pourrez
+      corriger une information plus tard depuis votre tableau de bord.</p>
+
+    <form id="form-creer">
+      <div class="deux-colonnes">
+        <div class="champ">
+          <label for="c-prenom-1">Votre prénom</label>
+          <input type="text" id="c-prenom-1" maxlength="80" required>
+        </div>
+        <div class="champ">
+          <label for="c-prenom-2">Le prénom de votre partenaire</label>
+          <input type="text" id="c-prenom-2" maxlength="80" required>
+        </div>
+      </div>
+
+      <div class="deux-colonnes">
+        <div class="champ">
+          <label for="c-date-mariage">Date du mariage</label>
+          <input type="date" id="c-date-mariage" required>
+        </div>
+        <div class="champ">
+          <label for="c-date-rsvp">Date limite pour répondre</label>
+          <input type="date" id="c-date-rsvp" required>
+          <span class="note">Avant la date du mariage.</span>
+        </div>
+      </div>
+
+      <div class="champ">
+        <label for="c-animation">Animation à l'ouverture du lien</label>
+        <select id="c-animation">
+          <option value="montgolfiere">Montgolfière</option>
+          <option value="voiture">Voiture</option>
+          <option value="">Aucune — accès direct au faire-part</option>
+        </select>
+      </div>
+
+      <div class="champ">
+        <label for="c-ceremonie-nom">Lieu de la cérémonie <span class="note" style="display:inline">(facultatif)</span></label>
+        <input type="text" id="c-ceremonie-nom" maxlength="200">
+      </div>
+      <div class="champ">
+        <label for="c-ceremonie-adresse">Adresse de la cérémonie <span class="note" style="display:inline">(facultatif)</span></label>
+        <input type="text" id="c-ceremonie-adresse" maxlength="300">
+      </div>
+      <div class="champ">
+        <label for="c-cocktail-nom">Lieu de la réception <span class="note" style="display:inline">(facultatif)</span></label>
+        <input type="text" id="c-cocktail-nom" maxlength="200">
+      </div>
+      <div class="champ">
+        <label for="c-cocktail-adresse">Adresse de la réception <span class="note" style="display:inline">(facultatif)</span></label>
+        <input type="text" id="c-cocktail-adresse" maxlength="300">
+      </div>
+
+      <div class="champ">
+        <label for="c-oui">Message si un invité répond « oui »</label>
+        <textarea id="c-oui" maxlength="1500" required placeholder="Merci, on a hâte de vous voir !"></textarea>
+      </div>
+      <div class="champ">
+        <label for="c-non">Message si un invité répond « non »</label>
+        <textarea id="c-non" maxlength="1500" required placeholder="C'est dommage, merci de nous avoir prévenus."></textarea>
+      </div>
+
+      <div class="deux-colonnes">
+        <div class="photo-champ couple">
+          <label>Photo du couple</label>
+          <div class="apercu" id="apercu-couple"><span class="vide">Portrait — 640 × 840</span></div>
+          <input type="file" id="fichier-couple" accept="image/*">
+          <button type="button" class="bouton-secondaire" id="btn-choisir-couple" style="margin-top:10px">Choisir une photo</button>
+          <p class="note" id="etat-photo-couple" style="margin-top:8px"></p>
+        </div>
+        <div class="photo-champ lieu">
+          <label>Photo du lieu <span class="note" style="display:inline">(facultatif)</span></label>
+          <div class="apercu" id="apercu-lieu"><span class="vide">Paysage — 1120 × 520</span></div>
+          <input type="file" id="fichier-lieu" accept="image/*">
+          <button type="button" class="bouton-secondaire" id="btn-choisir-lieu" style="margin-top:10px">Choisir une photo</button>
+          <p class="note" id="etat-photo-lieu" style="margin-top:8px"></p>
+        </div>
+      </div>
+
+      <button class="bouton-principal" type="submit" id="btn-creer" style="margin-top:12px">Terminer</button>
+    </form>
+  </section>
+
+  <!-- Étape 3 : terminé -->
+  <section class="carte" id="etape-3" hidden>
+    <h1>Votre faire-part est prêt !</h1>
+    <p class="aide">Notez ces deux liens avant de quitter cette page — vous ne les
+      reverrez qu'ici.</p>
+
+    <div class="lien-final">
+      <span class="lbl">Le lien à partager avec vos invités</span>
+      <div class="ligne">
+        <input type="text" id="lien-site" readonly>
+        <button type="button" class="bouton-secondaire" data-copier="lien-site">Copier</button>
+      </div>
+    </div>
+    <div class="lien-final">
+      <span class="lbl">Votre tableau de bord (suivi des réponses)</span>
+      <div class="ligne">
+        <input type="text" id="lien-tableau" readonly>
+        <button type="button" class="bouton-secondaire" data-copier="lien-tableau">Copier</button>
+      </div>
+    </div>
+
+    <div class="rappel-acces">
+      <strong>Avant de pouvoir ouvrir votre tableau de bord</strong>, votre accès
+      doit être activé de notre côté — comptez quelques heures. Vous recevrez
+      un mail dès que c'est fait. En attendant, votre site est déjà en ligne et
+      peut être partagé à vos invités.
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+let COMMANDE_ETSY = '';
+let EMAIL = '';
+
+function afficherEtape(n) {
+  ['etape-1', 'etape-2', 'etape-3'].forEach((id, i) => {
+    $(id).hidden = (i + 1) !== n;
+  });
+  $('etapes').querySelectorAll('span').forEach((s) => {
+    const e = Number(s.dataset.etape);
+    s.classList.toggle('faite', e < n);
+    s.classList.toggle('active', e === n);
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function afficherErreur(texte) {
+  const boite = $('message-erreur');
+  if (!texte) { boite.classList.add('masque'); boite.textContent = ''; return; }
+  boite.textContent = texte;
+  boite.classList.remove('masque');
+  boite.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+
+/* ---------- Étape 1 : vérification ----------
+   Ne crée rien : sert juste à dire tout de suite si le numéro de commande ou
+   l'email ne correspondent pas, avant que l'acheteur ait rempli le formulaire. */
+$('form-verifier').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  afficherErreur('');
+  const btn = $('btn-verifier');
+  btn.disabled = true;
+  btn.textContent = 'Vérification…';
+
+  const commande = $('v-commande').value.trim();
+  const email = $('v-email').value.trim();
+
+  try {
+    const res = await fetch('/api/commande/verifier', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ commande_etsy: commande, email }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.valide) throw new Error(data.erreur || 'Le serveur a répondu ' + res.status);
+
+    COMMANDE_ETSY = commande;
+    EMAIL = email;
+    afficherEtape(2);
+  } catch (err) {
+    afficherErreur(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Continuer';
+  }
+});
+
+
+/* ---------- Étape 2 : photos ----------
+   Même pipeline que le tableau de bord (dashboard/index.html) : le
+   redimensionnement se fait dans le navigateur, jamais côté serveur — on ne
+   détient jamais l'original (CLAUDE.md §4). */
+async function preparerPhoto(fichier, cible) {
+  const { largeur, hauteur, cadrageY = 0.5, qualite = 0.82 } = cible;
+
+  let source;
+  try {
+    source = await createImageBitmap(fichier, { imageOrientation: 'from-image' });
+  } catch {
+    const heic = /heic|heif/i.test(fichier.type) || /\.hei[cf]$/i.test(fichier.name);
+    throw new Error(heic
+      ? "Ce navigateur ne sait pas lire les photos HEIC de l'iPhone. Exportez-la en JPEG, ou envoyez-la depuis un iPhone."
+      : "Ce fichier n'a pas pu être lu comme une image.");
+  }
+
+  const ratioSource = source.width / source.height;
+  const ratioCible = largeur / hauteur;
+  let sW, sH, sx, sy;
+  if (ratioSource > ratioCible) {
+    sH = source.height; sW = sH * ratioCible; sx = (source.width - sW) / 2; sy = 0;
+  } else {
+    sW = source.width; sH = sW / ratioCible; sx = 0; sy = (source.height - sH) * cadrageY;
+  }
+
+  const toile = document.createElement('canvas');
+  toile.width = largeur;
+  toile.height = hauteur;
+  toile.getContext('2d').drawImage(source, sx, sy, sW, sH, 0, 0, largeur, hauteur);
+  source.close();
+
+  const blob = await new Promise((r) => toile.toBlob(r, 'image/jpeg', qualite));
+  if (!blob) throw new Error("La photo n'a pas pu être convertie.");
+  return blob;
+}
+
+const CIBLE_COUPLE = { largeur: 640, hauteur: 840, cadrageY: 0.15 };
+const CIBLE_LIEU = { largeur: 1120, hauteur: 520, cadrageY: 0.40 };
+
+let BLOB_COUPLE = null;
+let BLOB_LIEU = null;
+
+function brancherChampPhoto(kind, cible) {
+  const champ = $(`fichier-${kind}`);
+  const apercu = $(`apercu-${kind}`);
+  const etat = $(`etat-photo-${kind}`);
+  const bouton = $(`btn-choisir-${kind}`);
+
+  bouton.addEventListener('click', () => champ.click());
+
+  champ.addEventListener('change', async () => {
+    const fichier = champ.files?.[0];
+    if (!fichier) return;
+    etat.textContent = 'Préparation…';
+    etat.style.color = '';
+    try {
+      const blob = await preparerPhoto(fichier, cible);
+      if (kind === 'couple') BLOB_COUPLE = blob; else BLOB_LIEU = blob;
+      const url = URL.createObjectURL(blob);
+      apercu.innerHTML = `<img src="${url}" alt="">`;
+      etat.textContent = `Prête · ${Math.round(blob.size / 1024)} Ko`;
+      bouton.textContent = 'Remplacer';
+    } catch (err) {
+      etat.textContent = err.message;
+      etat.style.color = 'var(--rose-texte)';
+    }
+  });
+}
+brancherChampPhoto('couple', CIBLE_COUPLE);
+brancherChampPhoto('lieu', CIBLE_LIEU);
+
+
+/* ---------- Étape 2 : soumission ---------- */
+$('form-creer').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  afficherErreur('');
+
+  if (!BLOB_COUPLE) {
+    afficherErreur('La photo du couple est requise.');
+    return;
+  }
+  const dateMariage = $('c-date-mariage').value;
+  const dateRsvp = $('c-date-rsvp').value;
+  if (dateRsvp >= dateMariage) {
+    afficherErreur('La date limite de réponse doit précéder la date du mariage.');
+    return;
+  }
+
+  const btn = $('btn-creer');
+  btn.disabled = true;
+  btn.textContent = 'Création en cours…';
+
+  const form = new FormData();
+  form.set('commande_etsy', COMMANDE_ETSY);
+  form.set('email', EMAIL);
+  form.set('prenom_1', $('c-prenom-1').value.trim());
+  form.set('prenom_2', $('c-prenom-2').value.trim());
+  form.set('date_mariage', dateMariage);
+  form.set('date_limite_rsvp', dateRsvp);
+  form.set('reponse_generique_oui', $('c-oui').value.trim());
+  form.set('reponse_generique_non', $('c-non').value.trim());
+  form.set('messager', $('c-animation').value);
+  form.set('ceremonie_nom', $('c-ceremonie-nom').value.trim());
+  form.set('ceremonie_adresse', $('c-ceremonie-adresse').value.trim());
+  form.set('cocktail_nom', $('c-cocktail-nom').value.trim());
+  form.set('cocktail_adresse', $('c-cocktail-adresse').value.trim());
+  form.set('photo_couple', BLOB_COUPLE, 'couple.jpg');
+  if (BLOB_LIEU) form.set('photo_lieu', BLOB_LIEU, 'lieu.jpg');
+
+  try {
+    const res = await fetch('/api/commande/creer', { method: 'POST', body: form });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.enregistre) throw new Error(data.erreur || 'Le serveur a répondu ' + res.status);
+
+    $('lien-site').value = data.site_url;
+    $('lien-tableau').value = data.tableau_url;
+    afficherEtape(3);
+  } catch (err) {
+    afficherErreur(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Terminer';
+  }
+});
+
+document.querySelectorAll('[data-copier]').forEach((bouton) => {
+  bouton.addEventListener('click', async () => {
+    const champ = $(bouton.dataset.copier);
+    try {
+      await navigator.clipboard.writeText(champ.value);
+      const texte = bouton.textContent;
+      bouton.textContent = 'Copié !';
+      setTimeout(() => { bouton.textContent = texte; }, 1500);
+    } catch {
+      champ.select();
+    }
+  });
+});
+
+afficherEtape(1);
+</script>
+</body>
+</html>

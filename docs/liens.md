@@ -21,6 +21,7 @@ Ce qui tourne aujourd'hui.
 |---|---|
 | Tableau de bord du couple (Cloudflare Pages) | https://tableau.dev.faire-part.hasakistudio.fr |
 | Suivi admin (à créer côté Cloudflare, cf. `docs/admin.md`) | https://admin.dev.faire-part.hasakistudio.fr |
+| Tunnel self-service (à créer côté Cloudflare, cf. `docs/commande.md`) | https://commande.dev.faire-part.hasakistudio.fr |
 | API Worker (URL directe, utile pour `curl`) | https://faire-part-worker.azouzi-achraf.workers.dev |
 | Faire-part invité, par slug (offre catalogue) | `https://<slug>.dev.faire-part.hasakistudio.fr/<prenom>-<TOKEN>` |
 | Faire-part invité, par domaine dédié (offre sur-mesure) | `https://mariage-<prenoms>.fr/<prenom>-<TOKEN>` |
@@ -43,6 +44,7 @@ correspondantes dans `worker/wrangler.toml` (section `[env.prod]`).
 | Domaine de marque (à acheter) | `unouiunehistoire.fr` — décision CLAUDE.md §8 |
 | Tableau de bord | `tableau.faire-part.hasakistudio.fr` |
 | Suivi admin | `admin.faire-part.hasakistudio.fr` |
+| Tunnel self-service | `commande.faire-part.hasakistudio.fr` |
 | Faire-part invité (catalogue) | `<slug>.faire-part.hasakistudio.fr/<prenom>-<TOKEN>` |
 | Photos R2 (public) | `photos.hasakistudio.fr` |
 | Base D1 | `faire-part-prod` (à créer avec `wrangler d1 create`) |
@@ -79,6 +81,9 @@ de 403 silencieux (cf. commit « Corrige le team domain Access »).
 | [`docs/photos.md`](photos.md) | Formats, HEIC, orientation EXIF |
 | [`docs/rgpd.md`](rgpd.md) | Mention d'information et purge J+90 |
 | [`docs/admin.md`](admin.md) | Vue de suivi admin, périmètre et déploiement |
+| [`docs/etsy.md`](etsy.md) | Contenu des deux fiches Etsy, prix, tags, workflow |
+| [`docs/commande.md`](commande.md) | Tunnel self-service : périmètre, limites connues, déploiement |
+| [`docs/etsy/pdf-fiche-b.md`](etsy/pdf-fiche-b.md) | Contenu du PDF téléchargeable de la Fiche B |
 | [`docs/liens.md`](liens.md) | Ce fichier |
 
 ## Références externes utiles

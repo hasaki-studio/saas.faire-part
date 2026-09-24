@@ -5,8 +5,9 @@
 //   node proxy-local.js              → thème invité, http://localhost:8080/<prenom>-<token>
 //   node proxy-local.js --tableau    → tableau de bord, http://localhost:8081/
 //   node proxy-local.js --admin      → suivi admin, http://localhost:8082/
+//   node proxy-local.js --commande   → tunnel self-service, http://localhost:8083/
 //
-// Les deux modes écoutent sur des ports différents et peuvent tourner ensemble.
+// Les modes écoutent sur des ports différents et peuvent tourner ensemble.
 // Le Host relayé au Worker est « localhost » : c'est ce que déclare le jeu
 // d'essai (domaine_personnalise) et ce qui active la connexion simulée par
 // DEV_EMAIL en mode --tableau (cf. worker/src/index.ts, emailTableau).
@@ -16,15 +17,19 @@ const path = require('path');
 
 const TABLEAU = process.argv.includes('--tableau');
 const ADMIN = process.argv.includes('--admin');
+const COMMANDE = process.argv.includes('--commande');
 const ROOT = ADMIN ? path.join(__dirname, 'admin')
+  : COMMANDE ? path.join(__dirname, 'commande')
   : TABLEAU ? path.join(__dirname, 'dashboard')
   : path.join(__dirname, 'themes', 'botanique');
 const MESSAGERS_ROOT = path.join(__dirname, 'messagers');
 // Le Host est transmis tel quel, donc « localhost ». C'est ce que le jeu
 // d'essai déclare en domaine_personnalise : un seul hôte local pour le
-// faire-part comme pour le tableau de bord, quel que soit le port.
+// faire-part comme pour le tableau de bord, quel que soit le port. Le tunnel
+// commande n'a pas besoin de cette simulation (pas d'Access dessus), mais
+// garder le même Host partout évite un cas particulier de plus.
 const HOST_API = 'localhost';
-const PORT = ADMIN ? 8082 : TABLEAU ? 8081 : 8080;
+const PORT = COMMANDE ? 8083 : ADMIN ? 8082 : TABLEAU ? 8081 : 8080;
 
 http.createServer((req, res) => {
   if (req.url.startsWith('/messagers/')) {
@@ -58,4 +63,4 @@ http.createServer((req, res) => {
   const types = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg' };
   res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream' });
   fs.createReadStream(filePath).pipe(res);
-}).listen(PORT, () => console.log(`Pret sur http://localhost:${PORT}` + (ADMIN ? ' (admin)' : TABLEAU ? ' (tableau de bord)' : '')));
+}).listen(PORT, () => console.log(`Pret sur http://localhost:${PORT}` + (COMMANDE ? ' (commande)' : ADMIN ? ' (admin)' : TABLEAU ? ' (tableau de bord)' : '')));

@@ -39,6 +39,15 @@ type = "ratelimit"
 namespace_id = "1001"
 simple = { limit = 10, period = 60 }
 
+# Même principe, pour le tunnel self-service (commande.*). Namespace séparé de
+# LOOKUP_RATE : une rafale sur l'un des deux publics ne doit jamais entamer le
+# crédit de l'autre.
+[[unsafe.bindings]]
+name = "COMMANDE_RATE"
+type = "ratelimit"
+namespace_id = "1005"
+simple = { limit = 10, period = 60 }
+
 [vars]
 # Domaine partagé pour l'offre catalogue : <slug>.SHARED_DOMAIN. Provisoire sur
 # hasakistudio.fr (déjà possédé, coût 0) ; migration vers une marque dédiée
@@ -88,6 +97,10 @@ DEV_EMAIL = "couple@exemple.fr"
 # pour l'hôte admin en local. Doit figurer dans ADMIN_EMAILS pour être accepté.
 DEV_ADMIN_EMAIL = "azouzi.achraf@gmail.com"
 
+# Tunnel self-service (Fiche B Etsy, CLAUDE.md §8). Pas d'application Access
+# sur cet hôte — voir docs/commande.md pour pourquoi et pour le déploiement.
+COMMANDE_HOSTNAME = "commande.dev.faire-part.hasakistudio.fr"
+
 # ── prod ──────────────────────────────────────────────────────────
 [env.prod]
 
@@ -111,6 +124,12 @@ type = "ratelimit"
 namespace_id = "1002"
 simple = { limit = 10, period = 60 }
 
+[[env.prod.unsafe.bindings]]
+name = "COMMANDE_RATE"
+type = "ratelimit"
+namespace_id = "1006"
+simple = { limit = 10, period = 60 }
+
 [env.prod.vars]
 SHARED_DOMAIN = "faire-part.hasakistudio.fr"
 PHOTOS_PUBLIC_URL = "https://photos.hasakistudio.fr"
@@ -121,4 +140,6 @@ ACCESS_AUD = "REMPLACER_PAR_L_AUD_DE_L_APPLICATION_ACCESS_PROD"
 ADMIN_HOSTNAME = "admin.faire-part.hasakistudio.fr"
 ADMIN_ACCESS_AUD = "REMPLACER_PAR_L_AUD_DE_L_APPLICATION_ACCESS_ADMIN_PROD"
 ADMIN_EMAILS = "azouzi.achraf@gmail.com"
+
+COMMANDE_HOSTNAME = "commande.faire-part.hasakistudio.fr"
 # Pas de DEV_EMAIL ni DEV_ADMIN_EMAIL ici : volontaire.

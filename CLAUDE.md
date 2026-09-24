@@ -379,9 +379,17 @@ d'invités à J+90 (Cron Trigger), limitation de débit sur le lookup public
 (10 req/min/IP), photos du couple, du lieu et aperçu WhatsApp téléversées
 depuis le tableau de bord après redimensionnement navigateur aux formats de
 §7, vue de suivi admin (agrégats par mariage, sans nom d'invité ni message,
-sur son propre hôte derrière une application Access dédiée). Pas encore
-construit : contrat de sous-traitance écrit, assistance dans le tableau
-d'un couple.
+sur son propre hôte derrière une application Access dédiée), tunnel
+self-service (Fiche B Etsy) — un acheteur crée son mariage lui-même depuis
+`commande.dev.faire-part.hasakistudio.fr` à partir d'un code d'activation
+`{numéro de commande Etsy, email}`, sans Cloudflare Access sur cet hôte
+(cf. `docs/commande.md`). Deux pas restent manuels dans ce tunnel : la
+création du code après chaque vente (pas d'intégration Etsy API), et l'ajout
+de l'email à la policy Access du tableau de bord (pas d'intégration avec
+l'API Cloudflare Zero Trust) — les deux sont le lot 3, à construire quand le
+volume le justifie. Pas encore construit : contrat de sous-traitance écrit,
+assistance dans le tableau d'un couple, intégration Etsy API, automatisation
+de la policy Access.
 
 **Attention à ne pas confondre deux tableaux de bord.** Celui qui est en ligne
 aujourd'hui vient du projet `Mon-Mariage` (n8n + NAS) et ne sert qu'au suivi du
@@ -398,10 +406,13 @@ capture d'écran.
 | 0 · Fondations | sept → oct 2026 | en cours |
 | 1 · Pilote sur le mariage Valentine & Achraf (5 juin 2027) | nov → déc 2026 | à venir |
 | 2 · Premier client sur-mesure | janv → fév 2027 | à venir |
-| 3 · Catalogue Etsy | fév → avril 2027 | **conditionnel** |
+| 3 · Catalogue Etsy | oct 2026 → | **en cours** — deux fiches en parallèle |
 
-Le mariage de l'auteur est le **locataire n° 1** : ses ~100 invités testent la chaîne
-complète en décembre, avant qu'un client payant n'y touche.
+Le mariage de l'auteur ne sert **pas** de pilote — il reste suivi ailleurs
+(projet `Mon-Mariage`, n8n + NAS). Conséquence assumée : le premier vrai test
+grandeur nature sera le premier client Etsy, sans filet interne. Contre-mesure :
+la première annonce est volontairement modeste (un seul thème, un seul format,
+prix supérieur à la médiane pour filtrer les acheteurs pressés).
 
 ### Questions non tranchées
 
@@ -420,16 +431,28 @@ complète en décembre, avant qu'un client payant n'y touche.
   levier pour cette gêne-là est l'apparence de la page de connexion (Zero Trust
   > Settings > Custom Pages), pas son nom. Si renommage un jour, groupé avec la
   migration vers le domaine de marque, jamais pendant une saison de RSVP.
-- La phase 3 peut ne jamais avoir lieu : 6 clients à 300 € et 36 à 50 € font le même
-  chiffre, mais le second multiplie par six le support, les litiges et les données de
-  tiers hébergées. Arbitrage prévu en février.
+- ~~La phase 3 peut ne jamais avoir lieu : arbitrage prévu en février.~~
+  **Tranché le 24 septembre 2026 : phase 3 démarre maintenant, en parallèle
+  de la phase 2.** Deux fiches Etsy simultanées : (A) faire-part sur commande,
+  livré à la main sous 24-48 h, prix comparable au sur-mesure ; (B) faire-part
+  générique instantané, PDF livré automatiquement par Etsy, contient un code
+  qui ouvre un site hébergé pour la durée du mariage. **B est du self-service
+  pur** — la règle §9 « ne pas construire le self-service avant d'avoir refusé
+  un client faute de temps » est levée, en connaissance de cause : l'aspect
+  « waouh instantané » de B est ce qui, dans la lecture commerciale du couple,
+  fait la différence sur Etsy contre les templates Canva/PDF de la
+  concurrence. Le risque du démultiplié SAV est adressé par : (1) marges
+  raisonnables imposées par le prix de B, (2) tunnel entièrement automatisé
+  côté client, aucune intervention manuelle par vente, (3) suppression J+90
+  automatique (déjà en place, §5). Automatisation Etsy : Etsy Open API en
+  cible, saisie manuelle du n° de commande en démarrage — on migre quand le
+  volume le justifie.
 - Deuxième thème : construit quand un client le demande et le paie, pas avant.
 
 ---
 
 ## 9. Ce qu'il ne faut pas faire
 
-- Construire le self-service avant d'avoir **refusé un client faute de temps**.
 - Construire une bibliothèque de thèmes avant la première vente.
 - Remettre le NAS dans le chemin critique d'un client.
 - Utiliser `Math.random()` pour quoi que ce soit de sensible.

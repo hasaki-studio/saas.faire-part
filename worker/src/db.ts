@@ -505,3 +505,192 @@ export async function listerMariagesPourAdmin(db: D1Database): Promise<AdminMari
     .all<AdminMariage>();
   return results;
 }
+
+// ── Tunnel self-service (Fiche B Etsy) ────────────────────────────
+//
+// Un acheteur crée son propre mariage à partir d'un code d'activation
+// (cf. schema/008_codes_activation.sql). Ce n'est pas le tableau de bord :
+// il n'y a pas de session Cloudflare Access ici, la preuve de légitimité est
+// la connaissance du couple {numéro de commande, email}, dans le même esprit
+// que le lien à token des invités (§3) — un secret partagé, pas une identité.
+
+export interface CodeActivation {
+  id: string;
+  commande_etsy: string;
+  email: string;
+  cree_le: string;
+  consomme_le: string | null;
+  mariage_id: string | null;
+}
+
+/**
+ * Enregistre une vente après lecture manuelle de la commande Etsy réelle
+ * (cf. docs/etsy.md, workflow post-vente). Refuse un numéro de commande déjà
+ * connu plutôt que de l'écraser silencieusement — une seconde vente avec le
+ * même numéro serait une erreur de saisie de l'admin, jamais un cas légitime.
+ */
+export async function creerCodeActivation(
+  db: D1Database,
+  commandeEtsy: string,
+  email: string,
+): Promise<{ ok: true } | { ok: false; erreur: string }> {
+  const existant = await db
+    .prepare("SELECT 1 FROM codes_activation WHERE commande_etsy = ?1")
+    .bind(commandeEtsy)
+    .first();
+  if (existant) return { ok: false, erreur: "Ce numéro de commande est déjà enregistré." };
+
+  await db
+    .prepare("INSERT INTO codes_activation (id, commande_etsy, email) VALUES (?1, ?2, ?3)")
+    .bind(crypto.randomUUID(), commandeEtsy, email.toLowerCase())
+    .run();
+  return { ok: true };
+}
+
+export async function listerCodesActivation(db: D1Database): Promise<CodeActivation[]> {
+  const { results } = await db
+    .prepare("SELECT * FROM codes_activation ORDER BY cree_le DESC")
+    .all<CodeActivation>();
+  return results;
+}
+
+/**
+ * Vérifie un couple {numéro de commande, email} sans rien modifier. Utilisée
+ * pour l'étape 1 du tunnel, avant de montrer le formulaire — un acheteur qui
+ * se trompe de numéro doit le savoir avant d'avoir rempli quoi que ce soit.
+ *
+ * La comparaison d'email est insensible à la casse (l'admin comme l'acheteur
+ * peuvent capitaliser différemment), jamais au numéro de commande (Etsy ne
+ * mélange pas la casse dans ses numéros, un espace mal recopié doit rester
+ * une erreur signalée plutôt que silencieusement tolérée).
+ */
+export async function verifierCodeActivation(
+  db: D1Database,
+  commandeEtsy: string,
+  email: string,
+): Promise<{ valide: true; id: string } | { valide: false; erreur: string }> {
+  const code = await db
+    .prepare("SELECT * FROM codes_activation WHERE commande_etsy = ?1")
+    .bind(commandeEtsy)
+    .first<CodeActivation>();
+
+  if (!code) return { valide: false, erreur: "Numéro de commande introuvable." };
+  if (code.email !== email.toLowerCase()) {
+    return { valide: false, erreur: "Cet email ne correspond pas à cette commande." };
+  }
+  if (code.consomme_le) {
+    return { valide: false, erreur: "Cette commande a déjà été utilisée pour créer un site." };
+  }
+  return { valide: true, id: code.id };
+}
+
+export interface NouveauMariage {
+  prenom_1: string;
+  prenom_2: string;
+  date_mariage: string;
+  date_limite_rsvp: string;
+  ceremonie_nom: string | null;
+  ceremonie_adresse: string | null;
+  cocktail_nom: string | null;
+  cocktail_adresse: string | null;
+  reponse_generique_oui: string;
+  reponse_generique_non: string;
+  theme: string;
+  messager: string;
+}
+
+/**
+ * Dérive un slug à partir des deux prénoms — même idée que `slugPrenom` pour
+ * les liens d'invités, appliquée deux fois et jointe. Vérifie l'unicité et
+ * ajoute un suffixe numérique en cas de collision : deux couples "Marie &
+ * Paul" un jour donné ne sont pas un cas si rare qu'on puisse l'ignorer.
+ */
+async function genererSlugMariage(db: D1Database, prenom1: string, prenom2: string): Promise<string> {
+  const nettoie = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+  const base = `${nettoie(prenom1)}-${nettoie(prenom2)}` || "mariage";
+  let slug = base;
+  let suffixe = 1;
+  while (await db.prepare("SELECT 1 FROM mariages WHERE slug = ?1").bind(slug).first()) {
+    suffixe += 1;
+    slug = `${base}-${suffixe}`;
+  }
+  return slug;
+}
+
+/**
+ * Crée un mariage depuis le tunnel self-service et consomme le code
+ * d'activation dans la même opération logique. `codeId` vient d'un appel à
+ * `verifierCodeActivation` réussi juste avant — revérifié ici par le WHERE
+ * `consomme_le IS NULL`, pour qu'un double clic sur "Terminer" ne crée pas
+ * deux mariages pour la même vente (cf. meta.changes).
+ *
+ * `email_proprietaire` est renseigné tout de suite : c'est ce qui rattachera
+ * le compte Access de l'acheteur à ce mariage, le jour où son email aura été
+ * ajouté à la policy Allow (étape manuelle pour l'instant, cf. docs/commande.md).
+ *
+ * `supprimer_le` est calculé en SQL (`date(?, '+90 days')`), pas en JS : même
+ * expression que celle utilisée par la purge (mariagesAPurger), une seule
+ * source de vérité pour "90 jours après le mariage".
+ */
+export async function creerMariageSelfService(
+  db: D1Database,
+  codeId: string,
+  email: string,
+  data: NouveauMariage,
+): Promise<{ ok: true; id: string; slug: string } | { ok: false; erreur: string }> {
+  const id = crypto.randomUUID();
+  const slug = await genererSlugMariage(db, data.prenom_1, data.prenom_2);
+
+  await db
+    .prepare(
+      `INSERT INTO mariages (
+         id, slug, theme, messager, prenom_1, prenom_2, date_mariage, date_limite_rsvp,
+         ceremonie_nom, ceremonie_adresse, cocktail_nom, cocktail_adresse,
+         reponse_generique_oui, reponse_generique_non, email_proprietaire, supprimer_le
+       ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, date(?7, '+90 days'))`,
+    )
+    .bind(
+      id,
+      slug,
+      data.theme,
+      data.messager,
+      data.prenom_1,
+      data.prenom_2,
+      data.date_mariage,
+      data.date_limite_rsvp,
+      data.ceremonie_nom,
+      data.ceremonie_adresse,
+      data.cocktail_nom,
+      data.cocktail_adresse,
+      data.reponse_generique_oui,
+      data.reponse_generique_non,
+      email.toLowerCase(),
+    )
+    .run();
+
+  // Consommation atomique du code : le WHERE refait la vérification pour
+  // qu'un appel concurrent (double clic, deux onglets) ne passe qu'une fois.
+  const { meta } = await db
+    .prepare(
+      "UPDATE codes_activation SET consomme_le = datetime('now'), mariage_id = ?1 WHERE id = ?2 AND consomme_le IS NULL",
+    )
+    .bind(id, codeId)
+    .run();
+
+  if ((meta.changes ?? 0) === 0) {
+    // Le code a été consommé entre la vérification et cet appel (concurrence) :
+    // on retire le mariage qu'on vient d'insérer plutôt que de laisser un
+    // second mariage orphelin pour la même vente.
+    await db.prepare("DELETE FROM mariages WHERE id = ?1").bind(id).run();
+    return { ok: false, erreur: "Cette commande vient d'être utilisée. Rafraîchissez la page." };
+  }
+
+  return { ok: true, id, slug };
+}
