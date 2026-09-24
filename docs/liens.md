@@ -79,6 +79,8 @@ de 403 silencieux (cf. commit « Corrige le team domain Access »).
 | [`docs/photos.md`](photos.md) | Formats, HEIC, orientation EXIF |
 | [`docs/rgpd.md`](rgpd.md) | Mention d'information et purge J+90 |
 | [`docs/admin.md`](admin.md) | Vue de suivi admin, périmètre et déploiement |
+| [`docs/etsy.md`](etsy.md) | Contenu des deux fiches Etsy, prix, tags, workflow |
+| [`docs/etsy/pdf-fiche-b.md`](etsy/pdf-fiche-b.md) | Contenu du PDF téléchargeable de la Fiche B |
 | [`docs/liens.md`](liens.md) | Ce fichier |
 
 ## Références externes utiles
