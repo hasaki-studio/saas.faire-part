@@ -398,10 +398,13 @@ capture d'écran.
 | 0 · Fondations | sept → oct 2026 | en cours |
 | 1 · Pilote sur le mariage Valentine & Achraf (5 juin 2027) | nov → déc 2026 | à venir |
 | 2 · Premier client sur-mesure | janv → fév 2027 | à venir |
-| 3 · Catalogue Etsy | fév → avril 2027 | **conditionnel** |
+| 3 · Catalogue Etsy | oct 2026 → | **en cours** — deux fiches en parallèle |
 
-Le mariage de l'auteur est le **locataire n° 1** : ses ~100 invités testent la chaîne
-complète en décembre, avant qu'un client payant n'y touche.
+Le mariage de l'auteur ne sert **pas** de pilote — il reste suivi ailleurs
+(projet `Mon-Mariage`, n8n + NAS). Conséquence assumée : le premier vrai test
+grandeur nature sera le premier client Etsy, sans filet interne. Contre-mesure :
+la première annonce est volontairement modeste (un seul thème, un seul format,
+prix supérieur à la médiane pour filtrer les acheteurs pressés).
 
 ### Questions non tranchées
 
@@ -420,16 +423,28 @@ complète en décembre, avant qu'un client payant n'y touche.
   levier pour cette gêne-là est l'apparence de la page de connexion (Zero Trust
   > Settings > Custom Pages), pas son nom. Si renommage un jour, groupé avec la
   migration vers le domaine de marque, jamais pendant une saison de RSVP.
-- La phase 3 peut ne jamais avoir lieu : 6 clients à 300 € et 36 à 50 € font le même
-  chiffre, mais le second multiplie par six le support, les litiges et les données de
-  tiers hébergées. Arbitrage prévu en février.
+- ~~La phase 3 peut ne jamais avoir lieu : arbitrage prévu en février.~~
+  **Tranché le 24 septembre 2026 : phase 3 démarre maintenant, en parallèle
+  de la phase 2.** Deux fiches Etsy simultanées : (A) faire-part sur commande,
+  livré à la main sous 24-48 h, prix comparable au sur-mesure ; (B) faire-part
+  générique instantané, PDF livré automatiquement par Etsy, contient un code
+  qui ouvre un site hébergé pour la durée du mariage. **B est du self-service
+  pur** — la règle §9 « ne pas construire le self-service avant d'avoir refusé
+  un client faute de temps » est levée, en connaissance de cause : l'aspect
+  « waouh instantané » de B est ce qui, dans la lecture commerciale du couple,
+  fait la différence sur Etsy contre les templates Canva/PDF de la
+  concurrence. Le risque du démultiplié SAV est adressé par : (1) marges
+  raisonnables imposées par le prix de B, (2) tunnel entièrement automatisé
+  côté client, aucune intervention manuelle par vente, (3) suppression J+90
+  automatique (déjà en place, §5). Automatisation Etsy : Etsy Open API en
+  cible, saisie manuelle du n° de commande en démarrage — on migre quand le
+  volume le justifie.
 - Deuxième thème : construit quand un client le demande et le paie, pas avant.
 
 ---
 
 ## 9. Ce qu'il ne faut pas faire
 
-- Construire le self-service avant d'avoir **refusé un client faute de temps**.
 - Construire une bibliothèque de thèmes avant la première vente.
 - Remettre le NAS dans le chemin critique d'un client.
 - Utiliser `Math.random()` pour quoi que ce soit de sensible.
