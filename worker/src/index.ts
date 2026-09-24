@@ -3,6 +3,7 @@ import {
   type Origine,
   getAccompagnants,
   getConviveByToken,
+  ecrireGroupeConvive,
   ecrireMessagePerso,
   ecrirePhotoKey,
   ecrirePhotoMariage,
@@ -355,6 +356,34 @@ async function handleEcrireMessage(request: Request, env: Env, conviveId: string
   if (!ok) return json({ erreur: "Invité introuvable" }, 404);
 
   return json({ enregistre: true, a_message: Boolean(message) });
+}
+
+async function handleAssignerGroupe(request: Request, env: Env, conviveId: string): Promise<Response> {
+  const mariage = await mariageDuCouple(request, env);
+  if (mariage instanceof Response) return mariage;
+  if (!origineLegitime(request, env)) return json({ erreur: "Origine refusée" }, 403);
+
+  let payload: unknown;
+  try {
+    payload = await request.json();
+  } catch {
+    return json({ erreur: "JSON invalide" }, 400);
+  }
+  const brut = (payload as { groupe?: unknown }).groupe;
+  if (brut != null && typeof brut !== "string") return json({ erreur: "Groupe invalide" }, 400);
+
+  // Vider = retirer du groupe : '' et NULL disent la même chose en base, comme
+  // pour le message perso (cf. handleEcrireMessage). Un nom trop long est
+  // refusé, c'est le même plafond que celui appliqué à l'import (60 caractères).
+  const nom = typeof brut === "string" ? brut.trim() : "";
+  if (nom.length > 60) {
+    return json({ erreur: "Nom de groupe trop long (60 caractères maximum)." }, 400);
+  }
+
+  const ok = await ecrireGroupeConvive(env.DB, mariage.id, conviveId, nom || null);
+  if (!ok) return json({ erreur: "Invité introuvable" }, 404);
+
+  return json({ enregistre: true, groupe: nom || null });
 }
 
 async function handleEcrireGroupe(request: Request, env: Env, groupe: string): Promise<Response> {
@@ -860,6 +889,11 @@ export default {
       const message = url.pathname.match(/^\/api\/tableau\/convives\/([^/]+)\/message$/);
       if (message && request.method === "PUT") {
         return handleEcrireMessage(request, env, decodeURIComponent(message[1]!));
+      }
+
+      const groupeConvive = url.pathname.match(/^\/api\/tableau\/convives\/([^/]+)\/groupe$/);
+      if (groupeConvive && request.method === "PUT") {
+        return handleAssignerGroupe(request, env, decodeURIComponent(groupeConvive[1]!));
       }
 
       if (url.pathname === "/api/tableau/convives/import" && request.method === "POST") {
