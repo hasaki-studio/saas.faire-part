@@ -248,6 +248,29 @@ export async function ecrirePhotoKey(
     .run();
 }
 
+/**
+ * Les trois emplacements photo du mariage sont dans la même table, sur la
+ * même ligne : une fonction unique paramétrée évite trois `UPDATE` presque
+ * identiques et empêche qu'un nouvel emplacement soit ajouté sans passer par
+ * ce garde-fou. Le nom de colonne est fermé par le type ; l'id du mariage
+ * vient de l'identité authentifiée, pas d'un paramètre du navigateur.
+ */
+export type PhotoMariage = "photo_couple_key" | "cocktail_photo_key" | "og_image_key";
+
+export async function ecrirePhotoMariage(
+  db: D1Database,
+  mariageId: string,
+  colonne: PhotoMariage,
+  photoKey: string | null,
+): Promise<void> {
+  // Interpolation contrôlée : `colonne` ne peut valoir que les trois chaînes
+  // du type, et D1 ne sait pas paramétrer un nom de colonne.
+  await db
+    .prepare(`UPDATE mariages SET ${colonne} = ?1 WHERE id = ?2`)
+    .bind(photoKey, mariageId)
+    .run();
+}
+
 export interface InviteImporte {
   prenom: string;
   nom: string;

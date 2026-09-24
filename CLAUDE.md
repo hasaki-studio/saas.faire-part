@@ -373,8 +373,9 @@ Actions, import de la liste par le couple lui-même depuis le tableau de bord
 `tableau.dev.faire-part.hasakistudio.fr` derrière Cloudflare Access, mention
 d'information RGPD sur le formulaire RSVP, effacement automatique des données
 d'invités à J+90 (Cron Trigger), limitation de débit sur le lookup public
-(10 req/min/IP). Pas encore construit : photos du couple et du lieu, contrat
-de sous-traitance écrit.
+(10 req/min/IP), photos du couple, du lieu et aperçu WhatsApp téléversées
+depuis le tableau de bord après redimensionnement navigateur aux formats de
+§7. Pas encore construit : contrat de sous-traitance écrit.
 
 **Attention à ne pas confondre deux tableaux de bord.** Celui qui est en ligne
 aujourd'hui vient du projet `Mon-Mariage` (n8n + NAS) et ne sert qu'au suivi du

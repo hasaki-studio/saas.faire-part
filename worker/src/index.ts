@@ -5,6 +5,8 @@ import {
   getConviveByToken,
   ecrireMessagePerso,
   ecrirePhotoKey,
+  ecrirePhotoMariage,
+  type PhotoMariage,
   ecrireReponseGroupe,
   getConviveParId,
   importerConvives,
@@ -382,6 +384,71 @@ async function handleEcrireGroupe(request: Request, env: Env, groupe: string): P
 // envoi qui ne viendrait pas de notre page.
 const MAX_PHOTO_OCTETS = 2 * 1024 * 1024;
 
+// Les trois emplacements photo d'un mariage. Ce n'est pas une paramétrisation
+// libre : chaque emplacement a son plafond de poids (l'og:image de WhatsApp est
+// nettement plus contraint, cf. CLAUDE.md §7), son préfixe de clé, et sa colonne
+// dans mariages. Une table ici évite trois handlers copiés-collés, et un kind
+// inconnu ne trouve pas d'entrée — donc échoue proprement.
+const PHOTOS_MARIAGE = {
+  couple: { colonne: "photo_couple_key", prefixe: "couple", plafond: 2 * 1024 * 1024 },
+  lieu:   { colonne: "cocktail_photo_key", prefixe: "lieu",   plafond: 2 * 1024 * 1024 },
+  // 700 Ko : WhatsApp coupe l'aperçu au-delà de 600 Ko (§7), le navigateur vise
+  // sous ce seuil ; la marge sert de garde-fou contre un envoi qui ne viendrait
+  // pas de notre page, elle ne récupère pas un mauvais réglage.
+  og:     { colonne: "og_image_key",       prefixe: "og",     plafond: 700 * 1024  },
+} as const satisfies Record<string, { colonne: PhotoMariage; prefixe: string; plafond: number }>;
+type KindPhoto = keyof typeof PHOTOS_MARIAGE;
+
+/**
+ * Téléverse ou supprime une des trois photos du mariage. Même conception que
+ * handlePhoto : le kind vient de la route (fermé par le type), la clé R2 est
+ * calculée côté serveur — le navigateur ne choisit jamais où écrire, sans quoi
+ * il pourrait écraser la photo d'un autre —, et l'objet R2 est effacé après
+ * l'écriture DB pour ne pas laisser une ligne pointer vers un objet disparu.
+ */
+async function handlePhotoMariage(request: Request, env: Env, kind: KindPhoto): Promise<Response> {
+  const mariage = await mariageDuCouple(request, env);
+  if (mariage instanceof Response) return mariage;
+  if (!origineLegitime(request, env)) return json({ erreur: "Origine refusée" }, 403);
+
+  const emplacement = PHOTOS_MARIAGE[kind];
+  const ancienne = mariage[emplacement.colonne];
+
+  if (request.method === "DELETE") {
+    await ecrirePhotoMariage(env.DB, mariage.id, emplacement.colonne, null);
+    if (ancienne) await env.PHOTOS.delete(ancienne);
+    return json({ enregistre: true, photo_url: null });
+  }
+
+  if (request.headers.get("content-type") !== "image/jpeg") {
+    return json({ erreur: "Seul le JPEG est accepté." }, 400);
+  }
+
+  const octets = await request.arrayBuffer();
+  if (octets.byteLength === 0) return json({ erreur: "Image vide" }, 400);
+  if (octets.byteLength > emplacement.plafond) {
+    return json({ erreur: "Image trop lourde." }, 400);
+  }
+
+  // Un suffixe aléatoire à chaque remplacement : sinon les caches — WhatsApp
+  // pour l'og:image en particulier — servent la précédente indéfiniment.
+  const cle = `mariage/${mariage.slug}/${emplacement.prefixe}-${genToken(6)}.jpg`;
+
+  await env.PHOTOS.put(cle, octets, {
+    httpMetadata: {
+      contentType: "image/jpeg",
+      cacheControl: "public, max-age=31536000, immutable",
+    },
+  });
+  await ecrirePhotoMariage(env.DB, mariage.id, emplacement.colonne, cle);
+
+  // Après la base : un échec ici laisse un objet orphelin, moins grave qu'une
+  // ligne pointant vers un objet supprimé (même arbitrage qu'ailleurs).
+  if (ancienne && ancienne !== cle) await env.PHOTOS.delete(ancienne);
+
+  return json({ enregistre: true, photo_url: photoUrl(env, cle) });
+}
+
 async function handlePhoto(request: Request, env: Env, conviveId: string): Promise<Response> {
   const mariage = await mariageDuCouple(request, env);
   if (mariage instanceof Response) return mariage;
@@ -568,6 +635,11 @@ async function handleTableauMariage(request: Request, env: Env): Promise<Respons
       date_limite_rsvp: mariage.date_limite_rsvp,
       slug: mariage.slug,
       domaine: mariage.domaine_personnalise ?? `${mariage.slug}.${env.SHARED_DOMAIN}`,
+      photos: {
+        couple: photoUrl(env, mariage.photo_couple_key),
+        lieu:   photoUrl(env, mariage.cocktail_photo_key),
+        og:     photoUrl(env, mariage.og_image_key),
+      },
     },
   });
 }
@@ -740,6 +812,17 @@ export default {
       const groupe = url.pathname.match(/^\/api\/tableau\/groupes\/([^/]+)\/message$/);
       if (groupe && request.method === "PUT") {
         return handleEcrireGroupe(request, env, decodeURIComponent(groupe[1]!));
+      }
+
+      // Trois emplacements photo du mariage. Le kind vient de l'URL et est
+      // vérifié contre PHOTOS_MARIAGE : autre chose que couple/lieu/og tombe
+      // en 404 comme n'importe quelle URL inconnue.
+      const photoMariage = url.pathname.match(/^\/api\/tableau\/mariage\/photo\/([^/]+)$/);
+      if (photoMariage && (request.method === "PUT" || request.method === "DELETE")) {
+        const kind = decodeURIComponent(photoMariage[1]!);
+        if (kind in PHOTOS_MARIAGE) {
+          return handlePhotoMariage(request, env, kind as KindPhoto);
+        }
       }
     }
 

@@ -378,6 +378,57 @@
     display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
     margin-top: 10px; font-size: 0.74rem; color: var(--aide);
   }
+
+  /* Trois emplacements photo du mariage : chacun a son ratio parce que le
+     thème `botanique` a un cadrage différent pour chacun (CLAUDE.md §7). Les
+     dimensions du cadre respectent ces ratios : le couple voit exactement le
+     format de l'image qu'il enverra. */
+  .photos-mariage { display: grid; gap: 22px; }
+  .photo-mariage {
+    display: grid;
+    grid-template-columns: minmax(0, 180px) 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+  .photo-mariage .apercu {
+    background: var(--cream-dark); overflow: hidden;
+    border: 1px solid rgba(201, 169, 110, 0.4);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .photo-mariage .apercu img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo-mariage .apercu .vide { font-size: 0.72rem; color: var(--aide); text-align: center; padding: 0 10px; }
+  /* Ratios calqués sur §7 : 640×840 pour le couple, 1120×520 pour le lieu,
+     1200×630 pour l'aperçu WhatsApp. object-position réplique aussi le CSS
+     du thème, pour que la vignette montre ce que verra l'invité. */
+  .photo-mariage.couple .apercu { aspect-ratio: 640 / 840; }
+  .photo-mariage.couple .apercu img { object-position: center 15%; }
+  .photo-mariage.lieu   .apercu { aspect-ratio: 1120 / 520; }
+  .photo-mariage.lieu   .apercu img { object-position: center 40%; }
+  .photo-mariage.og     .apercu { aspect-ratio: 1200 / 630; }
+
+  .photo-mariage .infos h3 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 500; font-size: 1.15rem; margin: 0 0 4px; color: var(--ink);
+  }
+  .photo-mariage .infos p {
+    font-size: 0.82rem; color: var(--aide); margin: 0 0 12px; line-height: 1.55;
+  }
+  .photo-mariage .actions {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    font-size: 0.78rem;
+  }
+  .photo-mariage input[type="file"] { display: none; }
+  .photo-mariage .etat-photo {
+    display: block; font-size: 0.72rem; color: var(--aide); margin-top: 8px;
+    line-height: 1.5;
+  }
+  .photo-mariage .etat-photo.ok { color: var(--sage-dark); }
+  .photo-mariage .etat-photo.ko { color: var(--rose-texte); }
+  @media (max-width: 520px) {
+    .photo-mariage { grid-template-columns: 1fr; }
+    .photo-mariage .apercu { max-width: 260px; }
+  }
+
   .editeur .etat { margin-left: auto; }
   .editeur .etat.ok { color: var(--sage-dark); }
   .editeur .etat.ko { color: var(--rose-texte); }
@@ -470,6 +521,62 @@
 
         <div id="import-apercu"></div>
       </div>
+    <div class="card" style="margin-bottom:20px">
+      <h2>Photos du mariage</h2>
+      <p class="aide">Trois emplacements, chacun avec son propre cadrage. Vos
+        photos sont redimensionnées ici, dans votre navigateur, avant l'envoi —
+        elles ne quittent votre téléphone qu'au bon format et sans données
+        cachées (localisation, appareil).</p>
+
+      <div class="photos-mariage" id="photos-mariage">
+        <div class="photo-mariage couple" data-kind="couple">
+          <div class="apercu"><span class="vide">Aucune photo</span></div>
+          <div class="infos">
+            <h3>Photo du couple</h3>
+            <p>Portrait, s'affiche au-dessus de vos prénoms. Choisissez une
+              photo où vos visages sont plutôt hauts dans l'image.</p>
+            <div class="actions">
+              <input type="file" accept="image/*">
+              <button class="small" type="button" data-choisir>Choisir</button>
+              <button class="small" type="button" data-retirer hidden>Retirer</button>
+            </div>
+            <span class="etat-photo"></span>
+          </div>
+        </div>
+
+        <div class="photo-mariage lieu" data-kind="lieu">
+          <div class="apercu"><span class="vide">Aucune photo</span></div>
+          <div class="infos">
+            <h3>Photo du lieu</h3>
+            <p>Format panoramique, dans la section infos pratiques. Une vue du
+              domaine, de la salle, ou du jardin — de préférence sans monde.</p>
+            <div class="actions">
+              <input type="file" accept="image/*">
+              <button class="small" type="button" data-choisir>Choisir</button>
+              <button class="small" type="button" data-retirer hidden>Retirer</button>
+            </div>
+            <span class="etat-photo"></span>
+          </div>
+        </div>
+
+        <div class="photo-mariage og" data-kind="og">
+          <div class="apercu"><span class="vide">Aucune photo</span></div>
+          <div class="infos">
+            <h3>Aperçu WhatsApp</h3>
+            <p>L'image qui apparaît quand vous partagez le lien sur WhatsApp,
+              Messenger ou Instagram. Format 16:9. Sans elle, votre photo du
+              couple est utilisée par défaut, mal cadrée.</p>
+            <div class="actions">
+              <input type="file" accept="image/*">
+              <button class="small" type="button" data-choisir>Choisir</button>
+              <button class="small" type="button" data-retirer hidden>Retirer</button>
+            </div>
+            <span class="etat-photo"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="card" style="margin-bottom:20px">
       <h2>Messages personnalisés</h2>
       <p class="msg-titre" id="msg-texte"></p>
@@ -919,46 +1026,89 @@ function brancherEditeur(zone, chemin, onEnregistre, focus = true) {
    détenir l'original — 4 Mo porteurs des EXIF, donc des coordonnées GPS du
    domicile d'un tiers — et pour ne pas faire monter trente fois 4 Mo depuis un
    téléphone, ce qui fait abandonner la séance de saisie. */
-const PHOTO_COTE = 400;      // fichier, pour un affichage 180 × 180 (cf. §7)
-const PHOTO_QUALITE = 0.82;
-const PHOTO_CADRAGE = 0.25;  // 0 = haut, 1 = bas — le visage un peu vers le haut
-
 /**
- * Décode, recadre en carré et réencode en JPEG. Retourne un Blob.
- * `imageOrientation: 'from-image'` est ce qui évite la photo couchée : une image
- * de téléphone dessinée dans un canvas sans tenir compte de son EXIF ressort
+ * Décode, recadre au ratio cible et réencode en JPEG. Retourne un Blob.
+ *
+ * `imageOrientation: 'from-image'` évite la photo couchée : une image de
+ * téléphone dessinée dans un canvas sans tenir compte de son EXIF ressort
  * pivotée (§7).
+ *
+ * Le crop suit `object-fit: cover` avec un `object-position` centré
+ * horizontalement et paramétré verticalement — même règle que le CSS du
+ * thème, pour que la vignette du tableau de bord montre exactement ce que
+ * verra l'invité. Si un `poidsMaxOctets` est donné (aperçu WhatsApp, borné
+ * à 600 Ko par §7), la qualité descend jusqu'à passer sous le seuil.
  */
-async function preparerPhoto(fichier) {
+async function preparerPhoto(fichier, cible) {
+  const { largeur, hauteur, cadrageY = 0.5, qualite = 0.82, poidsMaxOctets } = cible;
+
   let source;
   try {
     source = await createImageBitmap(fichier, { imageOrientation: 'from-image' });
   } catch {
-    // Le canvas ne réencode que ce que le navigateur sait décoder. Safari décode
-    // le HEIC, Chrome et Firefox sur ordinateur non : sans ce message, le bouton
-    // semblerait simplement ne rien faire.
+    // Le canvas ne réencode que ce que le navigateur sait décoder. Safari
+    // décode le HEIC, Chrome et Firefox sur ordinateur non : sans ce message,
+    // le bouton semblerait simplement ne rien faire.
     const heic = /heic|heif/i.test(fichier.type) || /\.hei[cf]$/i.test(fichier.name);
     throw new Error(heic
       ? "Ce navigateur ne sait pas lire les photos HEIC de l'iPhone. Exportez-la en JPEG, ou envoyez-la depuis un iPhone."
       : "Ce fichier n'a pas pu être lu comme une image.");
   }
 
-  // Carré centré horizontalement, décalé vers le haut : même cadrage que le
-  // médaillon du faire-part, pour que le couple voie ce que l'invité verra.
-  const cote = Math.min(source.width, source.height);
-  const sx = (source.width - cote) / 2;
-  const sy = (source.height - cote) * PHOTO_CADRAGE;
+  // « cover » : on garde le ratio cible, on rogne ce qui dépasse. Deux cas
+  // symétriques selon que la source est plus large ou plus haute que la cible.
+  const ratioSource = source.width / source.height;
+  const ratioCible = largeur / hauteur;
+  let sW, sH, sx, sy;
+  if (ratioSource > ratioCible) {
+    // Source trop large : on garde toute la hauteur, on rogne à gauche/droite.
+    sH = source.height;
+    sW = sH * ratioCible;
+    sx = (source.width - sW) / 2;
+    sy = 0;
+  } else {
+    // Source trop haute : on garde toute la largeur, on rogne haut/bas.
+    sW = source.width;
+    sH = sW / ratioCible;
+    sx = 0;
+    sy = (source.height - sH) * cadrageY;
+  }
 
   const toile = document.createElement('canvas');
-  toile.width = PHOTO_COTE;
-  toile.height = PHOTO_COTE;
-  toile.getContext('2d').drawImage(source, sx, sy, cote, cote, 0, 0, PHOTO_COTE, PHOTO_COTE);
+  toile.width = largeur;
+  toile.height = hauteur;
+  toile.getContext('2d').drawImage(source, sx, sy, sW, sH, 0, 0, largeur, hauteur);
   source.close();
 
-  const blob = await new Promise((r) => toile.toBlob(r, 'image/jpeg', PHOTO_QUALITE));
+  // Encodage avec repli si un plafond de poids est demandé. Cinq essais
+  // suffisent en pratique — au-delà l'image est fondamentalement trop lourde
+  // pour ces dimensions.
+  let blob = await new Promise((r) => toile.toBlob(r, 'image/jpeg', qualite));
   if (!blob) throw new Error("La photo n'a pas pu être convertie.");
+
+  if (poidsMaxOctets) {
+    let q = qualite;
+    for (let i = 0; i < 5 && blob.size > poidsMaxOctets; i++) {
+      q = Math.max(0.4, q - 0.1);
+      blob = await new Promise((r) => toile.toBlob(r, 'image/jpeg', q));
+      if (!blob) throw new Error("La photo n'a pas pu être convertie.");
+    }
+    if (blob.size > poidsMaxOctets) {
+      throw new Error("Cette image ne rentre pas sous 600 Ko à ces dimensions. Choisissez-en une plus simple.");
+    }
+  }
   return blob;
 }
+
+/* Dimensions cibles par emplacement — cf. CLAUDE.md §7. Les ratios sont ceux
+   qui font que le fichier envoyé matche exactement le cadre où il sera
+   affiché ; le cadrage vertical réplique object-position du thème. */
+const CIBLE_PHOTO_INVITE = { largeur: 400, hauteur: 400, cadrageY: 0.25 };
+const CIBLES_PHOTOS_MARIAGE = {
+  couple: { largeur: 640,  hauteur: 840, cadrageY: 0.15 },
+  lieu:   { largeur: 1120, hauteur: 520, cadrageY: 0.40 },
+  og:     { largeur: 1200, hauteur: 630, cadrageY: 0.30, poidsMaxOctets: 600 * 1024 },
+};
 
 function brancherPhoto(zone, convive) {
   const champ = zone.querySelector('input[type="file"]');
@@ -990,7 +1140,7 @@ function brancherPhoto(zone, convive) {
 
     try {
       dire('Préparation…');
-      const blob = await preparerPhoto(fichier);
+      const blob = await preparerPhoto(fichier, CIBLE_PHOTO_INVITE);
       dire('Envoi…');
       const res = await fetch(`/api/tableau/convives/${encodeURIComponent(convive.id)}/photo`, {
         method: 'PUT',
@@ -1026,6 +1176,90 @@ function brancherPhoto(zone, convive) {
   });
 
   majAffichage();
+}
+
+/* ---------- Photos du mariage ----------
+   Trois emplacements (couple, lieu, aperçu WhatsApp), même mécanique que la
+   photo par invité, dimensions et cadrages différents (cf. CIBLES_PHOTOS_MARIAGE
+   et CLAUDE.md §7).
+
+   L'URL de la photo actuelle vit dans MARIAGE.photos ; l'écrire à jour après
+   chaque enregistrement est ce qui fait que l'aperçu se rafraîchit sans
+   recharger la page. */
+function brancherPhotosMariage() {
+  const racine = $('photos-mariage');
+  if (!racine) return;
+
+  racine.querySelectorAll('.photo-mariage').forEach((zone) => {
+    const kind = zone.dataset.kind;
+    const cible = CIBLES_PHOTOS_MARIAGE[kind];
+    const apercu = zone.querySelector('.apercu');
+    const etat = zone.querySelector('.etat-photo');
+    const champ = zone.querySelector('input[type="file"]');
+    const choisir = zone.querySelector('[data-choisir]');
+    const retirer = zone.querySelector('[data-retirer]');
+
+    const urlActuelle = () => (MARIAGE.photos || {})[kind] || null;
+
+    const majAffichage = () => {
+      const url = urlActuelle();
+      apercu.innerHTML = url
+        ? `<img src="${esc(url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'), { className: 'vide', textContent: 'Photo introuvable' }))">`
+        : '<span class="vide">Aucune photo</span>';
+      choisir.textContent = url ? 'Remplacer' : 'Choisir';
+      retirer.hidden = !url;
+    };
+
+    const dire = (texte, classe) => {
+      etat.textContent = texte;
+      etat.className = 'etat-photo' + (classe ? ' ' + classe : '');
+    };
+
+    const majMemoire = (url) => {
+      MARIAGE.photos = MARIAGE.photos || {};
+      MARIAGE.photos[kind] = url;
+    };
+
+    choisir.addEventListener('click', () => champ.click());
+
+    champ.addEventListener('change', async () => {
+      const fichier = champ.files?.[0];
+      if (!fichier) return;
+      champ.value = '';
+      try {
+        dire('Préparation…');
+        const blob = await preparerPhoto(fichier, cible);
+        dire('Envoi…');
+        const res = await fetch(`/api/tableau/mariage/photo/${kind}`, {
+          method: 'PUT',
+          headers: { 'content-type': 'image/jpeg' },
+          body: blob,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.erreur || 'Le serveur a répondu ' + res.status);
+        majMemoire(data.photo_url);
+        majAffichage();
+        dire(`Enregistrée · ${Math.round(blob.size / 1024)} Ko`, 'ok');
+      } catch (e) {
+        dire(e.message, 'ko');
+      }
+    });
+
+    retirer.addEventListener('click', async () => {
+      dire('Suppression…');
+      try {
+        const res = await fetch(`/api/tableau/mariage/photo/${kind}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Le serveur a répondu ' + res.status);
+        majMemoire(null);
+        majAffichage();
+        dire('Photo retirée', 'ok');
+      } catch (e) {
+        dire(e.message, 'ko');
+      }
+    });
+
+    majAffichage();
+  });
 }
 
 function ouvrirEditeurGroupe(nom) {
@@ -1765,6 +1999,7 @@ async function charger() {
     kpis();
     donut();
     regimes();
+    brancherPhotosMariage();
     messages();
     chipsGroupes();
     fiches();
