@@ -1490,6 +1490,12 @@ async function chargerFaireArt() {
   let data;
   try {
     const res = await fetch(`${API_BASE}/api/faire-part/${encodeURIComponent(TOKEN)}`);
+    // fetch ne lève pas sur un 429 ou un 500 : sans ce contrôle, le code
+    // continue et tente d'écrire des prénoms sur `data.mariage.prenom_1`
+    // — TypeError silencieux, voile jamais retiré, page figée sur le
+    // messager. Traité comme une erreur réseau : le contenu par défaut du
+    // HTML est alors ce que voit l'invité.
+    if (!res.ok) throw new Error(`API ${res.status}`);
     data = await res.json();
   } catch (e) {
     document.getElementById('messager-attente')?.remove();

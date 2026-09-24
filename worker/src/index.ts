@@ -35,6 +35,9 @@ export interface Env {
   ACCESS_AUD: string;
   // Confort de développement local uniquement (cf. emailTableau).
   DEV_EMAIL?: string;
+  // Limitation de débit du lookup public (CLAUDE.md §3, règle 5). Le binding
+  // est déclaré dans wrangler.toml — voir aussi les commentaires y afférents.
+  LOOKUP_RATE: RateLimit;
 }
 
 const REGIMES_VALIDES = new Set(["vegetarien", "vegan", "halal", "casher", "sans_gluten"]);
@@ -79,7 +82,52 @@ function contenuPublic(env: Env, mariage: Mariage) {
   };
 }
 
+/**
+ * Bloque un appel qui dépasse la limite de débit du lookup public.
+ *
+ * Retourne `null` si l'appel passe, une `Response` 429 sinon — pour que
+ * l'appelant écrive `if (const bloque = await limiterLookup(...); bloque)
+ * return bloque;`.
+ *
+ * L'IP vient de `cf-connecting-ip`, seul en-tête que Cloudflare pose lui-même
+ * sur la requête ; `x-forwarded-for` est écrit par n'importe qui et un
+ * attaquant qui l'utiliserait comme clé aurait un compteur neuf à chaque
+ * requête. Absent, on refuse plutôt que de laisser passer sans compter : sur
+ * un Worker Cloudflare c'est une anomalie, pas un cas normal.
+ *
+ * En `wrangler dev` local, la seule chose qu'on peut faire est de simuler
+ * l'en-tête ; la limitation elle-même est appliquée par le binding, qui
+ * fonctionne aussi en local.
+ */
+async function limiterLookup(request: Request, env: Env): Promise<Response | null> {
+  const ip = request.headers.get("cf-connecting-ip");
+  if (!ip) return json({ erreur: "Origine non identifiable" }, 400);
+
+  const { success } = await env.LOOKUP_RATE.limit({ key: ip });
+  if (success) return null;
+
+  // Retry-After en secondes : la fenêtre du binding, pas moins — sinon le
+  // client réessaie trop tôt et se reprend un 429.
+  return new Response(
+    JSON.stringify({
+      erreur: "Trop de requêtes en peu de temps. Attendez une minute avant de réessayer.",
+    }),
+    {
+      status: 429,
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "retry-after": "60",
+      },
+    },
+  );
+}
+
 async function handleFaireArt(request: Request, env: Env, mariageToken: string): Promise<Response> {
+  // Avant la moindre requête D1 : un attaquant qui teste des tokens ne doit
+  // consommer ni notre CPU ni notre quota base.
+  const bloque = await limiterLookup(request, env);
+  if (bloque) return bloque;
+
   const mariage = await resolveMariageByHost(env.DB, request.headers.get("host") ?? "", env.SHARED_DOMAIN);
   if (!mariage) return new Response("Domaine non configuré", { status: 404 });
 
