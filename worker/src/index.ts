@@ -3,6 +3,9 @@ import {
   type Origine,
   getAccompagnants,
   getConviveByToken,
+  creerCodeActivation,
+  creerMariageSelfService,
+  type NouveauMariage,
   ecrireGroupeConvive,
   ecrireMessagePerso,
   ecrirePhotoKey,
@@ -14,6 +17,7 @@ import {
   type InviteImporte,
   getMariageByEmail,
   getReponseGroupe,
+  listerCodesActivation,
   listerConvives,
   listerGroupes,
   listerMariagesPourAdmin,
@@ -21,6 +25,7 @@ import {
   purgerConvives,
   resolveMariageByHost,
   supprimerReponseGroupe,
+  verifierCodeActivation,
   type Mariage,
 } from "./db";
 import { token as genToken } from "./token";
@@ -48,9 +53,16 @@ export interface Env {
   ADMIN_EMAILS: string;
   // Idem DEV_EMAIL pour l'hôte admin en local. Absent en prod.
   DEV_ADMIN_EMAIL?: string;
+  // Tunnel self-service (Fiche B Etsy, CLAUDE.md §8). Pas d'Access ici : la
+  // légitimité vient de la connaissance {numéro de commande, email}, pas
+  // d'une session — cf. docs/commande.md.
+  COMMANDE_HOSTNAME: string;
   // Limitation de débit du lookup public (CLAUDE.md §3, règle 5). Le binding
   // est déclaré dans wrangler.toml — voir aussi les commentaires y afférents.
   LOOKUP_RATE: RateLimit;
+  // Même principe que LOOKUP_RATE, namespace séparé : une rafale sur l'un ne
+  // doit jamais entamer le crédit de l'autre.
+  COMMANDE_RATE: RateLimit;
 }
 
 const REGIMES_VALIDES = new Set(["vegetarien", "vegan", "halal", "casher", "sans_gluten"]);
@@ -96,10 +108,10 @@ function contenuPublic(env: Env, mariage: Mariage) {
 }
 
 /**
- * Bloque un appel qui dépasse la limite de débit du lookup public.
+ * Bloque un appel qui dépasse la limite de débit d'un binding donné.
  *
  * Retourne `null` si l'appel passe, une `Response` 429 sinon — pour que
- * l'appelant écrive `if (const bloque = await limiterLookup(...); bloque)
+ * l'appelant écrive `if (const bloque = await limiterAvec(...); bloque)
  * return bloque;`.
  *
  * L'IP vient de `cf-connecting-ip`, seul en-tête que Cloudflare pose lui-même
@@ -112,11 +124,11 @@ function contenuPublic(env: Env, mariage: Mariage) {
  * l'en-tête ; la limitation elle-même est appliquée par le binding, qui
  * fonctionne aussi en local.
  */
-async function limiterLookup(request: Request, env: Env): Promise<Response | null> {
+async function limiterAvec(request: Request, binding: RateLimit): Promise<Response | null> {
   const ip = request.headers.get("cf-connecting-ip");
   if (!ip) return json({ erreur: "Origine non identifiable" }, 400);
 
-  const { success } = await env.LOOKUP_RATE.limit({ key: ip });
+  const { success } = await binding.limit({ key: ip });
   if (success) return null;
 
   // Retry-After en secondes : la fenêtre du binding, pas moins — sinon le
@@ -133,6 +145,14 @@ async function limiterLookup(request: Request, env: Env): Promise<Response | nul
       },
     },
   );
+}
+
+function limiterLookup(request: Request, env: Env): Promise<Response | null> {
+  return limiterAvec(request, env.LOOKUP_RATE);
+}
+
+function limiterCommande(request: Request, env: Env): Promise<Response | null> {
+  return limiterAvec(request, env.COMMANDE_RATE);
 }
 
 async function handleFaireArt(request: Request, env: Env, mariageToken: string): Promise<Response> {
@@ -321,11 +341,22 @@ const MAX_MESSAGE = 1500;
  * navigateur pourrait déclencher une écriture avec ce cookie à l'insu du couple.
  */
 function origineLegitime(request: Request, env: Env): boolean {
+  return origineAttendue(request, env.DASHBOARD_HOSTNAME);
+}
+
+/**
+ * Généralisation d'origineLegitime pour un hôte donné. Le tunnel commande
+ * n'a pas de cookie de session à protéger contre le CSRF — sa légitimité
+ * tient au corps de la requête, pas à une identité ambiante — mais vérifier
+ * l'Origin reste un filtre bon marché contre un site tiers qui imiterait
+ * notre formulaire.
+ */
+function origineAttendue(request: Request, hoteAttendu: string): boolean {
   const origine = request.headers.get("origin");
   if (!origine) return false;
   try {
     const hote = new URL(origine).hostname;
-    return hote === env.DASHBOARD_HOSTNAME || hote === "localhost" || hote === "127.0.0.1";
+    return hote === hoteAttendu || hote === "localhost" || hote === "127.0.0.1";
   } catch {
     return false;
   }
@@ -789,6 +820,212 @@ async function handleAdminMariages(request: Request, env: Env): Promise<Response
   return json({ mariages });
 }
 
+/**
+ * Enregistre une vente Etsy (Fiche B) après lecture manuelle de la commande
+ * réelle. C'est le pas manuel qui remplace, pour l'instant, une intégration
+ * Etsy API (lot 3, cf. CLAUDE.md §8) : le tunnel côté acheteur ne changera
+ * pas le jour où cette écriture deviendra automatique.
+ */
+async function handleAdminListerCodes(request: Request, env: Env): Promise<Response> {
+  const email = await emailAdmin(request, env);
+  if (!email) return json({ erreur: "Non authentifié" }, 403);
+
+  const codes = await listerCodesActivation(env.DB);
+  return json({ codes });
+}
+
+async function handleAdminCreerCode(request: Request, env: Env): Promise<Response> {
+  const email = await emailAdmin(request, env);
+  if (!email) return json({ erreur: "Non authentifié" }, 403);
+
+  let payload: unknown;
+  try {
+    payload = await request.json();
+  } catch {
+    return json({ erreur: "JSON invalide" }, 400);
+  }
+  const p = payload as { commande_etsy?: unknown; email?: unknown };
+  const commandeEtsy = typeof p.commande_etsy === "string" ? p.commande_etsy.trim() : "";
+  const emailClient = typeof p.email === "string" ? p.email.trim() : "";
+  if (!commandeEtsy || !emailClient) {
+    return json({ erreur: "Numéro de commande et email requis." }, 400);
+  }
+
+  const resultat = await creerCodeActivation(env.DB, commandeEtsy, emailClient);
+  if (!resultat.ok) return json({ erreur: resultat.erreur }, 409);
+  return json({ enregistre: true });
+}
+
+// ── Tunnel self-service (Fiche B Etsy) ────────────────────────────
+//
+// Pas de Cloudflare Access ici : au moment où l'acheteur arrive, il n'a pas
+// encore de tableau de bord — c'est justement ce que cette route lui crée.
+// La légitimité tient au corps de la requête ({commande_etsy, email}), sur
+// le même principe que le lien à token des invités (§3). Cf. docs/commande.md
+// pour le déploiement (aucune application Access sur cet hôte) et la limite
+// connue (l'accès au tableau de bord suit sous quelques heures, le temps
+// d'ajouter l'email à la policy Allow — pas encore automatisé).
+
+function estHoteCommande(url: URL, env: Env): boolean {
+  if (url.hostname === env.COMMANDE_HOSTNAME) return true;
+  return url.hostname === "localhost" || url.hostname === "127.0.0.1";
+}
+
+const MESSAGERS_VALIDES = new Set(["", "montgolfiere", "voiture"]);
+
+/**
+ * `@cloudflare/workers-types` (version installée) type `FormData.get()` en
+ * `string | null`, sans `File` — décalage connu entre les définitions et le
+ * runtime réel, qui renvoie bien un `File` pour un champ fichier d'un
+ * multipart. Un seul point de conversion plutôt que des casts dispersés.
+ */
+function formDataFile(form: FormData, nom: string): File | null {
+  const v = form.get(nom) as unknown;
+  return v instanceof File ? v : null;
+}
+
+async function handleCommandeVerifier(request: Request, env: Env): Promise<Response> {
+  const bloque = await limiterCommande(request, env);
+  if (bloque) return bloque;
+  if (!origineAttendue(request, env.COMMANDE_HOSTNAME)) return json({ erreur: "Origine refusée" }, 403);
+
+  let payload: unknown;
+  try {
+    payload = await request.json();
+  } catch {
+    return json({ erreur: "JSON invalide" }, 400);
+  }
+  const p = payload as { commande_etsy?: unknown; email?: unknown };
+  const commandeEtsy = typeof p.commande_etsy === "string" ? p.commande_etsy.trim() : "";
+  const email = typeof p.email === "string" ? p.email.trim() : "";
+  if (!commandeEtsy || !email) {
+    return json({ valide: false, erreur: "Numéro de commande et email requis." }, 400);
+  }
+
+  const resultat = await verifierCodeActivation(env.DB, commandeEtsy, email);
+  if (!resultat.valide) return json({ valide: false, erreur: resultat.erreur }, 404);
+  return json({ valide: true });
+}
+
+/**
+ * Crée le mariage complet à partir du formulaire : texte + photo du couple
+ * (obligatoire) + photo du lieu (facultative), en une seule requête
+ * multipart — il n'y a pas de session à réutiliser entre deux appels, comme
+ * il y en aurait une avec Access, donc autant que "Terminer" fasse tout d'un
+ * coup plutôt que d'inventer un état intermédiaire à protéger autrement.
+ *
+ * Revérifie le code (au lieu de faire confiance à l'étape précédente) :
+ * `verifierCodeActivation` ne fait que lire, la seule vérité sur "déjà
+ * utilisé ou non" est la contrainte WHERE de `creerMariageSelfService`.
+ */
+async function handleCommandeCreer(request: Request, env: Env): Promise<Response> {
+  const bloque = await limiterCommande(request, env);
+  if (bloque) return bloque;
+  if (!origineAttendue(request, env.COMMANDE_HOSTNAME)) return json({ erreur: "Origine refusée" }, 403);
+
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return json({ erreur: "Formulaire illisible." }, 400);
+  }
+
+  const texte = (cle: string): string => {
+    const v = form.get(cle);
+    return typeof v === "string" ? v.trim() : "";
+  };
+  const texteOuNul = (cle: string): string | null => texte(cle) || null;
+
+  const commandeEtsy = texte("commande_etsy");
+  const email = texte("email");
+  if (!commandeEtsy || !email) return json({ erreur: "Commande introuvable, rechargez la page." }, 400);
+
+  const verif = await verifierCodeActivation(env.DB, commandeEtsy, email);
+  if (!verif.valide) return json({ erreur: verif.erreur }, 409);
+
+  const prenom1 = texte("prenom_1").slice(0, 80);
+  const prenom2 = texte("prenom_2").slice(0, 80);
+  const dateMariage = texte("date_mariage");
+  const dateLimiteRsvp = texte("date_limite_rsvp");
+  const reponseOui = texte("reponse_generique_oui").slice(0, MAX_MESSAGE);
+  const reponseNon = texte("reponse_generique_non").slice(0, MAX_MESSAGE);
+  const messager = texte("messager");
+
+  if (!prenom1 || !prenom2) return json({ erreur: "Les deux prénoms sont requis." }, 400);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateMariage) || !/^\d{4}-\d{2}-\d{2}$/.test(dateLimiteRsvp)) {
+    return json({ erreur: "Dates invalides." }, 400);
+  }
+  if (dateLimiteRsvp >= dateMariage) {
+    return json({ erreur: "La date limite de RSVP doit précéder la date du mariage." }, 400);
+  }
+  if (!reponseOui || !reponseNon) {
+    return json({ erreur: "Les deux réponses génériques (oui et non) sont requises." }, 400);
+  }
+  // Fermé par une liste plutôt que laissé libre : un messager qui n'existe
+  // pas est un piège silencieux déjà rencontré deux fois (cf. CLAUDE.md §4).
+  if (!MESSAGERS_VALIDES.has(messager)) return json({ erreur: "Animation invalide." }, 400);
+
+  const photoCouple = formDataFile(form, "photo_couple");
+  if (!photoCouple || photoCouple.size === 0) {
+    return json({ erreur: "La photo du couple est requise." }, 400);
+  }
+  if (photoCouple.type !== "image/jpeg") return json({ erreur: "Seul le JPEG est accepté." }, 400);
+  if (photoCouple.size > MAX_PHOTO_OCTETS) return json({ erreur: "Photo du couple trop lourde." }, 400);
+
+  const photoLieu = formDataFile(form, "photo_lieu");
+  const aPhotoLieu = photoLieu !== null && photoLieu.size > 0;
+  if (aPhotoLieu && photoLieu) {
+    if (photoLieu.type !== "image/jpeg") {
+      return json({ erreur: "Seul le JPEG est accepté pour la photo du lieu." }, 400);
+    }
+    if (photoLieu.size > MAX_PHOTO_OCTETS) {
+      return json({ erreur: "Photo du lieu trop lourde." }, 400);
+    }
+  }
+
+  const nouveau: NouveauMariage = {
+    prenom_1: prenom1,
+    prenom_2: prenom2,
+    date_mariage: dateMariage,
+    date_limite_rsvp: dateLimiteRsvp,
+    ceremonie_nom: texteOuNul("ceremonie_nom"),
+    ceremonie_adresse: texteOuNul("ceremonie_adresse"),
+    cocktail_nom: texteOuNul("cocktail_nom"),
+    cocktail_adresse: texteOuNul("cocktail_adresse"),
+    reponse_generique_oui: reponseOui,
+    reponse_generique_non: reponseNon,
+    theme: "botanique", // seul thème construit à ce jour (CLAUDE.md §8) — jamais pris du formulaire
+    messager,
+  };
+
+  const cree = await creerMariageSelfService(env.DB, (verif as { id: string }).id, email, nouveau);
+  if (!cree.ok) return json({ erreur: cree.erreur }, 409);
+
+  // Photos après la création : la ligne existe déjà, un échec ici laisse un
+  // mariage sans photo plutôt qu'aucun mariage — moins grave, et rattrapable
+  // depuis le tableau de bord une fois l'accès Access ouvert.
+  const cleCouple = `mariage/${cree.slug}/couple-${genToken(6)}.jpg`;
+  await env.PHOTOS.put(cleCouple, await photoCouple.arrayBuffer(), {
+    httpMetadata: { contentType: "image/jpeg", cacheControl: "public, max-age=31536000, immutable" },
+  });
+  await ecrirePhotoMariage(env.DB, cree.id, "photo_couple_key", cleCouple);
+
+  if (aPhotoLieu) {
+    const cleLieu = `mariage/${cree.slug}/lieu-${genToken(6)}.jpg`;
+    await env.PHOTOS.put(cleLieu, await photoLieu.arrayBuffer(), {
+      httpMetadata: { contentType: "image/jpeg", cacheControl: "public, max-age=31536000, immutable" },
+    });
+    await ecrirePhotoMariage(env.DB, cree.id, "cocktail_photo_key", cleLieu);
+  }
+
+  const domaine = `${cree.slug}.${env.SHARED_DOMAIN}`;
+  return json({
+    enregistre: true,
+    site_url: `https://${domaine}`,
+    tableau_url: `https://${env.DASHBOARD_HOSTNAME}`,
+  });
+}
+
 // Partie décorative du lien (cf. import-invites.js) : toute la sécurité est
 // dans le token qui suit.
 function slugPrenom(prenom: string): string {
@@ -874,6 +1111,23 @@ export default {
     if (url.pathname.startsWith("/api/admin/") && estHoteAdmin(url, env)) {
       if (url.pathname === "/api/admin/mariages" && request.method === "GET") {
         return handleAdminMariages(request, env);
+      }
+      if (url.pathname === "/api/admin/codes" && request.method === "GET") {
+        return handleAdminListerCodes(request, env);
+      }
+      if (url.pathname === "/api/admin/codes" && request.method === "POST") {
+        return handleAdminCreerCode(request, env);
+      }
+    }
+
+    // Tunnel self-service (Fiche B Etsy), sur son propre hôte. Pas d'Access :
+    // la légitimité vient du corps de la requête, cf. docs/commande.md.
+    if (url.pathname.startsWith("/api/commande/") && estHoteCommande(url, env)) {
+      if (url.pathname === "/api/commande/verifier" && request.method === "POST") {
+        return handleCommandeVerifier(request, env);
+      }
+      if (url.pathname === "/api/commande/creer" && request.method === "POST") {
+        return handleCommandeCreer(request, env);
       }
     }
 

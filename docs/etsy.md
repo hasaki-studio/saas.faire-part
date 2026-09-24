@@ -168,8 +168,11 @@ Le même faire-part que la Fiche A, mais **le client le fabrique lui-même** :
 il achète, télécharge un PDF avec un code d'activation, va sur notre site,
 saisit le code, remplit un formulaire, obtient son site en 5 minutes.
 
-**Prérequis technique** : le tunnel self-service `commande.faire-part.hasakistudio.fr`
-doit être en ligne. C'est le lot 1, à construire ensuite.
+**Prérequis technique** : le tunnel self-service (`commande/`, routes
+`/api/commande/*`) est construit et testé — reste le déploiement Cloudflare
+(cf. `docs/commande.md`) : DNS, projet Pages, route Worker. Pas d'application
+Access sur cet hôte, donc plus rapide à mettre en ligne que le tableau ou
+l'admin.
 
 ### Titre Etsy
 
@@ -276,9 +279,21 @@ Identiques à la Fiche A, sauf :
 
 ### Workflow post-vente
 
-Aucun. Le tunnel self-service fait tout, et le mail post-achat automatique
-d'Etsy suffit. Si un client bloque au moment de saisir son code, il écrit sur
-Etsy et je débloque à la main.
+Le tunnel self-service fait tout côté acheteur — mais **deux pas manuels
+restent nécessaires** tant que le lot 3 (Etsy API) et l'automatisation Access
+n'existent pas. Détail complet, raisons et enchaînement exact dans
+`docs/commande.md`, section « Ce qui n'est PAS automatisé ». En résumé :
+
+1. Enregistrer la commande dans `codes_activation` dès la notif Etsy
+   (`POST /api/admin/codes`) — sans cette ligne, l'acheteur qui suit son PDF
+   tombe sur « Numéro de commande introuvable ».
+2. Ajouter son email à la policy Allow de l'application Access du tableau de
+   bord une fois qu'il a terminé le tunnel — sans quoi il ne peut jamais s'y
+   connecter, même si son site est déjà en ligne.
+
+Le site lui-même est bien instantané dès l'étape 1 faite ; c'est uniquement
+l'accès au tableau de bord qui suit avec un délai (« comptez quelques
+heures », affiché sur l'écran de fin du tunnel).
 
 ---
 
@@ -411,8 +426,11 @@ Testé à mes dépens ailleurs :
 2. Préparer les 10 photos par fiche (soirée entière — c'est le plus long).
 3. Copier-coller le contenu de la Fiche A dans Etsy — publier en **brouillon**.
 4. Idem Fiche B — publier en **brouillon**.
-5. Attendre le lot 1 (tunnel self-service en ligne) avant de publier la
-   Fiche B pour de vrai. La Fiche A peut se publier immédiatement.
+5. Déployer le tunnel côté Cloudflare (`docs/commande.md`) avant de publier
+   la Fiche B pour de vrai. La Fiche A peut se publier immédiatement.
+6. Pour chaque vente Fiche B : enregistrer le code dans l'admin dès la notif
+   Etsy, puis ajouter l'email à la policy Access une fois le tunnel terminé
+   par l'acheteur (`docs/commande.md`, section limites connues).
 
 ## À faire côté code après cette PR (rappel)
 

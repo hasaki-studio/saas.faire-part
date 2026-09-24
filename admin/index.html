@@ -119,6 +119,43 @@
     background: #fff; border: 1px solid var(--cream-dark);
   }
 
+  /* Carte "Codes d'activation" : le pas manuel du tunnel self-service
+     (cf. docs/commande.md) tant qu'il n'y a pas d'intégration Etsy API. */
+  .carte {
+    background: #fff; border: 1px solid var(--cream-dark);
+    padding: 18px 20px; margin-top: 26px;
+  }
+  .carte h2 {
+    font-family: 'Cormorant Garamond', serif; font-weight: 500;
+    font-size: 1.3rem; color: var(--sage-dark); margin: 0 0 4px;
+  }
+  .carte .aide { color: var(--aide); font-size: 0.8rem; margin-bottom: 14px; max-width: 640px; }
+  .form-code { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px; }
+  .form-code .champ { display: flex; flex-direction: column; gap: 4px; }
+  .form-code label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--sage); }
+  .form-code input {
+    font-family: inherit; font-size: 0.85rem; padding: 8px 10px;
+    border: 1px solid var(--cream-dark); background: var(--cream); color: var(--ink);
+    min-width: 200px;
+  }
+  .form-code button[type="submit"] { background: var(--sage-dark); color: #fff; border-color: var(--sage-dark); }
+  .form-code button[type="submit"]:hover { background: var(--ink); }
+  .form-code .etat-form { font-size: 0.8rem; align-self: center; }
+  .form-code .etat-form.ok { color: var(--sage-dark); }
+  .form-code .etat-form.ko { color: var(--rose-texte); }
+
+  table.codes { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.codes th, table.codes td {
+    text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--cream-dark);
+  }
+  table.codes th {
+    background: var(--cream-dark); color: var(--sage-dark);
+    font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .pastille-code { padding: 2px 9px; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; }
+  .pastille-code.libre { background: var(--sage-tres-clair); color: var(--sage-dark); }
+  .pastille-code.utilise { background: var(--cream-dark); color: var(--aide); }
+
   @media (max-width: 720px) {
     /* Sur mobile, les colonnes secondaires disparaissent — on garde l'essentiel. */
     .facultative { display: none; }
@@ -143,6 +180,27 @@
     <section class="kpis" id="kpis"></section>
 
     <div id="table-emballage"></div>
+
+    <section class="carte">
+      <h2>Codes d'activation — Fiche B Etsy</h2>
+      <p class="aide">Pas encore d'intégration Etsy API (cf. <code>docs/commande.md</code>) :
+        à chaque vente, enregistre ici le numéro de commande et l'email tels
+        qu'affichés sur Etsy. Sans cette ligne, l'acheteur qui suit son PDF
+        tombe sur « Numéro de commande introuvable ».</p>
+      <form class="form-code" id="form-code">
+        <div class="champ">
+          <label for="code-commande">Numéro de commande Etsy</label>
+          <input type="text" id="code-commande" placeholder="1234567890" required autocomplete="off">
+        </div>
+        <div class="champ">
+          <label for="code-email">Email de la commande</label>
+          <input type="email" id="code-email" required>
+        </div>
+        <button type="submit">Enregistrer</button>
+        <span class="etat-form" id="etat-code"></span>
+      </form>
+      <div id="codes-emballage"></div>
+    </section>
   </main>
 
   <script>
@@ -336,8 +394,71 @@
     }
   }
 
-  $('rafraichir').addEventListener('click', charger);
+  /* ---------- Codes d'activation (tunnel self-service, Fiche B Etsy) ----------
+     Pas d'intégration Etsy API à ce jour (cf. docs/commande.md) : cette carte
+     est le seul moyen de faire le pas manuel sans passer par la console D1. */
+  function rendreCodes(codes) {
+    if (!codes.length) {
+      $('codes-emballage').innerHTML = '<p class="aide">Aucun code enregistré pour l’instant.</p>';
+      return;
+    }
+    const lignes = codes.map((c) => `
+      <tr>
+        <td>${esc(c.commande_etsy)}</td>
+        <td>${esc(c.email)}</td>
+        <td>${esc(dateFr(c.cree_le.slice(0, 10)))}</td>
+        <td><span class="pastille-code ${c.consomme_le ? 'utilise' : 'libre'}">${c.consomme_le ? 'utilisé' : 'en attente'}</span></td>
+      </tr>`).join('');
+    $('codes-emballage').innerHTML = `<table class="codes">
+      <thead><tr><th>Commande</th><th>Email</th><th>Enregistré le</th><th>Statut</th></tr></thead>
+      <tbody>${lignes}</tbody>
+    </table>`;
+  }
+
+  async function chargerCodes() {
+    try {
+      const res = await fetch('/api/admin/codes');
+      if (!res.ok) throw new Error(`Le serveur a répondu ${res.status}`);
+      const data = await res.json();
+      // Les plus récents en premier : c'est la vente du jour qu'on vient
+      // vérifier, pas l'historique.
+      rendreCodes(data.codes || []);
+    } catch (e) {
+      $('codes-emballage').innerHTML = `<p class="aide">Impossible de charger les codes : ${esc(e.message)}</p>`;
+    }
+  }
+
+  $('form-code').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const etat = $('etat-code');
+    etat.textContent = 'Enregistrement…';
+    etat.className = 'etat-form';
+    try {
+      const res = await fetch('/api/admin/codes', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          commande_etsy: $('code-commande').value.trim(),
+          email: $('code-email').value.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.erreur || 'Le serveur a répondu ' + res.status);
+      etat.textContent = 'Enregistré.';
+      etat.className = 'etat-form ok';
+      $('code-commande').value = '';
+      $('code-email').value = '';
+      $('code-commande').focus();
+      chargerCodes();
+    } catch (err) {
+      etat.textContent = err.message;
+      etat.className = 'etat-form ko';
+    }
+  });
+
+  $('rafraichir').addEventListener('click', () => { charger(); chargerCodes(); });
   charger();
+  chargerCodes();
   </script>
 </body>
 </html>

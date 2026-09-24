@@ -379,9 +379,17 @@ d'invités à J+90 (Cron Trigger), limitation de débit sur le lookup public
 (10 req/min/IP), photos du couple, du lieu et aperçu WhatsApp téléversées
 depuis le tableau de bord après redimensionnement navigateur aux formats de
 §7, vue de suivi admin (agrégats par mariage, sans nom d'invité ni message,
-sur son propre hôte derrière une application Access dédiée). Pas encore
-construit : contrat de sous-traitance écrit, assistance dans le tableau
-d'un couple.
+sur son propre hôte derrière une application Access dédiée), tunnel
+self-service (Fiche B Etsy) — un acheteur crée son mariage lui-même depuis
+`commande.dev.faire-part.hasakistudio.fr` à partir d'un code d'activation
+`{numéro de commande Etsy, email}`, sans Cloudflare Access sur cet hôte
+(cf. `docs/commande.md`). Deux pas restent manuels dans ce tunnel : la
+création du code après chaque vente (pas d'intégration Etsy API), et l'ajout
+de l'email à la policy Access du tableau de bord (pas d'intégration avec
+l'API Cloudflare Zero Trust) — les deux sont le lot 3, à construire quand le
+volume le justifie. Pas encore construit : contrat de sous-traitance écrit,
+assistance dans le tableau d'un couple, intégration Etsy API, automatisation
+de la policy Access.
 
 **Attention à ne pas confondre deux tableaux de bord.** Celui qui est en ligne
 aujourd'hui vient du projet `Mon-Mariage` (n8n + NAS) et ne sert qu'au suivi du
