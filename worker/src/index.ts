@@ -5,6 +5,8 @@ import {
   getConviveByToken,
   ecrireMessagePerso,
   ecrirePhotoKey,
+  ecrirePhotoMariage,
+  type PhotoMariage,
   ecrireReponseGroupe,
   getConviveParId,
   importerConvives,
@@ -13,6 +15,7 @@ import {
   getReponseGroupe,
   listerConvives,
   listerGroupes,
+  listerMariagesPourAdmin,
   mariagesAPurger,
   purgerConvives,
   resolveMariageByHost,
@@ -35,6 +38,15 @@ export interface Env {
   ACCESS_AUD: string;
   // Confort de développement local uniquement (cf. emailTableau).
   DEV_EMAIL?: string;
+  // Vue de suivi admin (CLAUDE.md §2). Hôte, AUD Access et allowlist séparés
+  // du tableau de bord des couples : un jeton du tableau ne doit pas ouvrir
+  // les portes admin, un couple non admin ne doit pas y entrer même si
+  // l'application Access était mal configurée.
+  ADMIN_HOSTNAME: string;
+  ADMIN_ACCESS_AUD: string;
+  ADMIN_EMAILS: string;
+  // Idem DEV_EMAIL pour l'hôte admin en local. Absent en prod.
+  DEV_ADMIN_EMAIL?: string;
   // Limitation de débit du lookup public (CLAUDE.md §3, règle 5). Le binding
   // est déclaré dans wrangler.toml — voir aussi les commentaires y afférents.
   LOOKUP_RATE: RateLimit;
@@ -382,6 +394,71 @@ async function handleEcrireGroupe(request: Request, env: Env, groupe: string): P
 // envoi qui ne viendrait pas de notre page.
 const MAX_PHOTO_OCTETS = 2 * 1024 * 1024;
 
+// Les trois emplacements photo d'un mariage. Ce n'est pas une paramétrisation
+// libre : chaque emplacement a son plafond de poids (l'og:image de WhatsApp est
+// nettement plus contraint, cf. CLAUDE.md §7), son préfixe de clé, et sa colonne
+// dans mariages. Une table ici évite trois handlers copiés-collés, et un kind
+// inconnu ne trouve pas d'entrée — donc échoue proprement.
+const PHOTOS_MARIAGE = {
+  couple: { colonne: "photo_couple_key", prefixe: "couple", plafond: 2 * 1024 * 1024 },
+  lieu:   { colonne: "cocktail_photo_key", prefixe: "lieu",   plafond: 2 * 1024 * 1024 },
+  // 700 Ko : WhatsApp coupe l'aperçu au-delà de 600 Ko (§7), le navigateur vise
+  // sous ce seuil ; la marge sert de garde-fou contre un envoi qui ne viendrait
+  // pas de notre page, elle ne récupère pas un mauvais réglage.
+  og:     { colonne: "og_image_key",       prefixe: "og",     plafond: 700 * 1024  },
+} as const satisfies Record<string, { colonne: PhotoMariage; prefixe: string; plafond: number }>;
+type KindPhoto = keyof typeof PHOTOS_MARIAGE;
+
+/**
+ * Téléverse ou supprime une des trois photos du mariage. Même conception que
+ * handlePhoto : le kind vient de la route (fermé par le type), la clé R2 est
+ * calculée côté serveur — le navigateur ne choisit jamais où écrire, sans quoi
+ * il pourrait écraser la photo d'un autre —, et l'objet R2 est effacé après
+ * l'écriture DB pour ne pas laisser une ligne pointer vers un objet disparu.
+ */
+async function handlePhotoMariage(request: Request, env: Env, kind: KindPhoto): Promise<Response> {
+  const mariage = await mariageDuCouple(request, env);
+  if (mariage instanceof Response) return mariage;
+  if (!origineLegitime(request, env)) return json({ erreur: "Origine refusée" }, 403);
+
+  const emplacement = PHOTOS_MARIAGE[kind];
+  const ancienne = mariage[emplacement.colonne];
+
+  if (request.method === "DELETE") {
+    await ecrirePhotoMariage(env.DB, mariage.id, emplacement.colonne, null);
+    if (ancienne) await env.PHOTOS.delete(ancienne);
+    return json({ enregistre: true, photo_url: null });
+  }
+
+  if (request.headers.get("content-type") !== "image/jpeg") {
+    return json({ erreur: "Seul le JPEG est accepté." }, 400);
+  }
+
+  const octets = await request.arrayBuffer();
+  if (octets.byteLength === 0) return json({ erreur: "Image vide" }, 400);
+  if (octets.byteLength > emplacement.plafond) {
+    return json({ erreur: "Image trop lourde." }, 400);
+  }
+
+  // Un suffixe aléatoire à chaque remplacement : sinon les caches — WhatsApp
+  // pour l'og:image en particulier — servent la précédente indéfiniment.
+  const cle = `mariage/${mariage.slug}/${emplacement.prefixe}-${genToken(6)}.jpg`;
+
+  await env.PHOTOS.put(cle, octets, {
+    httpMetadata: {
+      contentType: "image/jpeg",
+      cacheControl: "public, max-age=31536000, immutable",
+    },
+  });
+  await ecrirePhotoMariage(env.DB, mariage.id, emplacement.colonne, cle);
+
+  // Après la base : un échec ici laisse un objet orphelin, moins grave qu'une
+  // ligne pointant vers un objet supprimé (même arbitrage qu'ailleurs).
+  if (ancienne && ancienne !== cle) await env.PHOTOS.delete(ancienne);
+
+  return json({ enregistre: true, photo_url: photoUrl(env, cle) });
+}
+
 async function handlePhoto(request: Request, env: Env, conviveId: string): Promise<Response> {
   const mariage = await mariageDuCouple(request, env);
   if (mariage instanceof Response) return mariage;
@@ -568,6 +645,11 @@ async function handleTableauMariage(request: Request, env: Env): Promise<Respons
       date_limite_rsvp: mariage.date_limite_rsvp,
       slug: mariage.slug,
       domaine: mariage.domaine_personnalise ?? `${mariage.slug}.${env.SHARED_DOMAIN}`,
+      photos: {
+        couple: photoUrl(env, mariage.photo_couple_key),
+        lieu:   photoUrl(env, mariage.cocktail_photo_key),
+        og:     photoUrl(env, mariage.og_image_key),
+      },
     },
   });
 }
@@ -631,6 +713,51 @@ async function handleTableauConvives(request: Request, env: Env): Promise<Respon
 function estHoteTableau(url: URL, env: Env): boolean {
   if (url.hostname === env.DASHBOARD_HOSTNAME) return true;
   return Boolean(env.DEV_EMAIL) && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+}
+
+// ── Vue de suivi admin ────────────────────────────────────────────
+//
+// Trois portes, dans cet ordre, avant qu'une requête arrive au handler :
+//   1. l'hôte doit être ADMIN_HOSTNAME (ou localhost avec DEV_ADMIN_EMAIL) ;
+//   2. le jeton Access doit être signé pour ADMIN_ACCESS_AUD, distinct de
+//      celui du tableau de bord des couples — le jeton d'un couple valide
+//      chez Access ne doit jamais ouvrir /api/admin/* ;
+//   3. l'email vérifié doit figurer dans ADMIN_EMAILS.
+//
+// La vue ne renvoie que des agrégats (cf. listerMariagesPourAdmin) : même si
+// une bévue future modifiait le SELECT, elle ne pourrait pas exposer un nom
+// d'invité ou un message sans passer d'abord par le type, la revue et cette
+// note. C'est ce qui rend l'admin compatible avec §2 : les invités qu'on
+// compte ne sont pas listés.
+
+function estHoteAdmin(url: URL, env: Env): boolean {
+  if (url.hostname === env.ADMIN_HOSTNAME) return true;
+  return Boolean(env.DEV_ADMIN_EMAIL) && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+}
+
+async function emailAdmin(request: Request, env: Env): Promise<string | null> {
+  const hostname = new URL(request.url).hostname;
+  const email =
+    env.DEV_ADMIN_EMAIL && (hostname === "localhost" || hostname === "127.0.0.1")
+      ? env.DEV_ADMIN_EMAIL.toLowerCase()
+      : await emailAuthentifie(request, env.ACCESS_TEAM_DOMAIN, env.ADMIN_ACCESS_AUD);
+  if (!email) return null;
+
+  // Allowlist inline plutôt qu'une table : un seul admin aujourd'hui, et une
+  // UI pour gérer ceux qui ne changent jamais est un vecteur de bug sans
+  // valeur. Comparaison insensible à la casse et aux espaces autour.
+  const autorises = new Set(
+    env.ADMIN_EMAILS.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean),
+  );
+  return autorises.has(email) ? email : null;
+}
+
+async function handleAdminMariages(request: Request, env: Env): Promise<Response> {
+  const email = await emailAdmin(request, env);
+  if (!email) return json({ erreur: "Non authentifié" }, 403);
+
+  const mariages = await listerMariagesPourAdmin(env.DB);
+  return json({ mariages });
 }
 
 // Partie décorative du lien (cf. import-invites.js) : toute la sécurité est
@@ -714,6 +841,13 @@ export default {
       return handleRsvp(request, env, rsvp[1]!);
     }
 
+    // Vue de suivi admin, sur son propre hôte. Cf. estHoteAdmin.
+    if (url.pathname.startsWith("/api/admin/") && estHoteAdmin(url, env)) {
+      if (url.pathname === "/api/admin/mariages" && request.method === "GET") {
+        return handleAdminMariages(request, env);
+      }
+    }
+
     // Les routes du tableau de bord ne sont servies que sur son propre hôte.
     if (url.pathname.startsWith("/api/tableau/") && estHoteTableau(url, env)) {
       if (url.pathname === "/api/tableau/mariage" && request.method === "GET") {
@@ -740,6 +874,17 @@ export default {
       const groupe = url.pathname.match(/^\/api\/tableau\/groupes\/([^/]+)\/message$/);
       if (groupe && request.method === "PUT") {
         return handleEcrireGroupe(request, env, decodeURIComponent(groupe[1]!));
+      }
+
+      // Trois emplacements photo du mariage. Le kind vient de l'URL et est
+      // vérifié contre PHOTOS_MARIAGE : autre chose que couple/lieu/og tombe
+      // en 404 comme n'importe quelle URL inconnue.
+      const photoMariage = url.pathname.match(/^\/api\/tableau\/mariage\/photo\/([^/]+)$/);
+      if (photoMariage && (request.method === "PUT" || request.method === "DELETE")) {
+        const kind = decodeURIComponent(photoMariage[1]!);
+        if (kind in PHOTOS_MARIAGE) {
+          return handlePhotoMariage(request, env, kind as KindPhoto);
+        }
       }
     }
 

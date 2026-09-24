@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Suivi des mariages — Admin</title>
+  <style>
+  /* Ce hôte n'est pas public : pas de mise en scène, tout est table. Mais on
+     partage les jetons de couleur du tableau de bord (§6) pour rester cohérent
+     si on ouvre les deux en parallèle. */
+  :root {
+    --ink: #2e2a25;
+    --ink-2: #554f47;
+    --aide: #6b645a;
+    --sage: #6a8664;
+    --sage-dark: #446042;
+    --sage-tres-clair: #eaf0e6;
+    --cream: #f7f3ec;
+    --cream-dark: #ede6d8;
+    --gold: #c9a96e;
+    --gold-texte: #7d6a3c;
+    --rose-texte: #9c5a5a;
+    --ambre: #8a6a2c;
+    --ambre-tres-clair: #f6ecd0;
+    --rose-tres-clair: #f2dfdf;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--cream); color: var(--ink);
+    font-family: 'Jost', 'Segoe UI', system-ui, sans-serif;
+    font-weight: 400; font-size: 14px; line-height: 1.5;
+  }
+  main { max-width: 1100px; margin: 0 auto; padding: 22px 18px 60px; }
+
+  header { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 6px; }
+  header h1 {
+    font-family: 'Cormorant Garamond', serif; font-weight: 500;
+    font-size: 1.9rem; margin: 0; color: var(--sage-dark);
+  }
+  header .maj { color: var(--aide); font-size: 0.78rem; margin-left: auto; }
+  .rappel { color: var(--aide); font-size: 0.82rem; margin: 8px 0 22px; max-width: 720px; }
+
+  button {
+    background: transparent; border: 1px solid var(--gold); color: var(--gold-texte);
+    padding: 7px 14px; font-size: 0.72rem; text-transform: uppercase;
+    letter-spacing: 0.14em; cursor: pointer; font-family: inherit;
+  }
+  button:hover { background: var(--gold); color: #fff; }
+
+  #err {
+    background: var(--rose-tres-clair); border-left: 3px solid var(--rose-texte);
+    color: var(--ink); padding: 12px 16px; margin-bottom: 20px;
+  }
+  #err.hidden { display: none; }
+
+  .kpis {
+    display: grid; gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    margin-bottom: 22px;
+  }
+  .kpi {
+    background: #fff; border: 1px solid var(--cream-dark); padding: 14px 16px;
+  }
+  .kpi .lib { font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sage); }
+  .kpi .val { font-family: 'Cormorant Garamond', serif; font-size: 1.7rem; color: var(--ink); margin-top: 2px; }
+
+  table {
+    width: 100%; border-collapse: collapse; background: #fff;
+    border: 1px solid var(--cream-dark); font-size: 13px;
+  }
+  th, td {
+    text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--cream-dark);
+    vertical-align: middle;
+  }
+  th {
+    background: var(--cream-dark); color: var(--sage-dark);
+    font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase;
+    cursor: pointer; user-select: none; white-space: nowrap;
+  }
+  th[data-tri]:hover { color: var(--ink); }
+  th.actif::after { content: '↑'; margin-left: 4px; }
+  th.actif.desc::after { content: '↓'; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .couple { font-weight: 500; color: var(--ink); }
+  .couple .slug { color: var(--aide); font-size: 0.72rem; font-weight: 400; display: block; margin-top: 2px; }
+
+  .barre { display: inline-block; width: 60px; height: 6px; background: var(--cream-dark); vertical-align: middle; margin-left: 8px; }
+  .barre span { display: block; height: 100%; background: var(--sage); }
+
+  /* Trois pastilles pour les photos, mêmes lettres que les emplacements. Vert
+     = présent, gris = absent, ambré = à faire si mariage proche. */
+  .photos { display: inline-flex; gap: 3px; }
+  .photo-pastille {
+    width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.65rem; font-weight: 500; letter-spacing: 0.05em;
+    background: var(--cream-dark); color: var(--aide);
+  }
+  .photo-pastille.ok { background: var(--sage-tres-clair); color: var(--sage-dark); }
+
+  .etat {
+    display: inline-block; padding: 3px 10px; font-size: 0.68rem;
+    letter-spacing: 0.12em; text-transform: uppercase;
+  }
+  .etat.a-venir { background: var(--sage-tres-clair); color: var(--sage-dark); }
+  .etat.passe   { background: var(--cream-dark); color: var(--aide); }
+  .etat.urgent  { background: var(--ambre-tres-clair); color: var(--ambre); }
+  .etat.critique { background: var(--rose-tres-clair); color: var(--rose-texte); }
+
+  tr.attention { background: rgba(246, 236, 208, 0.35); }
+  tr.critique  { background: rgba(242, 223, 223, 0.4); }
+
+  .alerte { font-size: 0.72rem; color: var(--ambre); margin-top: 3px; display: block; }
+  .alerte.rouge { color: var(--rose-texte); }
+
+  .vide {
+    text-align: center; padding: 40px 20px; color: var(--aide);
+    background: #fff; border: 1px solid var(--cream-dark);
+  }
+
+  @media (max-width: 720px) {
+    /* Sur mobile, les colonnes secondaires disparaissent — on garde l'essentiel. */
+    .facultative { display: none; }
+    th, td { padding: 8px 6px; font-size: 12px; }
+  }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Suivi des mariages</h1>
+      <button id="rafraichir" type="button">Rafraîchir</button>
+      <span class="maj" id="maj"></span>
+    </header>
+    <p class="rappel">Vue agrégée. Les noms d'invités, les messages personnels et les
+      réponses individuelles ne sont pas exposés ici — cette page compte, elle ne lit
+      pas (cf. CLAUDE.md §2). Pour intervenir dans le tableau d'un couple, il faut son
+      accord écrit (contrat de sous-traitance).</p>
+
+    <div id="err" class="hidden"></div>
+
+    <section class="kpis" id="kpis"></section>
+
+    <div id="table-emballage"></div>
+  </main>
+
+  <script>
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  let MARIAGES = [];
+  let tri = { colonne: 'date_mariage', desc: false };
+
+  const AUJOURDHUI = () => new Date().toISOString().slice(0, 10);
+
+  function joursEntre(deIso, aIso) {
+    const de = new Date(deIso + 'T00:00:00');
+    const a  = new Date(aIso + 'T00:00:00');
+    return Math.round((a - de) / 86400000);
+  }
+  function dateFr(iso) {
+    return new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  /**
+   * Chaque mariage se voit attribuer un état visuel selon deux axes : sa
+   * position dans le temps (à venir / passé) et ce qui reste à faire pour
+   * arriver au jour J. C'est cet enrichissement qui rend la table lisible
+   * d'un coup d'œil sans qu'on ait à lire une par une ses valeurs numériques.
+   */
+  function enrichir(m) {
+    const auj = AUJOURDHUI();
+    const jAvantMariage = joursEntre(auj, m.date_mariage);
+    const jAvantRsvp = joursEntre(auj, m.date_limite_rsvp);
+    const jAvantPurge = joursEntre(auj, m.purge_le);
+    const tauxReponses = m.n_invites ? (m.n_oui + m.n_non) / m.n_invites : 0;
+    const tauxMessages = m.n_invites ? m.n_messages_perso / m.n_invites : 0;
+
+    // Attention et critique se cumulent sur des raisons différentes.
+    const alertes = [];
+    if (jAvantMariage < 0 && jAvantPurge <= 14 && jAvantPurge > 0) {
+      alertes.push({ niveau: 'critique', texte: `Purge automatique dans ${jAvantPurge} j` });
+    }
+    if (jAvantMariage >= 0 && jAvantMariage <= 30 && m.n_messages_perso === 0) {
+      alertes.push({ niveau: 'critique', texte: `Mariage dans ${jAvantMariage} j, aucun message écrit` });
+    }
+    if (jAvantRsvp >= 0 && jAvantRsvp <= 7 && tauxReponses < 0.6) {
+      alertes.push({ niveau: 'critique', texte: `RSVP dans ${jAvantRsvp} j, ${Math.round(tauxReponses * 100)} % de réponses` });
+    }
+    if (jAvantMariage >= 0 && jAvantMariage <= 60 && !m.a_photo_couple) {
+      alertes.push({ niveau: 'attention', texte: 'Pas de photo du couple' });
+    }
+    if (jAvantMariage >= 0 && jAvantMariage <= 60 && !m.a_photo_og) {
+      alertes.push({ niveau: 'attention', texte: 'Pas d’aperçu WhatsApp' });
+    }
+    if (!m.email_proprietaire) {
+      alertes.push({ niveau: 'critique', texte: 'email_proprietaire non renseigné (le couple ne peut pas ouvrir le tableau)' });
+    }
+
+    let etat;
+    if (jAvantMariage < 0) {
+      etat = jAvantPurge <= 14 ? 'critique' : 'passe';
+    } else if (jAvantMariage <= 30) {
+      etat = alertes.some((a) => a.niveau === 'critique') ? 'critique' : 'urgent';
+    } else {
+      etat = 'a-venir';
+    }
+
+    return {
+      ...m,
+      jAvantMariage, jAvantRsvp, jAvantPurge,
+      tauxReponses, tauxMessages,
+      alertes, etat,
+    };
+  }
+
+  function libelleEtat(m) {
+    if (m.jAvantMariage < 0) return `Il y a ${-m.jAvantMariage} j`;
+    if (m.jAvantMariage === 0) return 'Aujourd’hui';
+    if (m.jAvantMariage === 1) return 'Demain';
+    return `Dans ${m.jAvantMariage} j`;
+  }
+
+  function kpis(mariages) {
+    const auj = AUJOURDHUI();
+    const actifs = mariages.filter((m) => m.date_mariage >= auj);
+    const passes = mariages.filter((m) => m.date_mariage < auj);
+    const critiques = mariages.filter((m) => m.etat === 'critique');
+    const total_invites = actifs.reduce((s, m) => s + m.n_invites, 0);
+    const total_reponses = actifs.reduce((s, m) => s + m.n_oui + m.n_non, 0);
+
+    $('kpis').innerHTML = [
+      { lib: 'Mariages actifs', val: actifs.length },
+      { lib: 'À surveiller', val: critiques.length },
+      { lib: 'Passés', val: passes.length },
+      { lib: 'Invités actifs', val: total_invites },
+      { lib: 'Réponses reçues', val: `${total_reponses} / ${total_invites}` },
+    ].map((k) => `<div class="kpi"><span class="lib">${esc(k.lib)}</span><div class="val">${esc(k.val)}</div></div>`).join('');
+  }
+
+  function tableau(mariages) {
+    if (!mariages.length) {
+      $('table-emballage').innerHTML = '<div class="vide">Aucun mariage en base.</div>';
+      return;
+    }
+    const cols = [
+      { cle: 'prenoms', libelle: 'Couple' },
+      { cle: 'date_mariage', libelle: 'Date' },
+      { cle: 'jAvantMariage', libelle: 'Statut' },
+      { cle: 'tauxReponses', libelle: 'Réponses', classe: 'facultative' },
+      { cle: 'tauxMessages', libelle: 'Messages', classe: 'facultative' },
+      { cle: 'photos', libelle: 'Photos', classe: 'facultative' },
+      { cle: 'jAvantPurge', libelle: 'Purge', classe: 'facultative' },
+    ];
+    const th = cols.map((c) => {
+      const actif = tri.colonne === c.cle ? ' actif' + (tri.desc ? ' desc' : '') : '';
+      return `<th data-tri="${c.cle}" class="${c.classe || ''}${actif}">${esc(c.libelle)}</th>`;
+    }).join('');
+
+    // Le tri respecte les types : les chiffres se comparent en nombres, les
+    // chaînes en localeCompare. `prenoms` s'aligne sur l'ordre alphabétique
+    // du premier prénom.
+    const valeur = (m, cle) => {
+      if (cle === 'prenoms') return `${m.prenom_1} ${m.prenom_2}`;
+      if (cle === 'photos') return m.a_photo_couple + m.a_photo_lieu + m.a_photo_og;
+      return m[cle];
+    };
+    const trie = [...mariages].sort((a, b) => {
+      const va = valeur(a, tri.colonne);
+      const vb = valeur(b, tri.colonne);
+      const cmp = typeof va === 'string'
+        ? va.localeCompare(vb, 'fr')
+        : (va ?? 0) - (vb ?? 0);
+      return tri.desc ? -cmp : cmp;
+    });
+
+    const rows = trie.map((m) => {
+      const cls = m.etat === 'critique' ? 'critique'
+        : m.etat === 'urgent' ? 'attention' : '';
+      const alertesHtml = m.alertes.map((a) =>
+        `<span class="alerte ${a.niveau === 'critique' ? 'rouge' : ''}">${esc(a.texte)}</span>`,
+      ).join('');
+      const pastilles = [
+        { l: 'C', ok: m.a_photo_couple, titre: 'Photo du couple' },
+        { l: 'L', ok: m.a_photo_lieu,   titre: 'Photo du lieu' },
+        { l: 'W', ok: m.a_photo_og,     titre: 'Aperçu WhatsApp' },
+      ].map((p) =>
+        `<span class="photo-pastille ${p.ok ? 'ok' : ''}" title="${esc(p.titre)}${p.ok ? ' — présente' : ' — absente'}">${p.l}</span>`,
+      ).join('');
+      return `<tr class="${cls}">
+        <td>
+          <span class="couple">${esc(m.prenom_1)} & ${esc(m.prenom_2)}</span>
+          <span class="slug">${esc(m.slug)}</span>
+          ${alertesHtml}
+        </td>
+        <td>${esc(dateFr(m.date_mariage))}</td>
+        <td><span class="etat ${m.etat}">${esc(libelleEtat(m))}</span></td>
+        <td class="num facultative">${m.n_oui + m.n_non} / ${m.n_invites}
+          <span class="barre"><span style="width:${Math.round(m.tauxReponses * 100)}%"></span></span></td>
+        <td class="num facultative">${m.n_messages_perso} / ${m.n_invites}
+          <span class="barre"><span style="width:${Math.round(m.tauxMessages * 100)}%"></span></span></td>
+        <td class="facultative"><span class="photos">${pastilles}</span></td>
+        <td class="num facultative">${esc(dateFr(m.purge_le))}</td>
+      </tr>`;
+    }).join('');
+
+    $('table-emballage').innerHTML = `<table>
+      <thead><tr>${th}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+
+    $('table-emballage').querySelectorAll('th[data-tri]').forEach((h) => {
+      h.addEventListener('click', () => {
+        const cle = h.dataset.tri;
+        if (tri.colonne === cle) tri.desc = !tri.desc;
+        else { tri.colonne = cle; tri.desc = false; }
+        tableau(MARIAGES);
+      });
+    });
+  }
+
+  async function charger() {
+    $('err').classList.add('hidden');
+    try {
+      const res = await fetch('/api/admin/mariages');
+      if (!res.ok) throw new Error(`Le serveur a répondu ${res.status}`);
+      const data = await res.json();
+      MARIAGES = (data.mariages || []).map(enrichir);
+      $('maj').textContent = `Mis à jour à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+      kpis(MARIAGES);
+      tableau(MARIAGES);
+    } catch (e) {
+      $('err').textContent = 'Impossible de charger les mariages : ' + e.message;
+      $('err').classList.remove('hidden');
+    }
+  }
+
+  $('rafraichir').addEventListener('click', charger);
+  charger();
+  </script>
+</body>
+</html>

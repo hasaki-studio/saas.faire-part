@@ -69,10 +69,24 @@ DASHBOARD_HOSTNAME = "tableau.dev.faire-part.hasakistudio.fr"
 # et tout repart en 403 « Non authentifié » sans rien dire de plus.
 ACCESS_TEAM_DOMAIN = "small-bird-358e.cloudflareaccess.com"
 ACCESS_AUD = "3f1b10304ccb380a17175c4237ee8f875381e8447f97329eb172548cacd76b87"
+
+# Vue de suivi opérationnel : une seule adresse pour l'instant, la mienne.
+# Séparée du tableau de bord des couples (hôte différent, application Access
+# différente, AUD différente), pour qu'un couple ne puisse pas atteindre
+# /api/admin/* en présentant son propre jeton d'Access. La liste est en
+# variable et non en base : on ne fait pas d'UI pour gérer des admins qu'on
+# est un.
+ADMIN_HOSTNAME = "admin.dev.faire-part.hasakistudio.fr"
+ADMIN_ACCESS_AUD = "REMPLACER_PAR_L_AUD_DE_L_APPLICATION_ACCESS_ADMIN"
+ADMIN_EMAILS = "azouzi.achraf@gmail.com"
+
 # Connexion simulée pour `wrangler dev` : sans Access devant le Worker en local,
 # il n'y a pas de jeton à vérifier. N'a d'effet que sur localhost, et n'existe
 # pas dans [env.prod.vars] — deux verrous plutôt qu'un.
 DEV_EMAIL = "couple@exemple.fr"
+# Même mécanique côté admin : DEV_ADMIN_EMAIL agit comme la connexion simulée
+# pour l'hôte admin en local. Doit figurer dans ADMIN_EMAILS pour être accepté.
+DEV_ADMIN_EMAIL = "azouzi.achraf@gmail.com"
 
 # ── prod ──────────────────────────────────────────────────────────
 [env.prod]
@@ -103,4 +117,8 @@ PHOTOS_PUBLIC_URL = "https://photos.hasakistudio.fr"
 DASHBOARD_HOSTNAME = "tableau.faire-part.hasakistudio.fr"
 ACCESS_TEAM_DOMAIN = "small-bird-358e.cloudflareaccess.com"
 ACCESS_AUD = "REMPLACER_PAR_L_AUD_DE_L_APPLICATION_ACCESS_PROD"
-# Pas de DEV_EMAIL ici : volontaire.
+
+ADMIN_HOSTNAME = "admin.faire-part.hasakistudio.fr"
+ADMIN_ACCESS_AUD = "REMPLACER_PAR_L_AUD_DE_L_APPLICATION_ACCESS_ADMIN_PROD"
+ADMIN_EMAILS = "azouzi.achraf@gmail.com"
+# Pas de DEV_EMAIL ni DEV_ADMIN_EMAIL ici : volontaire.

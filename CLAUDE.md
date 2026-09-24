@@ -68,7 +68,10 @@ Jamais un projet par client. Les deux environnements sont `dev` et `prod`, rien 
 
 D1 n'a pas de RLS : **l'autorisation vit dans le code du Worker**. Conséquence non
 négociable — aucun point d'entrée ne liste les invités. Le lookup prend un token et
-retourne cette ligne, ou rien.
+retourne cette ligne, ou rien. Cette règle vaut aussi pour la vue admin :
+elle liste des mariages (nos clients), jamais des invités (les leurs).
+Assister un couple dans son propre tableau est un deuxième régime — celui
+du contrat de sous-traitance — et n'est pas construit à ce jour.
 
 ---
 
@@ -373,8 +376,12 @@ Actions, import de la liste par le couple lui-même depuis le tableau de bord
 `tableau.dev.faire-part.hasakistudio.fr` derrière Cloudflare Access, mention
 d'information RGPD sur le formulaire RSVP, effacement automatique des données
 d'invités à J+90 (Cron Trigger), limitation de débit sur le lookup public
-(10 req/min/IP). Pas encore construit : photos du couple et du lieu, contrat
-de sous-traitance écrit.
+(10 req/min/IP), photos du couple, du lieu et aperçu WhatsApp téléversées
+depuis le tableau de bord après redimensionnement navigateur aux formats de
+§7, vue de suivi admin (agrégats par mariage, sans nom d'invité ni message,
+sur son propre hôte derrière une application Access dédiée). Pas encore
+construit : contrat de sous-traitance écrit, assistance dans le tableau
+d'un couple.
 
 **Attention à ne pas confondre deux tableaux de bord.** Celui qui est en ligne
 aujourd'hui vient du projet `Mon-Mariage` (n8n + NAS) et ne sert qu'au suivi du
