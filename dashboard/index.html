@@ -166,6 +166,23 @@
   .fiche-tete { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
   .fiche-tete .nom { font-size: 1.02rem; color: var(--ink); font-weight: 400; }
   .fiche-tete .groupe { font-size: 0.76rem; color: var(--ink-2); }
+  /* Groupe éditable à la volée. Un input libre — avec autocomplétion sur les
+     groupes existants — évite que le couple ait à réimporter sa liste juste
+     pour attribuer un groupe à quelqu'un. */
+  .fiche-tete .groupe-champ { display: inline-flex; align-items: center; gap: 6px; }
+  .fiche-tete .groupe-champ .lbl {
+    font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--sage);
+  }
+  .fiche-tete .groupe-champ input {
+    font-family: 'Jost', sans-serif; font-size: 0.82rem; color: var(--ink-2);
+    background: transparent; border: none; border-bottom: 1px dashed var(--cream-dark);
+    padding: 2px 4px; width: 130px;
+  }
+  .fiche-tete .groupe-champ input:hover { border-bottom-color: var(--sage); }
+  .fiche-tete .groupe-champ input:focus {
+    outline: none; border-bottom-color: var(--gold); background: rgba(201, 169, 110, 0.06);
+  }
   .fiche-tete .etat-fiche { margin-left: auto; }
   .fiche-groupe { background: var(--cream); margin: 0 -26px; padding: 20px 26px; }
   .fiche-groupe .nom { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.1rem; color: var(--sage-dark); }
@@ -675,6 +692,8 @@
   <footer id="pied"></footer>
 </div>
 
+<datalist id="groupes-existants"></datalist>
+
 <script>
 /* ============================================================
    Le Worker répond sur /api/tableau/* du même hôte : même origine,
@@ -934,7 +953,7 @@ function editeurHtml(valeur, titre, photo) {
     <div class="photo">
       <div class="titre">Photo</div>
       <div class="cadre">${photo.url
-        ? `<img src="${esc(photo.url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'), { className: 'vide', textContent: 'Photo introuvable' }))">`
+        ? `<img loading="lazy" src="${esc(photo.url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'), { className: 'vide', textContent: 'Photo introuvable' }))">`
         : '<span class="vide">Aucune photo</span>'}</div>
       <div class="actions">
         <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" id="${photo.champId}">
@@ -1120,7 +1139,7 @@ function brancherPhoto(zone, convive) {
 
   const majAffichage = () => {
     cadre.innerHTML = convive.photo_url
-      ? `<img src="${esc(convive.photo_url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'), { className: 'vide', textContent: 'Photo introuvable' }))">`
+      ? `<img loading="lazy" src="${esc(convive.photo_url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'), { className: 'vide', textContent: 'Photo introuvable' }))">`
       : '<span class="vide">Aucune photo</span>';
     choisir.textContent = convive.photo_url ? 'Remplacer' : 'Choisir';
     retirer.hidden = !convive.photo_url;
@@ -1204,7 +1223,7 @@ function brancherPhotosMariage() {
     const majAffichage = () => {
       const url = urlActuelle();
       apercu.innerHTML = url
-        ? `<img src="${esc(url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'), { className: 'vide', textContent: 'Photo introuvable' }))">`
+        ? `<img loading="lazy" src="${esc(url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'), { className: 'vide', textContent: 'Photo introuvable' }))">`
         : '<span class="vide">Aucune photo</span>';
       choisir.textContent = url ? 'Remplacer' : 'Choisir';
       retirer.hidden = !url;
@@ -1609,9 +1628,18 @@ async function envoyerImport(invites) {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.erreur || 'Le serveur a répondu ' + res.status);
 
-    etat.textContent = `${data.ajoutes} ajouté${data.ajoutes > 1 ? 's' : ''}` +
-      (data.existants ? `, ${data.existants} déjà présent${data.existants > 1 ? 's' : ''}` : '');
-    etat.className = 'etat ok';
+    // Cas spécial d'un ajout unique de doublon : « 0 ajoutés, 1 existant » est
+    // techniquement juste mais fait croire à une erreur silencieuse. On dit
+    // explicitement ce que le couple doit faire pour compléter la fiche.
+    if (liste.length === 1 && data.ajoutes === 0 && data.existants === 1) {
+      const n = `${liste[0].prenom} ${liste[0].nom || ''}`.trim();
+      etat.textContent = `${n} est déjà dans la liste. Retrouvez-le dans « Vos invités » pour ajouter un groupe ou un message.`;
+      etat.className = 'etat';
+    } else {
+      etat.textContent = `${data.ajoutes} ajouté${data.ajoutes > 1 ? 's' : ''}` +
+        (data.existants ? `, ${data.existants} déjà présent${data.existants > 1 ? 's' : ''}` : '');
+      etat.className = 'etat ok';
+    }
     $('import-coller').value = '';
     $('import-apercu').innerHTML = '';
     importPret = null;
@@ -1768,7 +1796,11 @@ function fiches() {
     <article class="fiche" data-fiche="${esc(c.id)}">
       <div class="fiche-tete">
         <span class="nom">${esc(nomComplet(c))}</span>
-        ${c.groupe ? `<span class="groupe">${esc(c.groupe)}</span>` : ''}
+        ${c.accompagnant_de ? '' : `<span class="groupe-champ">
+          <span class="lbl">Groupe</span>
+          <input type="text" list="groupes-existants" data-groupe-input
+                 value="${esc(c.groupe || '')}" placeholder="aucun" maxlength="60">
+        </span>`}
         <span class="etat-fiche">${etiquetteRetour(c)}</span>
       </div>
       ${editeurHtml(c.message_perso, '', { url: c.photo_url, champId: `fiche-photo-${c.id}` })}
@@ -1802,7 +1834,53 @@ function fiches() {
       messages();
     }, false);
     brancherPhoto(article, c);
+    brancherGroupeInvite(article, c);
   }
+}
+
+/**
+ * Attribue ou retire le groupe d'un invité, au fil de l'eau. Enregistre au
+ * `blur` plutôt qu'à chaque frappe : sinon on écrit trois fois en base pour
+ * un couple qui tape « Témoins ». Met à jour c.groupe localement et la
+ * datalist, sans rerendre la liste — le prochain clic sur un filtre
+ * appliquera le nouvel état, on garde le contexte et le curseur ailleurs.
+ */
+function brancherGroupeInvite(article, c) {
+  const input = article.querySelector('[data-groupe-input]');
+  if (!input) return;   // accompagnant, pas de champ
+
+  let dernier = c.groupe || '';
+  const enregistrer = async () => {
+    const nom = input.value.trim();
+    if (nom === dernier) return;
+    dernier = nom;
+    try {
+      const res = await fetch(`/api/tableau/convives/${encodeURIComponent(c.id)}/groupe`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ groupe: nom }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.erreur || 'Le serveur a répondu ' + res.status);
+      c.groupe = data.groupe;
+      majDatalistGroupes();
+    } catch (e) {
+      input.value = c.groupe || '';
+      alert(e.message);
+    }
+  };
+  input.addEventListener('blur', enregistrer);
+  input.addEventListener('change', enregistrer);
+}
+
+/**
+ * Reconstitue la liste des groupes utilisés — sert d'autocomplétion sur
+ * l'input `list="groupes-existants"`. Appelée à chaque changement de groupe.
+ */
+function majDatalistGroupes() {
+  const noms = [...new Set(CONVIVES.filter((c) => c.groupe).map((c) => c.groupe))]
+    .sort((a, b) => a.localeCompare(b, 'fr'));
+  $('groupes-existants').innerHTML = noms.map((n) => `<option value="${esc(n)}">`).join('');
 }
 
 /* ---------- Liste de récap ---------- */
@@ -1999,6 +2077,7 @@ async function charger() {
     kpis();
     donut();
     regimes();
+    majDatalistGroupes();
     brancherPhotosMariage();
     messages();
     chipsGroupes();

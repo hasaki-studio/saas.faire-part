@@ -186,6 +186,35 @@ export async function ecrireMessagePerso(
 }
 
 /**
+ * Assigne un groupe à un invité, ou le retire. Le mariage vient toujours de
+ * l'identité authentifiée : la clause le répète pour que l'id d'un convive
+ * envoyé par le navigateur ne suffise jamais à écrire chez un autre couple.
+ *
+ * Refuse un accompagnant : ses groupes suivent la personne qui l'a annoncé.
+ *
+ * Effet de bord voulu : réattribuer le dernier invité d'un groupe fait
+ * disparaître ce groupe de la liste (« un groupe existe s'il y a au moins
+ * un invité qui y est rattaché », cf. handleTableauConvives), et son
+ * éventuelle réponse écrite reste orpheline sans nuire — elle réapparaîtra
+ * si un invité rejoint ce nom plus tard, ce qui est le comportement le
+ * moins surprenant pour le couple.
+ */
+export async function ecrireGroupeConvive(
+  db: D1Database,
+  mariageId: string,
+  conviveId: string,
+  groupe: string | null,
+): Promise<boolean> {
+  const { meta } = await db
+    .prepare(
+      "UPDATE convives SET groupe = ?1 WHERE id = ?2 AND mariage_id = ?3 AND accompagnant_de IS NULL",
+    )
+    .bind(groupe, conviveId, mariageId)
+    .run();
+  return (meta.changes ?? 0) > 0;
+}
+
+/**
  * Crée ou remplace la réponse d'un groupe. Le groupe doit déjà exister, au sens
  * où au moins un invité de ce mariage y est rattaché : sans ce contrôle, la
  * route permettrait de remplir la table de groupes fantômes.
