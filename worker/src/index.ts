@@ -4,7 +4,8 @@ import {
   getAccompagnants,
   getConviveByToken,
   creerCodeActivation,
-  creerMariageSelfService,
+  creerOuMettreAJourMariageSelfService,
+  getMariageParId,
   type NouveauMariage,
   ecrireGroupeConvive,
   ecrireMessagePerso,
@@ -21,6 +22,7 @@ import {
   listerConvives,
   listerGroupes,
   listerMariagesPourAdmin,
+  marquerMariageActive,
   mariagesAPurger,
   purgerConvives,
   resolveMariageByHost,
@@ -856,6 +858,21 @@ async function handleAdminCreerCode(request: Request, env: Env): Promise<Respons
   return json({ enregistre: true });
 }
 
+/**
+ * Marque un mariage Fiche B comme activé : le sous-domaine a été ajouté à la
+ * main côté Cloudflare (cf. docs/commande.md) et `<slug>.SHARED_DOMAIN`
+ * répond vraiment. Ne crée ni ne modifie rien d'autre — c'est un aiguillage
+ * pour la carte admin, pas une validation du contenu du mariage.
+ */
+async function handleAdminActiverMariage(request: Request, env: Env, id: string): Promise<Response> {
+  const email = await emailAdmin(request, env);
+  if (!email) return json({ erreur: "Non authentifié" }, 403);
+
+  const resultat = await marquerMariageActive(env.DB, id);
+  if (!resultat.ok) return json({ erreur: resultat.erreur }, 404);
+  return json({ ok: true });
+}
+
 // ── Tunnel self-service (Fiche B Etsy) ────────────────────────────
 //
 // Pas de Cloudflare Access ici : au moment où l'acheteur arrive, il n'a pas
@@ -904,19 +921,56 @@ async function handleCommandeVerifier(request: Request, env: Env): Promise<Respo
 
   const resultat = await verifierCodeActivation(env.DB, commandeEtsy, email);
   if (!resultat.valide) return json({ valide: false, erreur: resultat.erreur }, 404);
-  return json({ valide: true });
+  if (!resultat.modification) return json({ valide: true, modification: false });
+
+  // Mode correction : on renvoie ce qui existe déjà pour que le tunnel
+  // pré-remplisse le formulaire plutôt que de faire tout retaper — sans quoi
+  // laisser un champ facultatif vide à la deuxième saisie l'effacerait pour
+  // de vrai (l'UPDATE de creerOuMettreAJourMariageSelfService écrit ce qu'on
+  // lui envoie, il ne fusionne pas avec l'existant).
+  const mariage = await getMariageParId(env.DB, resultat.mariageId);
+  if (!mariage) return json({ valide: false, erreur: "Le site associé à cette commande est introuvable." }, 404);
+
+  return json({
+    valide: true,
+    modification: true,
+    mariage: {
+      prenom_1: mariage.prenom_1,
+      prenom_2: mariage.prenom_2,
+      date_mariage: mariage.date_mariage,
+      date_limite_rsvp: mariage.date_limite_rsvp,
+      ceremonie_nom: mariage.ceremonie_nom,
+      ceremonie_adresse: mariage.ceremonie_adresse,
+      cocktail_nom: mariage.cocktail_nom,
+      cocktail_adresse: mariage.cocktail_adresse,
+      reponse_generique_oui: mariage.reponse_generique_oui,
+      reponse_generique_non: mariage.reponse_generique_non,
+      messager: mariage.messager,
+      remarque_acheteur: mariage.remarque_acheteur,
+      photo_couple_url: photoUrl(env, mariage.photo_couple_key),
+      photo_lieu_url: photoUrl(env, mariage.cocktail_photo_key),
+    },
+  });
 }
 
 /**
- * Crée le mariage complet à partir du formulaire : texte + photo du couple
- * (obligatoire) + photo du lieu (facultative), en une seule requête
- * multipart — il n'y a pas de session à réutiliser entre deux appels, comme
- * il y en aurait une avec Access, donc autant que "Terminer" fasse tout d'un
- * coup plutôt que d'inventer un état intermédiaire à protéger autrement.
+ * Crée le mariage complet à partir du formulaire, ou met à jour celui déjà
+ * créé par ce code si on est dans la fenêtre de correction (cf.
+ * `creerOuMettreAJourMariageSelfService`) : texte + photo du couple + photo
+ * du lieu, en une seule requête multipart — il n'y a pas de session à
+ * réutiliser entre deux appels, comme il y en aurait une avec Access, donc
+ * autant que "Terminer" fasse tout d'un coup plutôt que d'inventer un état
+ * intermédiaire à protéger autrement.
+ *
+ * La photo du couple n'est obligatoire qu'à la création : en modification,
+ * ne pas en renvoyer une nouvelle veut dire "garder l'actuelle", jamais
+ * "l'effacer" — sans cette distinction, rouvrir le formulaire pour corriger
+ * une date effacerait la photo à chaque fois.
  *
  * Revérifie le code (au lieu de faire confiance à l'étape précédente) :
  * `verifierCodeActivation` ne fait que lire, la seule vérité sur "déjà
- * utilisé ou non" est la contrainte WHERE de `creerMariageSelfService`.
+ * utilisé, dans la fenêtre, ou non" est celle recalculée dans
+ * `creerOuMettreAJourMariageSelfService`.
  */
 async function handleCommandeCreer(request: Request, env: Env): Promise<Response> {
   const bloque = await limiterCommande(request, env);
@@ -965,16 +1019,20 @@ async function handleCommandeCreer(request: Request, env: Env): Promise<Response
   // pas est un piège silencieux déjà rencontré deux fois (cf. CLAUDE.md §4).
   if (!MESSAGERS_VALIDES.has(messager)) return json({ erreur: "Animation invalide." }, 400);
 
-  const photoCouple = formDataFile(form, "photo_couple");
-  if (!photoCouple || photoCouple.size === 0) {
+  const brut = formDataFile(form, "photo_couple");
+  const photoCouple = brut && brut.size > 0 ? brut : null;
+  // Obligatoire seulement à la création : cf. le commentaire de la fonction.
+  if (!photoCouple && !verif.modification) {
     return json({ erreur: "La photo du couple est requise." }, 400);
   }
-  if (photoCouple.type !== "image/jpeg") return json({ erreur: "Seul le JPEG est accepté." }, 400);
-  if (photoCouple.size > MAX_PHOTO_OCTETS) return json({ erreur: "Photo du couple trop lourde." }, 400);
+  if (photoCouple) {
+    if (photoCouple.type !== "image/jpeg") return json({ erreur: "Seul le JPEG est accepté." }, 400);
+    if (photoCouple.size > MAX_PHOTO_OCTETS) return json({ erreur: "Photo du couple trop lourde." }, 400);
+  }
 
-  const photoLieu = formDataFile(form, "photo_lieu");
-  const aPhotoLieu = photoLieu !== null && photoLieu.size > 0;
-  if (aPhotoLieu && photoLieu) {
+  const photoLieuBrut = formDataFile(form, "photo_lieu");
+  const photoLieu = photoLieuBrut && photoLieuBrut.size > 0 ? photoLieuBrut : null;
+  if (photoLieu) {
     if (photoLieu.type !== "image/jpeg") {
       return json({ erreur: "Seul le JPEG est accepté pour la photo du lieu." }, 400);
     }
@@ -996,31 +1054,44 @@ async function handleCommandeCreer(request: Request, env: Env): Promise<Response
     reponse_generique_non: reponseNon,
     theme: "botanique", // seul thème construit à ce jour (CLAUDE.md §8) — jamais pris du formulaire
     messager,
+    remarque_acheteur: texteOuNul("remarque")?.slice(0, MAX_MESSAGE) ?? null,
   };
 
-  const cree = await creerMariageSelfService(env.DB, (verif as { id: string }).id, email, nouveau);
+  // Capturées avant l'écriture : en modification, c'est ce qui permet de
+  // supprimer l'ancienne photo après avoir posé la nouvelle, jamais avant —
+  // même arbitrage que handlePhotoMariage (un objet orphelin est moins grave
+  // qu'une ligne qui pointerait un instant vers un objet déjà supprimé).
+  const ancien = verif.modification ? await getMariageParId(env.DB, verif.mariageId) : null;
+
+  const cree = await creerOuMettreAJourMariageSelfService(env.DB, (verif as { id: string }).id, email, nouveau);
   if (!cree.ok) return json({ erreur: cree.erreur }, 409);
 
-  // Photos après la création : la ligne existe déjà, un échec ici laisse un
-  // mariage sans photo plutôt qu'aucun mariage — moins grave, et rattrapable
-  // depuis le tableau de bord une fois l'accès Access ouvert.
-  const cleCouple = `mariage/${cree.slug}/couple-${genToken(6)}.jpg`;
-  await env.PHOTOS.put(cleCouple, await photoCouple.arrayBuffer(), {
-    httpMetadata: { contentType: "image/jpeg", cacheControl: "public, max-age=31536000, immutable" },
-  });
-  await ecrirePhotoMariage(env.DB, cree.id, "photo_couple_key", cleCouple);
+  if (photoCouple) {
+    const cleCouple = `mariage/${cree.slug}/couple-${genToken(6)}.jpg`;
+    await env.PHOTOS.put(cleCouple, await photoCouple.arrayBuffer(), {
+      httpMetadata: { contentType: "image/jpeg", cacheControl: "public, max-age=31536000, immutable" },
+    });
+    await ecrirePhotoMariage(env.DB, cree.id, "photo_couple_key", cleCouple);
+    if (ancien?.photo_couple_key) await env.PHOTOS.delete(ancien.photo_couple_key);
+  }
 
-  if (aPhotoLieu) {
+  if (photoLieu) {
     const cleLieu = `mariage/${cree.slug}/lieu-${genToken(6)}.jpg`;
     await env.PHOTOS.put(cleLieu, await photoLieu.arrayBuffer(), {
       httpMetadata: { contentType: "image/jpeg", cacheControl: "public, max-age=31536000, immutable" },
     });
     await ecrirePhotoMariage(env.DB, cree.id, "cocktail_photo_key", cleLieu);
+    if (ancien?.cocktail_photo_key) await env.PHOTOS.delete(ancien.cocktail_photo_key);
   }
 
   const domaine = `${cree.slug}.${env.SHARED_DOMAIN}`;
   return json({
     enregistre: true,
+    modification: cree.modification,
+    // Le sous-domaine n'est réellement joignable qu'une fois le pas manuel
+    // d'activation fait côté Cloudflare (cf. docs/commande.md) — `ancien`
+    // reflète l'état d'avant cette écriture, qui ne touche jamais active_le.
+    actif: Boolean(ancien?.active_le),
     site_url: `https://${domaine}`,
     tableau_url: `https://${env.DASHBOARD_HOSTNAME}`,
   });
@@ -1117,6 +1188,10 @@ export default {
       }
       if (url.pathname === "/api/admin/codes" && request.method === "POST") {
         return handleAdminCreerCode(request, env);
+      }
+      const activerMariage = url.pathname.match(/^\/api\/admin\/mariages\/([^/]+)\/activer$/);
+      if (activerMariage && request.method === "POST") {
+        return handleAdminActiverMariage(request, env, decodeURIComponent(activerMariage[1]!));
       }
     }
 

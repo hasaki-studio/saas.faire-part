@@ -68,6 +68,9 @@ schema/003_email_proprietaire.sql
 schema/004_origine_convive.sql
 schema/005_groupes.sql
 schema/006_og_image.sql
+schema/007_contact_rgpd.sql
+schema/008_codes_activation.sql
+schema/009_activation_manuelle.sql
 ```
 
 **Jamais `schema/dev-seed.sql` sur la base distante** : il écraserait un mariage
@@ -83,6 +86,21 @@ réel. C'est un jeu d'essai local, rien d'autre.
 4. Le projet Pages du tableau de bord, son sous-domaine et son application
    Access : les 7 étapes de `docs/tableau-de-bord.md`.
 5. L'aperçu WhatsApp : `docs/whatsapp.md`.
+
+## Ordre conseillé pour mettre le tunnel self-service en ligne
+
+1. Les migrations 007 à 009 (ci-dessus) — `codes_activation` et les colonnes
+   `active_le` / `remarque_acheteur` de `mariages` doivent exister avant le
+   premier appel à `/api/commande/*`.
+2. Le jeton et les secrets (§1 et §2), puis un **Run workflow** pour que le
+   Worker connaisse les routes `/api/commande/*`.
+3. Les 5 étapes Cloudflare de `docs/commande.md` (DNS, projet Pages
+   `commande-faire-part`, domaine personnalisé, route Worker, vérifier
+   `COMMANDE_HOSTNAME`) — pas d'application Access sur cet hôte, donc plus
+   court que pour le tableau ou l'admin.
+4. Un premier code de test dans `codes_activation` (depuis la console D1 ou
+   `admin/index.html`), pour vérifier le tunnel de bout en bout avant de
+   publier la Fiche B.
 
 ## Et la production ?
 

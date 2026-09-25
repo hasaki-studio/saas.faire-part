@@ -155,6 +155,10 @@
   .pastille-code { padding: 2px 9px; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; }
   .pastille-code.libre { background: var(--sage-tres-clair); color: var(--sage-dark); }
   .pastille-code.utilise { background: var(--cream-dark); color: var(--aide); }
+  .pastille-code.a-activer { background: var(--ambre-tres-clair); color: var(--ambre); }
+  .couple-code .slug { color: var(--aide); font-size: 0.72rem; display: block; }
+  .bouton-activer { margin-left: 8px; padding: 3px 10px; font-size: 0.66rem; }
+  table.codes td.remarque { max-width: 220px; white-space: pre-wrap; }
 
   @media (max-width: 720px) {
     /* Sur mobile, les colonnes secondaires disparaissent — on garde l'essentiel. */
@@ -186,7 +190,10 @@
       <p class="aide">Pas encore d'intégration Etsy API (cf. <code>docs/commande.md</code>) :
         à chaque vente, enregistre ici le numéro de commande et l'email tels
         qu'affichés sur Etsy. Sans cette ligne, l'acheteur qui suit son PDF
-        tombe sur « Numéro de commande introuvable ».</p>
+        tombe sur « Numéro de commande introuvable ». Une fois le tunnel
+        rempli, le site n'est joignable qu'après avoir ajouté son sous-domaine
+        exact côté Cloudflare (même limite que pour tableau./admin.) — marque
+        « activé » ici une fois fait, ça retire la ligne de la liste à traiter.</p>
       <form class="form-code" id="form-code">
         <div class="champ">
           <label for="code-commande">Numéro de commande Etsy</label>
@@ -397,22 +404,57 @@
   /* ---------- Codes d'activation (tunnel self-service, Fiche B Etsy) ----------
      Pas d'intégration Etsy API à ce jour (cf. docs/commande.md) : cette carte
      est le seul moyen de faire le pas manuel sans passer par la console D1. */
+  /**
+   * Trois statuts, pas deux : un code utilisé n'est « actif » qu'une fois le
+   * sous-domaine ajouté à la main côté Cloudflare (active_le). Entre les deux,
+   * c'est la ligne « à activer » que cette carte existe pour faire remonter.
+   */
   function rendreCodes(codes) {
     if (!codes.length) {
       $('codes-emballage').innerHTML = '<p class="aide">Aucun code enregistré pour l’instant.</p>';
       return;
     }
-    const lignes = codes.map((c) => `
-      <tr>
+    const lignes = codes.map((c) => {
+      const couple = c.prenom_1
+        ? `${esc(c.prenom_1)} & ${esc(c.prenom_2)}<span class="slug">${esc(c.slug)}</span>`
+        : '—';
+      let statut, action = '';
+      if (!c.consomme_le) {
+        statut = '<span class="pastille-code libre">en attente</span>';
+      } else if (c.active_le) {
+        statut = '<span class="pastille-code utilise">actif</span>';
+      } else {
+        statut = '<span class="pastille-code a-activer">à activer</span>';
+        action = `<button type="button" class="bouton-activer" data-activer="${esc(c.mariage_id)}">Marquer activé</button>`;
+      }
+      return `<tr>
         <td>${esc(c.commande_etsy)}</td>
         <td>${esc(c.email)}</td>
+        <td class="couple-code">${couple}</td>
+        <td class="remarque">${esc(c.remarque_acheteur || '—')}</td>
         <td>${esc(dateFr(c.cree_le.slice(0, 10)))}</td>
-        <td><span class="pastille-code ${c.consomme_le ? 'utilise' : 'libre'}">${c.consomme_le ? 'utilisé' : 'en attente'}</span></td>
-      </tr>`).join('');
+        <td>${statut}${action}</td>
+      </tr>`;
+    }).join('');
     $('codes-emballage').innerHTML = `<table class="codes">
-      <thead><tr><th>Commande</th><th>Email</th><th>Enregistré le</th><th>Statut</th></tr></thead>
+      <thead><tr><th>Commande</th><th>Email</th><th>Couple</th><th>Remarque</th><th>Enregistré le</th><th>Statut</th></tr></thead>
       <tbody>${lignes}</tbody>
     </table>`;
+
+    $('codes-emballage').querySelectorAll('[data-activer]').forEach((bouton) => {
+      bouton.addEventListener('click', async () => {
+        bouton.disabled = true;
+        bouton.textContent = '…';
+        try {
+          const res = await fetch(`/api/admin/mariages/${encodeURIComponent(bouton.dataset.activer)}/activer`, { method: 'POST' });
+          if (!res.ok) throw new Error();
+          chargerCodes();
+        } catch {
+          bouton.disabled = false;
+          bouton.textContent = 'Marquer activé';
+        }
+      });
+    });
   }
 
   async function chargerCodes() {
