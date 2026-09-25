@@ -379,6 +379,9 @@
       Votre remarque a bien été transmise — on revient vers vous avant
       l'activation si besoin.
     </div>
+
+    <button type="button" class="bouton-secondaire" id="btn-modifier" style="margin-top:20px">Modifier mes informations</button>
+    <p class="note" style="margin-top:8px">Possible pendant 48 h après la création de votre site.</p>
   </section>
 </main>
 
@@ -417,37 +420,59 @@ function afficherErreur(texte) {
 
 /* ---------- Étape 1 : vérification ----------
    Ne crée rien : sert juste à dire tout de suite si le numéro de commande ou
-   l'email ne correspondent pas, avant que l'acheteur ait rempli le formulaire. */
+   l'email ne correspondent pas, avant que l'acheteur ait rempli le formulaire.
+   Réutilisée telle quelle par le bouton "Modifier mes informations" de
+   l'étape 3 : on a déjà commande/email en mémoire, pas besoin de les
+   refaire ressaisir pour rentrer dans la fenêtre de correction de 48 h. */
+async function verifierEtAvancer(commande, email) {
+  const res = await fetch('/api/commande/verifier', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ commande_etsy: commande, email }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.valide) throw new Error(data.erreur || 'Le serveur a répondu ' + res.status);
+
+  COMMANDE_ETSY = commande;
+  EMAIL = email;
+  MODIFICATION = Boolean(data.modification);
+  if (MODIFICATION) preRemplir(data.mariage);
+  else $('fenetre-modification').hidden = false; // annoncé seulement à la première création
+  afficherEtape(2);
+}
+
 $('form-verifier').addEventListener('submit', async (e) => {
   e.preventDefault();
   afficherErreur('');
   const btn = $('btn-verifier');
   btn.disabled = true;
   btn.textContent = 'Vérification…';
-
-  const commande = $('v-commande').value.trim();
-  const email = $('v-email').value.trim();
-
   try {
-    const res = await fetch('/api/commande/verifier', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ commande_etsy: commande, email }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.valide) throw new Error(data.erreur || 'Le serveur a répondu ' + res.status);
-
-    COMMANDE_ETSY = commande;
-    EMAIL = email;
-    MODIFICATION = Boolean(data.modification);
-    if (MODIFICATION) preRemplir(data.mariage);
-    else $('fenetre-modification').hidden = false; // annoncé seulement à la première création
-    afficherEtape(2);
+    await verifierEtAvancer($('v-commande').value.trim(), $('v-email').value.trim());
   } catch (err) {
     afficherErreur(err.message);
   } finally {
     btn.disabled = false;
     btn.textContent = 'Continuer';
+  }
+});
+
+/* ---------- Étape 3 → retour à l'étape 2 ----------
+   Le code est déjà consommé à ce stade (la création vient de se faire) :
+   re-vérifier renvoie donc forcément modification: true et pré-remplit avec
+   ce qui vient d'être enregistré — jamais un formulaire vide. */
+$('btn-modifier').addEventListener('click', async () => {
+  afficherErreur('');
+  const btn = $('btn-modifier');
+  btn.disabled = true;
+  btn.textContent = 'Chargement…';
+  try {
+    await verifierEtAvancer(COMMANDE_ETSY, EMAIL);
+  } catch (err) {
+    afficherErreur(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Modifier mes informations';
   }
 });
 
