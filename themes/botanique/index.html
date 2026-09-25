@@ -1042,7 +1042,7 @@ nav {
     <div class="faq-list">
 <div class="faq-item">
         <button class="faq-question" onclick="toggleFaq(this)">
-          <span class="faq-question-text">Comment se rendre à Pau ?</span>
+          <span class="faq-question-text">Comment se rendre sur le lieu de la cérémonie ?</span>
           <span class="faq-icon">
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
               <line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/>
@@ -1051,14 +1051,14 @@ nav {
         </button>
         <div class="faq-answer">
           <div class="faq-answer-inner">
-          La cérémonie civile aura lieu à la mairie de Pau, Place Royale, 64000 Pau. Vous pouvez nous contacter si vous n'avez pas de solution de transport jusqu'à Pau.
+          Vous trouverez l'adresse complète dans la section « Le programme » ci-dessus. N'hésitez pas à nous contacter si vous n'avez pas de solution de transport.
           </div>
         </div>
       </div>
 
       <div class="faq-item">
         <button class="faq-question" onclick="toggleFaq(this)">
-          <span class="faq-question-text">Comment se rendre au Domaine des Vergers ?</span>
+          <span class="faq-question-text">Comment se rendre sur le lieu de la réception ?</span>
           <span class="faq-icon">
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
               <line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/>
@@ -1067,7 +1067,7 @@ nav {
         </button>
         <div class="faq-answer">
           <div class="faq-answer-inner">
-            Le Domaine des Vergers est accessible en voiture. Un parking gratuit est disponible sur place. L'adresse exacte vous sera communiquée avec votre invitation.
+            Vous trouverez l'adresse dans la section « Le lieu » ci-dessus. N'hésitez pas à nous contacter si vous avez besoin d'un covoiturage.
           </div>
         </div>
       </div>
@@ -1083,7 +1083,7 @@ nav {
         </button>
         <div class="faq-answer">
           <div class="faq-answer-inner">
-            Plusieurs hôtels et chambres d'hôtes se trouvent à quelques minutes du domaine. Nous vous recommandons de réserver rapidement, notamment si vous venez de loin. Une liste de recommandations vous sera partagée avec votre invitation.
+            Plusieurs hôtels et chambres d'hôtes se trouvent à proximité. Nous vous recommandons de réserver rapidement, notamment si vous venez de loin. Une liste de recommandations vous sera partagée avec votre invitation.
           </div>
         </div>
       </div>
@@ -1131,7 +1131,7 @@ nav {
         </button>
         <div class="faq-answer">
           <div class="faq-answer-inner">
-            La cérémonie civile aura lieu à la mairie de Pau. Le cocktail se tiendra dans les jardins du domaine (en extérieur, sous réserve de beau temps). Le dîner et la soirée dansante se dérouleront à l'intérieur, dans la Grande Salle du domaine.
+            Cela dépend du moment de la journée et de la météo — n'hésitez pas à nous demander si vous avez un doute avant de choisir votre tenue.
           </div>
         </div>
       </div>
@@ -1195,7 +1195,7 @@ nav {
         </button>
         <div class="faq-answer">
           <div class="faq-answer-inner">
-            Une navette sera organisée entre la Mairie de Pau et le Domaine des Vergers pour ceux qui ne sont pas véhiculés. Les détails pratiques (horaires, points de départ) vous seront communiqués dans les semaines précédant la cérémonie, n'hésitez pas à vous signaler si vous n'avez pas de voiture.
+            Si besoin, une navette sera organisée entre les différents lieux pour ceux qui ne sont pas véhiculés. Les détails pratiques (horaires, points de départ) vous seront communiqués dans les semaines précédant la cérémonie, n'hésitez pas à vous signaler si vous n'avez pas de voiture.
           </div>
         </div>
       </div>
@@ -1222,7 +1222,7 @@ nav {
 
 <!-- FOOTER -->
 <footer>
-  <p>Justine &amp; Raphael · 17 juillet 2027 · Pau</p>
+  <p id="footer-couple"></p>
 </footer>
 
 <script>
@@ -1459,9 +1459,17 @@ function accompagnantsDuFormulaire() {
 }
 
 // Charge le messager (SVG + CSS + JS, cf. messagers/<nom>/) sans que ce thème
-// ne connaisse son contenu — un seul contrat : window.jouerMessager(container, cb)
+// ne connaisse son contenu — un seul contrat : window.jouerMessager(container, cb, options)
 // une fois le script chargé (cf. CLAUDE.md §6, thèmes et messagers indépendants).
-function demarrerMessager(nom) {
+//
+// `forcer` correspond à modeApercu : les messagers sautent leur propre
+// animation via sessionStorage pour un même visiteur qui recharge son lien
+// (cf. messagers/*/*.js) — mais l'aperçu du tunnel self-service rejoue
+// toujours la même origine à chaque clic sur "Voir l'aperçu", donc cette
+// mémoire se déclencherait à tort dès le deuxième essai avec le même
+// messager. Un vrai lien d'invité n'a jamais ce problème (un site par
+// sous-domaine, jamais le même que l'aperçu) : `forcer` y reste toujours faux.
+function demarrerMessager(nom, forcer = false) {
   const attente = document.getElementById('messager-attente');
   const css = document.createElement('link');
   css.rel = 'stylesheet';
@@ -1471,7 +1479,7 @@ function demarrerMessager(nom) {
   const script = document.createElement('script');
   script.src = `messagers/${nom}/${nom}.js`;
   script.onload = () => {
-    if (window.jouerMessager) window.jouerMessager(document.body, () => {});
+    if (window.jouerMessager) window.jouerMessager(document.body, () => {}, { forcer });
     if (attente) attente.remove();
   };
   script.onerror = () => {
@@ -1525,6 +1533,7 @@ function remplirFaireArt(data, { modeApercu = false } = {}) {
   document.getElementById('prenom-1').textContent = m.prenom_1;
   document.getElementById('prenom-2').textContent = m.prenom_2;
   document.getElementById('hero-date').textContent = `Le ${formatDate(m.date_mariage)}`;
+  document.getElementById('footer-couple').textContent = `${m.prenom_1} & ${m.prenom_2} · ${formatDate(m.date_mariage)}`;
   document.getElementById('rsvp-deadline').textContent = `Merci de répondre avant le ${formatDate(m.date_limite_rsvp)}`;
   remplirMentionRgpd(m);
 
@@ -1555,7 +1564,7 @@ function remplirFaireArt(data, { modeApercu = false } = {}) {
   }
 
   if (m.messager) {
-    demarrerMessager(m.messager);
+    demarrerMessager(m.messager, modeApercu);
   } else {
     // Pas de messager choisi pour ce mariage : le faire-part s'affiche directement.
     document.getElementById('messager-attente')?.remove();
