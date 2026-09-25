@@ -13,26 +13,40 @@ lien cliquable, un aperçu du nom du site et un message d'attente.
 
 ## Le principe
 
-Trois étapes côté acheteur :
+Quatre étapes côté acheteur :
 
 1. **Vérification** — il saisit son numéro de commande Etsy et l'email de sa
    commande. `POST /api/commande/verifier` compare aux lignes de
    `codes_activation`, sans rien modifier.
-2. **Formulaire** — prénoms, dates, lieu, deux réponses génériques
-   obligatoires (§4), une animation, une photo du couple (obligatoire) et une
-   photo du lieu (facultative), redimensionnées dans le navigateur avant
-   l'envoi — même pipeline que le tableau de bord (§4 : jamais l'original).
-   Un bouton « Voir l'aperçu » affiche le vrai thème, avec le messager choisi,
-   nourri par ce qui vient d'être saisi (cf. « L'aperçu encastré » plus bas) —
-   avant de demander une remarque, pas après : on ne demande pas un avis sur
-   un rendu que personne n'a encore vu. Le champ « une remarque avant
-   l'activation », facultatif, sert désormais surtout à signaler un vrai
-   dysfonctionnement dans ce rendu (le reste, l'aperçu le montre déjà) —
-   stocké dans `mariages.remarque_acheteur`, lu par l'admin avant d'activer.
-3. **Terminé** — `POST /api/commande/creer` crée la ligne `mariages`, écrit
-   les photos dans R2, consomme le code, et renvoie un aperçu du nom du site
-   (pas encore actif) — jamais un lien à cliquer tout de suite, jamais l'accès
-   au tableau de bord (qui suit de toute façon un délai distinct, cf. plus
+2. **Informations** — prénoms, dates, lieu et heure de la cérémonie et du
+   cocktail, deux réponses génériques obligatoires (§4), une animation, le
+   **programme de la journée** (dîner, soirée, ou toute étape propre au
+   mariage — pré-rempli, éditable, ajoutable/retirable) et la **FAQ**
+   (questions pré-rédigées, éditables et complétables de la même façon).
+   Cérémonie et cocktail restent des champs du mariage — ils alimentent
+   aussi la section « Le lieu » du thème — le reste de la journée et la FAQ
+   sont de vraies listes (cf. `schema/010_programme_faq.sql`).
+3. **Photos et aperçu** — photo du couple (obligatoire) et photo du lieu
+   (facultative), redimensionnées dans le navigateur avant l'envoi — même
+   pipeline que le tableau de bord (§4 : jamais l'original). Un bouton
+   « Voir l'aperçu » affiche le vrai thème, avec le messager, le programme et
+   la FAQ tels que saisis (cf. « L'aperçu encastré » plus bas) — avant de
+   décider, pas après : on ne demande pas un avis sur un rendu que personne
+   n'a encore vu. Un bouton « Modifier mes informations » revient à l'étape 2
+   sans rien renvoyer au serveur (rien n'est encore soumis). Deux boutons de
+   décision ferment le formulaire :
+   - **« Je valide les infos »** — le chemin normal.
+   - **« Envoyer cette remarque »** — exige un texte non vide (se plaindre de
+     rien n'a pas de sens) ; enregistre exactement les mêmes données, mais
+     l'étape 4 affiche un message de prise en charge plutôt que l'aperçu du
+     site, et la remarque (`mariages.remarque_acheteur`) attire l'attention de
+     l'admin avant l'activation.
+4. **Terminé** — `POST /api/commande/creer` crée la ligne `mariages`, le
+   programme et la FAQ, écrit les photos dans R2, consomme le code. Le
+   message dépend du bouton cliqué à l'étape précédente ; sur le chemin
+   normal, un aperçu du nom du site (pas encore actif) — jamais un lien à
+   cliquer tout de suite, jamais l'accès au tableau de bord (qui suit de toute
+   façon un délai distinct, cf. plus
    bas).
 
 ## Ce qui protège l'ensemble
@@ -125,6 +139,39 @@ avec `?apercu=1`.
 - **Sur `localhost`**, `SHARED_DOMAIN` n'existe pas : `proxy-local.js` sert
   toujours le thème invité sur le port 8080, et le JS du tunnel s'y adapte
   directement (`APERCU_ORIGIN`) — aucune configuration à changer pour tester.
+
+## Le programme et la FAQ
+
+Révélés par l'aperçu encastré (§4 de CLAUDE.md, session du 25 septembre 2026) :
+le thème affichait des horaires inventés et une FAQ écrite pour un couple
+précis, jamais branchés sur de vraies données, pour aucun mariage — catalogue
+ou sur-mesure.
+
+- **Cérémonie et cocktail ne sont pas des lignes de liste.** Ce sont des
+  champs du mariage (`ceremonie_nom`/`ceremonie_adresse`/`heure_ceremonie`,
+  pareil pour le cocktail) : ils alimentent aussi la section « Le lieu » du
+  thème, changer leur forme aurait cassé cette section pour rien.
+- **Le reste de la journée est une vraie liste** (`programme_items`) : un
+  couple ne suit pas tous le même déroulé, une liste s'ajoute et se retire,
+  contrairement à des colonnes fixes. Même principe pour la FAQ
+  (`faq_items`) — les questions par défaut couvrent la plupart des mariages,
+  mais un couple doit pouvoir en retirer une qui ne s'applique pas ou en
+  ajouter une qui lui est propre.
+- **Les deux sont pré-remplies à la création** (`PROGRAMME_PAR_DEFAUT` /
+  `FAQ_PAR_DEFAUT` dans `worker/src/db.ts`) : un couple qui ne touche à rien
+  garde un programme et une FAQ raisonnables, jamais une page vide. Le
+  contenu par défaut est écrit pour rester vrai quel que soit le mariage —
+  aucun lieu, aucune date, aucun service (photographe, cagnotte...) n'y est
+  promis comme un fait acquis.
+- **Le formulaire renvoie l'état complet à chaque soumission**, jamais un
+  diff (`remplacerProgramme`/`remplacerFaq` suppriment puis réinsèrent) —
+  même principe que le reste du tunnel : plus simple et plus sûr qu'un
+  rapprochement ligne à ligne pour une liste que le couple réordonne, ajoute
+  et retire librement à chaque visite.
+- **Un vrai lien d'invité voit exactement le même programme et la même FAQ**
+  que l'aperçu : `contenuPublic()` (l'API publique du faire-part) et la
+  réponse de `/api/commande/verifier` en mode correction lisent les deux
+  mêmes tables. Rien n'est propre au tunnel.
 
 ## Ce qui n'est PAS automatisé (limite connue, à lire avant de publier la Fiche B)
 

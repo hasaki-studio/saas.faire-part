@@ -23,6 +23,10 @@ export interface Mariage {
   // tout mariage créé autrement (Fiche A, jeu d'essai).
   active_le: string | null;
   remarque_acheteur: string | null;
+  // cf. schema/010_programme_faq.sql : juste l'heure, le nom/l'adresse sont
+  // déjà ceremonie_nom/ceremonie_adresse et cocktail_nom/cocktail_adresse.
+  heure_ceremonie: string | null;
+  heure_cocktail: string | null;
 }
 
 export type Presence = "oui" | "non";
@@ -656,8 +660,10 @@ export interface NouveauMariage {
   date_limite_rsvp: string;
   ceremonie_nom: string | null;
   ceremonie_adresse: string | null;
+  heure_ceremonie: string | null;
   cocktail_nom: string | null;
   cocktail_adresse: string | null;
+  heure_cocktail: string | null;
   reponse_generique_oui: string;
   reponse_generique_non: string;
   theme: string;
@@ -730,11 +736,12 @@ export async function creerOuMettreAJourMariageSelfService(
         `UPDATE mariages SET
            theme = ?1, messager = ?2, prenom_1 = ?3, prenom_2 = ?4,
            date_mariage = ?5, date_limite_rsvp = ?6,
-           ceremonie_nom = ?7, ceremonie_adresse = ?8, cocktail_nom = ?9, cocktail_adresse = ?10,
-           reponse_generique_oui = ?11, reponse_generique_non = ?12,
-           remarque_acheteur = ?13,
+           ceremonie_nom = ?7, ceremonie_adresse = ?8, heure_ceremonie = ?9,
+           cocktail_nom = ?10, cocktail_adresse = ?11, heure_cocktail = ?12,
+           reponse_generique_oui = ?13, reponse_generique_non = ?14,
+           remarque_acheteur = ?15,
            supprimer_le = date(?5, '+90 days')
-         WHERE id = ?14`,
+         WHERE id = ?16`,
       )
       .bind(
         data.theme,
@@ -745,8 +752,10 @@ export async function creerOuMettreAJourMariageSelfService(
         data.date_limite_rsvp,
         data.ceremonie_nom,
         data.ceremonie_adresse,
+        data.heure_ceremonie,
         data.cocktail_nom,
         data.cocktail_adresse,
+        data.heure_cocktail,
         data.reponse_generique_oui,
         data.reponse_generique_non,
         data.remarque_acheteur,
@@ -765,10 +774,11 @@ export async function creerOuMettreAJourMariageSelfService(
     .prepare(
       `INSERT INTO mariages (
          id, slug, theme, messager, prenom_1, prenom_2, date_mariage, date_limite_rsvp,
-         ceremonie_nom, ceremonie_adresse, cocktail_nom, cocktail_adresse,
+         ceremonie_nom, ceremonie_adresse, heure_ceremonie,
+         cocktail_nom, cocktail_adresse, heure_cocktail,
          reponse_generique_oui, reponse_generique_non, remarque_acheteur,
          email_proprietaire, supprimer_le
-       ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, date(?7, '+90 days'))`,
+       ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, date(?7, '+90 days'))`,
     )
     .bind(
       id,
@@ -781,8 +791,10 @@ export async function creerOuMettreAJourMariageSelfService(
       data.date_limite_rsvp,
       data.ceremonie_nom,
       data.ceremonie_adresse,
+      data.heure_ceremonie,
       data.cocktail_nom,
       data.cocktail_adresse,
+      data.heure_cocktail,
       data.reponse_generique_oui,
       data.reponse_generique_non,
       data.remarque_acheteur,
@@ -826,4 +838,142 @@ export async function marquerMariageActive(
     .run();
   if ((meta.changes ?? 0) === 0) return { ok: false, erreur: "Mariage introuvable." };
   return { ok: true };
+}
+
+// ── Programme de la journée et FAQ (cf. schema/010_programme_faq.sql) ──────
+//
+// Cérémonie et cocktail n'y figurent pas : ce sont des champs du mariage
+// (heure_ceremonie/heure_cocktail + ceremonie_nom/cocktail_nom), utilisés
+// aussi par la section "Le lieu" du thème. Ces deux listes couvrent tout le
+// reste — dîner, soirée, ou n'importe quelle étape propre à un mariage — et
+// la FAQ dans son ensemble.
+
+export interface ProgrammeItem {
+  id: string;
+  mariage_id: string;
+  heure: string | null;
+  titre: string;
+  lieu: string | null;
+  ordre: number;
+}
+
+export interface FaqItem {
+  id: string;
+  mariage_id: string;
+  question: string;
+  reponse: string;
+  ordre: number;
+}
+
+// Contenu proposé à la création : un couple qui ne touche à rien garde un
+// programme et une FAQ raisonnables plutôt qu'une page vide. Rédigé pour
+// rester vrai quel que soit le mariage — aucun lieu, aucune date, aucun
+// service (photographe, cagnotte...) n'est promis comme un fait acquis.
+export const PROGRAMME_PAR_DEFAUT: Array<{ heure: string | null; titre: string; lieu: string | null }> = [
+  { heure: "20:00", titre: "Dîner", lieu: null },
+  { heure: "22:30", titre: "Soirée dansante", lieu: null },
+];
+
+export const FAQ_PAR_DEFAUT: Array<{ question: string; reponse: string }> = [
+  {
+    question: "Comment se rendre sur le lieu de la cérémonie ?",
+    reponse: "Vous trouverez l'adresse complète dans la section « Le programme » ci-dessus. N'hésitez pas à nous contacter si vous n'avez pas de solution de transport.",
+  },
+  {
+    question: "Comment se rendre sur le lieu de la réception ?",
+    reponse: "Vous trouverez l'adresse dans la section « Le lieu » ci-dessus. N'hésitez pas à nous contacter si vous avez besoin d'un covoiturage.",
+  },
+  {
+    question: "Y a-t-il des hébergements à proximité ?",
+    reponse: "Plusieurs hôtels et chambres d'hôtes se trouvent à proximité. Nous vous recommandons de réserver rapidement, notamment si vous venez de loin.",
+  },
+  {
+    question: "Y a-t-il un dress code pour la journée ?",
+    reponse: "La tenue de soirée est souhaitée. Merci d'éviter le blanc et ses nuances, réservés à la mariée.",
+  },
+  {
+    question: "Les enfants sont-ils les bienvenus ?",
+    reponse: "Les enfants sont les bienvenus avec grande joie. Merci de l'indiquer dans votre RSVP afin que nous puissions nous organiser au mieux.",
+  },
+  {
+    question: "La cérémonie se déroule-t-elle en intérieur ou en extérieur ?",
+    reponse: "Cela dépend du moment de la journée et de la météo — n'hésitez pas à nous demander si vous avez un doute avant de choisir votre tenue.",
+  },
+  {
+    question: "Avez-vous une liste de mariage ou une cagnotte ?",
+    reponse: "Votre présence à nos côtés est le plus beau des cadeaux. Si vous souhaitez tout de même nous gâter, une cagnotte pourra être disponible le jour du mariage.",
+  },
+  {
+    question: "Puis-je modifier ma réponse après l'avoir envoyée ?",
+    reponse: "Si votre situation change après l'envoi de votre réponse, contactez-nous directement — nous ferons notre possible pour la prendre en compte tant que la liste définitive n'a pas été transmise au traiteur.",
+  },
+  {
+    question: "Peut-on prendre des photos et les partager ?",
+    reponse: "Oui, avec grand plaisir ! N'hésitez pas à faire vos propres souvenirs et à nous les partager suite à la soirée.",
+  },
+  {
+    question: "Y a-t-il une navette prévue entre les différents lieux ?",
+    reponse: "Si besoin, une navette sera organisée entre les différents lieux pour ceux qui ne sont pas véhiculés. Les détails pratiques vous seront communiqués avant la cérémonie.",
+  },
+  {
+    question: "Qui contacter en cas de question ?",
+    reponse: "Vous pouvez nous contacter directement par email à l'adresse que vous avez reçue avec votre invitation.",
+  },
+];
+
+export async function listerProgramme(db: D1Database, mariageId: string): Promise<ProgrammeItem[]> {
+  const { results } = await db
+    .prepare("SELECT * FROM programme_items WHERE mariage_id = ?1 ORDER BY ordre ASC")
+    .bind(mariageId)
+    .all<ProgrammeItem>();
+  return results;
+}
+
+export async function listerFaq(db: D1Database, mariageId: string): Promise<FaqItem[]> {
+  const { results } = await db
+    .prepare("SELECT * FROM faq_items WHERE mariage_id = ?1 ORDER BY ordre ASC")
+    .bind(mariageId)
+    .all<FaqItem>();
+  return results;
+}
+
+/**
+ * Remplace tout le programme (hors cérémonie/cocktail) d'un mariage : supprime
+ * les lignes existantes et réinsère la liste donnée, dans l'ordre reçu. Même
+ * principe que le reste du tunnel self-service (le formulaire renvoie l'état
+ * complet voulu, jamais un diff) — plus simple et plus sûr qu'un rapprochement
+ * ligne à ligne pour une liste que le couple réordonne, ajoute et retire
+ * librement.
+ */
+export async function remplacerProgramme(
+  db: D1Database,
+  mariageId: string,
+  items: Array<{ heure: string | null; titre: string; lieu: string | null }>,
+): Promise<void> {
+  await db.batch([
+    db.prepare("DELETE FROM programme_items WHERE mariage_id = ?1").bind(mariageId),
+    ...items.map((item, i) =>
+      db
+        .prepare(
+          "INSERT INTO programme_items (id, mariage_id, heure, titre, lieu, ordre) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        )
+        .bind(crypto.randomUUID(), mariageId, item.heure, item.titre, item.lieu, i),
+    ),
+  ]);
+}
+
+/** Même principe que remplacerProgramme, pour la FAQ. */
+export async function remplacerFaq(
+  db: D1Database,
+  mariageId: string,
+  items: Array<{ question: string; reponse: string }>,
+): Promise<void> {
+  await db.batch([
+    db.prepare("DELETE FROM faq_items WHERE mariage_id = ?1").bind(mariageId),
+    ...items.map((item, i) =>
+      db
+        .prepare("INSERT INTO faq_items (id, mariage_id, question, reponse, ordre) VALUES (?1, ?2, ?3, ?4, ?5)")
+        .bind(crypto.randomUUID(), mariageId, item.question, item.reponse, i),
+    ),
+  ]);
 }

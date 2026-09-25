@@ -63,7 +63,7 @@
     margin-top: 6px;
   }
 
-  /* Trois puces d'avancement : l'acheteur doit toujours savoir où il en est
+  /* Quatre puces d'avancement : l'acheteur doit toujours savoir où il en est
      dans un parcours qu'il ne fera qu'une fois. */
   .etapes {
     display: flex;
@@ -83,6 +83,7 @@
     border: 1px solid var(--cream-dark);
     padding: 28px 24px;
   }
+  .carte + .carte { margin-top: 0; }
   .carte h1, .carte h2 {
     font-family: 'Cormorant Garamond', serif;
     font-weight: 500;
@@ -118,6 +119,7 @@
   .champ input[type="text"],
   .champ input[type="email"],
   .champ input[type="date"],
+  .champ input[type="time"],
   .champ textarea,
   .champ select {
     width: 100%;
@@ -190,6 +192,7 @@
     text-transform: uppercase;
   }
   .bouton-secondaire:hover { background: var(--gold); color: #fff; }
+  .bouton-secondaire:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .message-erreur {
     background: #fdf0f0;
@@ -201,8 +204,8 @@
   }
   .message-erreur.masque { display: none; }
 
-  /* Écran final : les deux liens sont ce que l'acheteur emporte de cette
-     page — ils doivent être impossibles à manquer et faciles à copier. */
+  /* Écran final : le lien est ce que l'acheteur emporte de cette page — il
+     doit être impossible à manquer et facile à copier. */
   .lien-final {
     margin-bottom: 20px;
   }
@@ -243,6 +246,23 @@
     height: 70vh;
     border: 0;
   }
+
+  /* Une ligne de programme ou de FAQ : un bloc qu'on peut retirer d'un clic,
+     jamais un tableau — le couple en ajoute rarement plus de quelques-unes. */
+  .item-ligne {
+    border: 1px solid var(--cream-dark);
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  .item-ligne .champ { margin-bottom: 10px; }
+  .item-ligne .champ:last-of-type { margin-bottom: 0; }
+  .item-ligne .item-retirer { margin-top: 10px; }
+
+  hr.separation {
+    border: none;
+    border-top: 1px solid var(--cream-dark);
+    margin: 28px 0;
+  }
 </style>
 </head>
 <body>
@@ -256,6 +276,7 @@
     <span data-etape="1"></span>
     <span data-etape="2"></span>
     <span data-etape="3"></span>
+    <span data-etape="4"></span>
   </div>
 
   <div id="message-erreur" class="message-erreur masque"></div>
@@ -279,32 +300,37 @@
     </form>
   </section>
 
-  <!-- Étape 2 : formulaire -->
-  <section class="carte" id="etape-2" hidden>
-    <h1 id="etape-2-titre">Vos informations</h1>
-    <p class="aide" id="etape-2-aide">Tout ce qui suit apparaîtra sur votre site. Vous pourrez
-      corriger une information plus tard depuis votre tableau de bord.</p>
+  <!-- Un seul <form> pour les étapes 2 et 3 : les deux boutons de décision de
+       l'étape 3 ont besoin de tous les champs des deux, et rien n'est envoyé
+       avant que l'un d'eux soit cliqué (ni l'un ni l'autre n'est type=submit,
+       cf. le script plus bas). -->
+  <form id="form-creer">
 
-    <form id="form-creer">
+    <!-- Étape 2 : infos du mariage, programme, FAQ -->
+    <section class="carte" id="etape-2" hidden>
+      <h1 id="etape-2-titre">Vos informations</h1>
+      <p class="aide" id="etape-2-aide">Tout ce qui suit apparaîtra sur votre site. Vous pourrez
+        corriger une information plus tard depuis votre tableau de bord.</p>
+
       <div class="deux-colonnes">
         <div class="champ">
           <label for="c-prenom-1">Votre prénom</label>
-          <input type="text" id="c-prenom-1" maxlength="80" required>
+          <input type="text" id="c-prenom-1" maxlength="80">
         </div>
         <div class="champ">
           <label for="c-prenom-2">Le prénom de votre partenaire</label>
-          <input type="text" id="c-prenom-2" maxlength="80" required>
+          <input type="text" id="c-prenom-2" maxlength="80">
         </div>
       </div>
 
       <div class="deux-colonnes">
         <div class="champ">
           <label for="c-date-mariage">Date du mariage</label>
-          <input type="date" id="c-date-mariage" required>
+          <input type="date" id="c-date-mariage">
         </div>
         <div class="champ">
           <label for="c-date-rsvp">Date limite pour répondre</label>
-          <input type="date" id="c-date-rsvp" required>
+          <input type="date" id="c-date-rsvp">
           <span class="note">Avant la date du mariage.</span>
         </div>
       </div>
@@ -318,17 +344,30 @@
         </select>
       </div>
 
-      <div class="champ">
-        <label for="c-ceremonie-nom">Lieu de la cérémonie <span class="note" style="display:inline">(facultatif)</span></label>
-        <input type="text" id="c-ceremonie-nom" maxlength="200">
+      <div class="deux-colonnes">
+        <div class="champ">
+          <label for="c-ceremonie-nom">Lieu de la cérémonie <span class="note" style="display:inline">(facultatif)</span></label>
+          <input type="text" id="c-ceremonie-nom" maxlength="200">
+        </div>
+        <div class="champ">
+          <label for="c-heure-ceremonie">Heure <span class="note" style="display:inline">(facultatif)</span></label>
+          <input type="time" id="c-heure-ceremonie">
+        </div>
       </div>
       <div class="champ">
         <label for="c-ceremonie-adresse">Adresse de la cérémonie <span class="note" style="display:inline">(facultatif)</span></label>
         <input type="text" id="c-ceremonie-adresse" maxlength="300">
       </div>
-      <div class="champ">
-        <label for="c-cocktail-nom">Lieu de la réception <span class="note" style="display:inline">(facultatif)</span></label>
-        <input type="text" id="c-cocktail-nom" maxlength="200">
+
+      <div class="deux-colonnes">
+        <div class="champ">
+          <label for="c-cocktail-nom">Lieu de la réception <span class="note" style="display:inline">(facultatif)</span></label>
+          <input type="text" id="c-cocktail-nom" maxlength="200">
+        </div>
+        <div class="champ">
+          <label for="c-heure-cocktail">Heure <span class="note" style="display:inline">(facultatif)</span></label>
+          <input type="time" id="c-heure-cocktail">
+        </div>
       </div>
       <div class="champ">
         <label for="c-cocktail-adresse">Adresse de la réception <span class="note" style="display:inline">(facultatif)</span></label>
@@ -337,12 +376,37 @@
 
       <div class="champ">
         <label for="c-oui">Message si un invité répond « oui »</label>
-        <textarea id="c-oui" maxlength="1500" required placeholder="Merci, on a hâte de vous voir !"></textarea>
+        <textarea id="c-oui" maxlength="1500" placeholder="Merci, on a hâte de vous voir !"></textarea>
       </div>
       <div class="champ">
         <label for="c-non">Message si un invité répond « non »</label>
-        <textarea id="c-non" maxlength="1500" required placeholder="C'est dommage, merci de nous avoir prévenus."></textarea>
+        <textarea id="c-non" maxlength="1500" placeholder="C'est dommage, merci de nous avoir prévenus."></textarea>
       </div>
+
+      <hr class="separation">
+
+      <div class="champ">
+        <label>Programme de la journée <span class="note" style="display:inline">(après la cérémonie et le cocktail — facultatif)</span></label>
+        <div id="programme-liste"></div>
+        <button type="button" class="bouton-secondaire" id="btn-ajouter-programme">+ Ajouter une étape</button>
+      </div>
+
+      <hr class="separation">
+
+      <div class="champ">
+        <label>Questions fréquentes <span class="note" style="display:inline">(déjà pré-remplies, à adapter ou compléter)</span></label>
+        <div id="faq-liste"></div>
+        <button type="button" class="bouton-secondaire" id="btn-ajouter-faq">+ Ajouter une question</button>
+      </div>
+
+      <button class="bouton-principal" type="button" id="btn-continuer-etape2" style="margin-top:20px">Continuer</button>
+    </section>
+
+    <!-- Étape 3 : photos, aperçu, décision -->
+    <section class="carte" id="etape-3" hidden>
+      <h1>Photos et aperçu</h1>
+      <p class="aide">Vos photos sont redimensionnées directement dans votre navigateur —
+        rien de plus lourd que nécessaire n'est jamais envoyé.</p>
 
       <div class="deux-colonnes">
         <div class="photo-champ couple">
@@ -370,41 +434,39 @@
         </div>
       </div>
 
+      <button type="button" class="bouton-secondaire" id="btn-retour-etape2" style="margin-top:20px">Modifier mes informations</button>
+
+      <hr class="separation">
+
       <div class="champ">
-        <label for="c-remarque">Une remarque avant l'activation ? <span class="note" style="display:inline">(facultatif)</span></label>
-        <textarea id="c-remarque" maxlength="1500" placeholder="Un dysfonctionnement dans le rendu ci-dessus, autre chose à nous signaler ?"></textarea>
+        <label for="c-remarque">Un problème avec le rendu ci-dessus ? <span class="note" style="display:inline">(facultatif)</span></label>
+        <textarea id="c-remarque" maxlength="1500" placeholder="Décrivez ce qui ne va pas — nous reviendrons vers vous avant d'activer votre site."></textarea>
+        <button type="button" class="bouton-secondaire" id="btn-remarque" style="margin-top:10px">Envoyer cette remarque</button>
       </div>
 
-      <button class="bouton-principal" type="submit" id="btn-creer" style="margin-top:12px">Terminer</button>
+      <button class="bouton-principal" type="button" id="btn-valider" style="margin-top:20px">Je valide les infos : déployer le site</button>
       <p class="note" id="fenetre-modification" style="margin-top:10px; text-align:center" hidden>
         Vous pouvez revenir corriger ces informations avec le même numéro de
         commande pendant 48 h après la création de votre site.</p>
-    </form>
-  </section>
+    </section>
+  </form>
 
-  <!-- Étape 3 : terminé. Le site n'est pas encore joignable à cet instant —
+  <!-- Étape 4 : confirmation. Le site n'est pas encore joignable à cet instant
+       (une remarque envoyée l'est encore moins, une revue manuelle suit) —
        son activation est un pas manuel côté Cloudflare (cf. docs/commande.md) —
        donc rien ici n'est présenté comme un lien à cliquer tout de suite. -->
-  <section class="carte" id="etape-3" hidden>
-    <h1 id="etape-3-titre">Votre faire-part est en préparation !</h1>
-    <p class="aide" id="etape-3-aide">Votre site sera activé sous peu (comptez quelques heures).
+  <section class="carte" id="etape-4" hidden>
+    <h1 id="etape-4-titre">Votre faire-part est en préparation !</h1>
+    <p class="aide" id="etape-4-aide">Votre site sera activé sous peu (comptez quelques heures).
       Vous recevrez un email avec le lien de votre site et l'accès à votre tableau de bord.</p>
 
-    <div class="lien-final">
+    <div class="lien-final" id="lien-final-bloc">
       <span class="lbl">Aperçu du nom de votre site</span>
       <div class="ligne">
         <input type="text" id="lien-site" readonly>
         <button type="button" class="bouton-secondaire" data-copier="lien-site">Copier</button>
       </div>
     </div>
-
-    <div class="rappel-acces" id="rappel-remarque" hidden>
-      Votre remarque a bien été transmise — on revient vers vous avant
-      l'activation si besoin.
-    </div>
-
-    <button type="button" class="bouton-secondaire" id="btn-modifier" style="margin-top:20px">Modifier mes informations</button>
-    <p class="note" style="margin-top:8px">Possible pendant 48 h après la création de votre site.</p>
   </section>
 </main>
 
@@ -421,7 +483,7 @@ let EMAIL = '';
 let MODIFICATION = false;
 
 function afficherEtape(n) {
-  ['etape-1', 'etape-2', 'etape-3'].forEach((id, i) => {
+  ['etape-1', 'etape-2', 'etape-3', 'etape-4'].forEach((id, i) => {
     $(id).hidden = (i + 1) !== n;
   });
   $('etapes').querySelectorAll('span').forEach((s) => {
@@ -440,14 +502,16 @@ function afficherErreur(texte) {
   boite.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
+// Aucun bouton n'est type=submit (les deux actions de l'étape 3 ont chacune
+// leur propre traitement, cf. plus bas) : ce filet évite qu'une touche
+// Entrée dans un champ ne déclenche malgré tout une navigation native.
+$('form-creer').addEventListener('submit', (e) => e.preventDefault());
+
 
 /* ---------- Étape 1 : vérification ----------
    Ne crée rien : sert juste à dire tout de suite si le numéro de commande ou
-   l'email ne correspondent pas, avant que l'acheteur ait rempli le formulaire.
-   Réutilisée telle quelle par le bouton "Modifier mes informations" de
-   l'étape 3 : on a déjà commande/email en mémoire, pas besoin de les
-   refaire ressaisir pour rentrer dans la fenêtre de correction de 48 h. */
-async function verifierEtAvancer(commande, email) {
+   l'email ne correspondent pas, avant que l'acheteur ait rempli le formulaire. */
+async function verifier(commande, email) {
   const res = await fetch('/api/commande/verifier', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -459,8 +523,15 @@ async function verifierEtAvancer(commande, email) {
   COMMANDE_ETSY = commande;
   EMAIL = email;
   MODIFICATION = Boolean(data.modification);
-  if (MODIFICATION) preRemplir(data.mariage);
-  else $('fenetre-modification').hidden = false; // annoncé seulement à la première création
+  if (MODIFICATION) {
+    preRemplir(data.mariage);
+  } else {
+    $('fenetre-modification').hidden = false; // annoncé seulement à la première création
+    viderListe('programme-liste');
+    viderListe('faq-liste');
+    (data.programme_defaut || []).forEach((p) => ajouterLigneProgramme(p.heure, p.titre, p.lieu));
+    (data.faq_defaut || []).forEach((f) => ajouterLigneFaq(f.question, f.reponse));
+  }
   afficherEtape(2);
 }
 
@@ -471,31 +542,12 @@ $('form-verifier').addEventListener('submit', async (e) => {
   btn.disabled = true;
   btn.textContent = 'Vérification…';
   try {
-    await verifierEtAvancer($('v-commande').value.trim(), $('v-email').value.trim());
+    await verifier($('v-commande').value.trim(), $('v-email').value.trim());
   } catch (err) {
     afficherErreur(err.message);
   } finally {
     btn.disabled = false;
     btn.textContent = 'Continuer';
-  }
-});
-
-/* ---------- Étape 3 → retour à l'étape 2 ----------
-   Le code est déjà consommé à ce stade (la création vient de se faire) :
-   re-vérifier renvoie donc forcément modification: true et pré-remplit avec
-   ce qui vient d'être enregistré — jamais un formulaire vide. */
-$('btn-modifier').addEventListener('click', async () => {
-  afficherErreur('');
-  const btn = $('btn-modifier');
-  btn.disabled = true;
-  btn.textContent = 'Chargement…';
-  try {
-    await verifierEtAvancer(COMMANDE_ETSY, EMAIL);
-  } catch (err) {
-    afficherErreur(err.message);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Modifier mes informations';
   }
 });
 
@@ -508,7 +560,7 @@ $('btn-modifier').addEventListener('click', async () => {
 function preRemplir(m) {
   $('etape-2-titre').textContent = 'Corrigez vos informations';
   $('etape-2-aide').textContent = 'Vous avez déjà créé ce site. Les champs ci-dessous reprennent ce que vous aviez saisi — modifiez ce qui doit changer.';
-  $('btn-creer').textContent = 'Mettre à jour';
+  $('btn-valider').textContent = 'Mettre à jour';
 
   $('c-prenom-1').value = m.prenom_1;
   $('c-prenom-2').value = m.prenom_2;
@@ -517,11 +569,17 @@ function preRemplir(m) {
   $('c-animation').value = m.messager;
   $('c-ceremonie-nom').value = m.ceremonie_nom || '';
   $('c-ceremonie-adresse').value = m.ceremonie_adresse || '';
+  $('c-heure-ceremonie').value = m.heure_ceremonie || '';
   $('c-cocktail-nom').value = m.cocktail_nom || '';
   $('c-cocktail-adresse').value = m.cocktail_adresse || '';
+  $('c-heure-cocktail').value = m.heure_cocktail || '';
   $('c-oui').value = m.reponse_generique_oui;
   $('c-non').value = m.reponse_generique_non;
-  $('c-remarque').value = m.remarque_acheteur || '';
+
+  viderListe('programme-liste');
+  (m.programme || []).forEach((p) => ajouterLigneProgramme(p.heure, p.titre, p.lieu));
+  viderListe('faq-liste');
+  (m.faq || []).forEach((f) => ajouterLigneFaq(f.question, f.reponse));
 
   if (m.photo_couple_url) {
     $('apercu-couple').innerHTML = `<img src="${esc(m.photo_couple_url)}" alt="">`;
@@ -534,7 +592,100 @@ function preRemplir(m) {
 }
 
 
-/* ---------- Étape 2 : photos ----------
+/* ---------- Étape 2 : programme et FAQ ----------
+   Chaque ligne est un bloc HTML autonome : ajouter/retirer une étape ne
+   touche jamais aux autres, et rien n'est synchronisé en continu vers un
+   tableau JS — les valeurs ne sont lues qu'au moment de l'aperçu ou de la
+   soumission (cf. listeProgramme/listeFaq), pour ne jamais perdre le focus
+   ou la position du curseur pendant la saisie. */
+function viderListe(id) { $(id).innerHTML = ''; }
+
+function ajouterLigneProgramme(heure, titre, lieu) {
+  const ligne = document.createElement('div');
+  ligne.className = 'item-ligne';
+  ligne.innerHTML = `
+    <div class="deux-colonnes">
+      <div class="champ">
+        <label>Titre de l'étape</label>
+        <input type="text" class="item-titre" maxlength="120" placeholder="Ex : Dîner" value="${esc(titre || '')}">
+      </div>
+      <div class="champ">
+        <label>Heure <span class="note" style="display:inline">(facultatif)</span></label>
+        <input type="time" class="item-heure" value="${esc(heure || '')}">
+      </div>
+    </div>
+    <div class="champ">
+      <label>Lieu <span class="note" style="display:inline">(facultatif)</span></label>
+      <input type="text" class="item-lieu" maxlength="200" placeholder="Reprend le lieu déjà indiqué si vous le laissez vide" value="${esc(lieu || '')}">
+    </div>
+    <button type="button" class="bouton-secondaire item-retirer">Retirer cette étape</button>
+  `;
+  ligne.querySelector('.item-retirer').addEventListener('click', () => ligne.remove());
+  $('programme-liste').appendChild(ligne);
+}
+
+function ajouterLigneFaq(question, reponse) {
+  const ligne = document.createElement('div');
+  ligne.className = 'item-ligne';
+  ligne.innerHTML = `
+    <div class="champ">
+      <label>Question</label>
+      <input type="text" class="item-question" maxlength="200" value="${esc(question || '')}">
+    </div>
+    <div class="champ">
+      <label>Réponse</label>
+      <textarea class="item-reponse" maxlength="1500">${esc(reponse || '')}</textarea>
+    </div>
+    <button type="button" class="bouton-secondaire item-retirer">Retirer cette question</button>
+  `;
+  ligne.querySelector('.item-retirer').addEventListener('click', () => ligne.remove());
+  $('faq-liste').appendChild(ligne);
+}
+
+$('btn-ajouter-programme').addEventListener('click', () => ajouterLigneProgramme('', '', ''));
+$('btn-ajouter-faq').addEventListener('click', () => ajouterLigneFaq('', ''));
+
+// Lignes vides ignorées plutôt que bloquantes : un couple qui clique
+// "+ Ajouter" puis change d'avis sans remplir ne doit pas être coincé.
+function listeProgramme() {
+  return Array.from($('programme-liste').querySelectorAll('.item-ligne')).map((ligne) => ({
+    heure: ligne.querySelector('.item-heure').value || null,
+    titre: ligne.querySelector('.item-titre').value.trim(),
+    lieu: ligne.querySelector('.item-lieu').value.trim() || null,
+  })).filter((item) => item.titre);
+}
+
+function listeFaq() {
+  return Array.from($('faq-liste').querySelectorAll('.item-ligne')).map((ligne) => ({
+    question: ligne.querySelector('.item-question').value.trim(),
+    reponse: ligne.querySelector('.item-reponse').value.trim(),
+  })).filter((item) => item.question && item.reponse);
+}
+
+
+/* ---------- Étape 2 → étape 3 ---------- */
+$('btn-continuer-etape2').addEventListener('click', () => {
+  afficherErreur('');
+  const prenom1 = $('c-prenom-1').value.trim();
+  const prenom2 = $('c-prenom-2').value.trim();
+  const dateMariage = $('c-date-mariage').value;
+  const dateRsvp = $('c-date-rsvp').value;
+  if (!prenom1 || !prenom2) return afficherErreur('Les deux prénoms sont requis.');
+  if (!dateMariage || !dateRsvp) return afficherErreur('Les deux dates sont requises.');
+  if (dateRsvp >= dateMariage) return afficherErreur('La date limite de réponse doit précéder la date du mariage.');
+  if (!$('c-oui').value.trim() || !$('c-non').value.trim()) {
+    return afficherErreur('Les deux messages de réponse (oui et non) sont requis.');
+  }
+  afficherEtape(3);
+});
+
+/* ---------- Étape 3 → retour à l'étape 2 ----------
+   Rien n'a encore été envoyé au serveur à ce stade : un simple changement
+   d'écran dans le même formulaire, pas un rechargement des données. */
+$('btn-retour-etape2').addEventListener('click', () => afficherEtape(2));
+
+
+/* ---------- Étape 3 : photos ----------
    Même pipeline que le tableau de bord (dashboard/index.html) : le
    redimensionnement se fait dans le navigateur, jamais côté serveur — on ne
    détient jamais l'original (CLAUDE.md §4). */
@@ -607,7 +758,7 @@ brancherChampPhoto('couple', CIBLE_COUPLE);
 brancherChampPhoto('lieu', CIBLE_LIEU);
 
 
-/* ---------- Étape 2 : aperçu encastré ----------
+/* ---------- Étape 3 : aperçu encastré ----------
    Le vrai thème (themes/botanique) chargé dans une iframe, sur le domaine où
    il est réellement déployé — jamais une copie dans commande/, pour ne
    jamais avoir deux versions du même rendu à maintenir. Les photos voyagent
@@ -657,12 +808,16 @@ $('btn-voir-apercu').addEventListener('click', () => {
         date_limite_rsvp: dateRsvp,
         ceremonie_nom: $('c-ceremonie-nom').value.trim(),
         ceremonie_adresse: $('c-ceremonie-adresse').value.trim(),
+        heure_ceremonie: $('c-heure-ceremonie').value || null,
         cocktail_nom: $('c-cocktail-nom').value.trim(),
         cocktail_adresse: $('c-cocktail-adresse').value.trim(),
+        heure_cocktail: $('c-heure-cocktail').value || null,
         messager: $('c-animation').value,
         contact_rgpd: null,
         photo_couple: BLOB_COUPLE,
         cocktail_photo: BLOB_LIEU,
+        programme: listeProgramme(),
+        faq: listeFaq(),
       },
     }, APERCU_ORIGIN);
     etat.textContent = '';
@@ -679,11 +834,18 @@ $('btn-voir-apercu').addEventListener('click', () => {
 });
 
 
-/* ---------- Étape 2 : soumission ---------- */
-$('form-creer').addEventListener('submit', async (e) => {
-  e.preventDefault();
+/* ---------- Étape 3 : les deux boutons de décision ----------
+   Les deux enregistrent exactement les mêmes données (le mariage est créé ou
+   mis à jour dans les deux cas) — seul le message de l'étape 4 diffère.
+   "Une remarque" exige un texte : se plaindre de rien n'a pas de sens, et
+   c'est ce texte qui permet à l'admin de savoir quoi regarder. */
+async function soumettre(estRemarque) {
   afficherErreur('');
-
+  const remarque = $('c-remarque').value.trim();
+  if (estRemarque && !remarque) {
+    afficherErreur('Décrivez le problème avant d’envoyer votre remarque.');
+    return;
+  }
   // Obligatoire seulement à la création : en correction, ne pas en choisir
   // une nouvelle veut dire "garder l'actuelle" (cf. handleCommandeCreer).
   if (!BLOB_COUPLE && !MODIFICATION) {
@@ -692,15 +854,18 @@ $('form-creer').addEventListener('submit', async (e) => {
   }
   const dateMariage = $('c-date-mariage').value;
   const dateRsvp = $('c-date-rsvp').value;
-  if (dateRsvp >= dateMariage) {
+  if (!dateMariage || !dateRsvp || dateRsvp >= dateMariage) {
     afficherErreur('La date limite de réponse doit précéder la date du mariage.');
     return;
   }
 
-  const btn = $('btn-creer');
-  const libelleRepos = MODIFICATION ? 'Mettre à jour' : 'Terminer';
-  btn.disabled = true;
-  btn.textContent = MODIFICATION ? 'Mise à jour en cours…' : 'Création en cours…';
+  const btnValider = $('btn-valider');
+  const btnRemarque = $('btn-remarque');
+  const libelleValider = MODIFICATION ? 'Mettre à jour' : 'Je valide les infos : déployer le site';
+  const libelleRemarque = 'Envoyer cette remarque';
+  btnValider.disabled = true;
+  btnRemarque.disabled = true;
+  (estRemarque ? btnRemarque : btnValider).textContent = 'Envoi en cours…';
 
   const form = new FormData();
   form.set('commande_etsy', COMMANDE_ETSY);
@@ -714,9 +879,12 @@ $('form-creer').addEventListener('submit', async (e) => {
   form.set('messager', $('c-animation').value);
   form.set('ceremonie_nom', $('c-ceremonie-nom').value.trim());
   form.set('ceremonie_adresse', $('c-ceremonie-adresse').value.trim());
+  form.set('heure_ceremonie', $('c-heure-ceremonie').value || '');
   form.set('cocktail_nom', $('c-cocktail-nom').value.trim());
   form.set('cocktail_adresse', $('c-cocktail-adresse').value.trim());
-  const remarque = $('c-remarque').value.trim();
+  form.set('heure_cocktail', $('c-heure-cocktail').value || '');
+  form.set('programme', JSON.stringify(listeProgramme()));
+  form.set('faq', JSON.stringify(listeFaq()));
   form.set('remarque', remarque);
   if (BLOB_COUPLE) form.set('photo_couple', BLOB_COUPLE, 'couple.jpg');
   if (BLOB_LIEU) form.set('photo_lieu', BLOB_LIEU, 'lieu.jpg');
@@ -726,22 +894,33 @@ $('form-creer').addEventListener('submit', async (e) => {
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.enregistre) throw new Error(data.erreur || 'Le serveur a répondu ' + res.status);
 
-    $('etape-3-titre').textContent = data.modification
-      ? 'Vos modifications sont enregistrées !'
-      : 'Votre faire-part est en préparation !';
-    $('etape-3-aide').textContent = data.actif
-      ? 'Votre site est déjà en ligne — vos changements y sont visibles immédiatement.'
-      : "Votre site sera activé sous peu (comptez quelques heures). Vous recevrez un email avec le lien de votre site et l'accès à votre tableau de bord.";
-    $('lien-site').value = data.site_url;
-    $('rappel-remarque').hidden = !remarque;
-    afficherEtape(3);
+    if (estRemarque) {
+      $('etape-4-titre').textContent = 'Message bien reçu';
+      $('etape-4-aide').textContent = 'Nous avons pris en compte votre commentaire, nous allons nous rapprocher de vous.';
+      $('lien-final-bloc').hidden = true;
+    } else {
+      $('etape-4-titre').textContent = data.modification
+        ? 'Vos modifications sont enregistrées !'
+        : 'Votre faire-part est en préparation !';
+      $('etape-4-aide').textContent = data.actif
+        ? 'Votre site est déjà en ligne — vos changements y sont visibles immédiatement.'
+        : "Votre site sera activé sous peu (comptez quelques heures). Vous recevrez un email avec le lien de votre site et l'accès à votre tableau de bord.";
+      $('lien-site').value = data.site_url;
+      $('lien-final-bloc').hidden = false;
+    }
+    afficherEtape(4);
   } catch (err) {
     afficherErreur(err.message);
   } finally {
-    btn.disabled = false;
-    btn.textContent = libelleRepos;
+    btnValider.disabled = false;
+    btnRemarque.disabled = false;
+    btnValider.textContent = libelleValider;
+    btnRemarque.textContent = libelleRemarque;
   }
-});
+}
+
+$('btn-valider').addEventListener('click', () => soumettre(false));
+$('btn-remarque').addEventListener('click', () => soumettre(true));
 
 document.querySelectorAll('[data-copier]').forEach((bouton) => {
   bouton.addEventListener('click', async () => {

@@ -20,14 +20,20 @@ import {
   getReponseGroupe,
   listerCodesActivation,
   listerConvives,
+  listerFaq,
   listerGroupes,
   listerMariagesPourAdmin,
+  listerProgramme,
   marquerMariageActive,
   mariagesAPurger,
   purgerConvives,
+  remplacerFaq,
+  remplacerProgramme,
   resolveMariageByHost,
   supprimerReponseGroupe,
   verifierCodeActivation,
+  FAQ_PAR_DEFAUT,
+  PROGRAMME_PAR_DEFAUT,
   type Mariage,
 } from "./db";
 import { token as genToken } from "./token";
@@ -87,7 +93,8 @@ function photoUrl(env: Env, key: string | null): string | null {
 }
 
 // Contenu public du faire-part : identique pour tout le monde, reconnu ou non.
-function contenuPublic(env: Env, mariage: Mariage) {
+async function contenuPublic(env: Env, mariage: Mariage) {
+  const [programme, faq] = await Promise.all([listerProgramme(env.DB, mariage.id), listerFaq(env.DB, mariage.id)]);
   return {
     theme: mariage.theme,
     messager: mariage.messager,
@@ -97,8 +104,10 @@ function contenuPublic(env: Env, mariage: Mariage) {
     date_limite_rsvp: mariage.date_limite_rsvp,
     ceremonie_nom: mariage.ceremonie_nom,
     ceremonie_adresse: mariage.ceremonie_adresse,
+    heure_ceremonie: mariage.heure_ceremonie,
     cocktail_nom: mariage.cocktail_nom,
     cocktail_adresse: mariage.cocktail_adresse,
+    heure_cocktail: mariage.heure_cocktail,
     cocktail_photo_url: photoUrl(env, mariage.cocktail_photo_key),
     photo_couple_url: photoUrl(env, mariage.photo_couple_key),
     // Mention d'information du formulaire RSVP (CLAUDE.md §5) : le responsable
@@ -106,6 +115,8 @@ function contenuPublic(env: Env, mariage: Mariage) {
     // Null accepté — le thème dit alors de répondre au message qui portait le
     // lien, ce qui est vrai puisqu'ils partent par WhatsApp.
     contact_rgpd: mariage.contact_rgpd,
+    programme: programme.map((p) => ({ heure: p.heure, titre: p.titre, lieu: p.lieu })),
+    faq: faq.map((f) => ({ question: f.question, reponse: f.reponse })),
   };
 }
 
@@ -172,7 +183,7 @@ async function handleFaireArt(request: Request, env: Env, mariageToken: string):
     // Règle absolue : un token inconnu ne donne jamais un 404 (cf. CLAUDE.md §3, règle #4).
     return json({
       reconnu: false,
-      mariage: contenuPublic(env, mariage),
+      mariage: await contenuPublic(env, mariage),
       message: "Nous n'avons pas reconnu votre lien, vous pouvez répondre ci-dessous.",
     });
   }
@@ -181,7 +192,7 @@ async function handleFaireArt(request: Request, env: Env, mariageToken: string):
 
   return json({
     reconnu: true,
-    mariage: contenuPublic(env, mariage),
+    mariage: await contenuPublic(env, mariage),
     invite: {
       prenom: convive.prenom,
       nom: convive.nom,
@@ -890,6 +901,70 @@ function estHoteCommande(url: URL, env: Env): boolean {
 
 const MESSAGERS_VALIDES = new Set(["", "montgolfiere", "voiture"]);
 
+// Limites larges mais réelles : un couple qui construit son programme ou sa
+// FAQ à la main ne s'approche jamais de 15/20 lignes, mais un client — ou un
+// script — qui enverrait un tableau sans fin ne doit pas pouvoir gonfler la
+// base indéfiniment (§4, même esprit que MAX_ACCOMPAGNANTS).
+const MAX_PROGRAMME_ITEMS = 15;
+const MAX_FAQ_ITEMS = 20;
+const MAX_TITRE = 120;
+const MAX_LIEU = 200;
+const MAX_QUESTION = 200;
+
+type Parsed<T> = { ok: true; items: T[] } | { ok: false; erreur: string };
+
+/**
+ * Le programme et la FAQ voyagent en JSON dans un champ texte du formulaire
+ * multipart (les autres champs sont scalaires) : ce sont des listes de
+ * longueur variable que le couple réordonne, ajoute et retire librement
+ * (cf. schema/010_programme_faq.sql). Jamais fait confiance à la forme reçue
+ * — un JSON.parse réussi ne garantit ni le type ni les bornes des champs.
+ */
+function parseProgramme(brut: string): Parsed<{ heure: string | null; titre: string; lieu: string | null }> {
+  let valeur: unknown;
+  try {
+    valeur = brut ? JSON.parse(brut) : [];
+  } catch {
+    return { ok: false, erreur: "Programme illisible." };
+  }
+  if (!Array.isArray(valeur) || valeur.length > MAX_PROGRAMME_ITEMS) {
+    return { ok: false, erreur: "Programme invalide." };
+  }
+  const HEURE_RE = /^\d{2}:\d{2}$/;
+  const items: Array<{ heure: string | null; titre: string; lieu: string | null }> = [];
+  for (const brutItem of valeur) {
+    const item = brutItem as { heure?: unknown; titre?: unknown; lieu?: unknown };
+    const titre = typeof item.titre === "string" ? item.titre.trim().slice(0, MAX_TITRE) : "";
+    if (!titre) return { ok: false, erreur: "Chaque étape du programme doit avoir un titre." };
+    const heure = typeof item.heure === "string" ? item.heure.trim() : "";
+    if (heure && !HEURE_RE.test(heure)) return { ok: false, erreur: "Heure invalide dans le programme." };
+    const lieu = typeof item.lieu === "string" ? item.lieu.trim().slice(0, MAX_LIEU) : "";
+    items.push({ heure: heure || null, titre, lieu: lieu || null });
+  }
+  return { ok: true, items };
+}
+
+function parseFaq(brut: string): Parsed<{ question: string; reponse: string }> {
+  let valeur: unknown;
+  try {
+    valeur = brut ? JSON.parse(brut) : [];
+  } catch {
+    return { ok: false, erreur: "FAQ illisible." };
+  }
+  if (!Array.isArray(valeur) || valeur.length > MAX_FAQ_ITEMS) {
+    return { ok: false, erreur: "FAQ invalide." };
+  }
+  const items: Array<{ question: string; reponse: string }> = [];
+  for (const brutItem of valeur) {
+    const item = brutItem as { question?: unknown; reponse?: unknown };
+    const question = typeof item.question === "string" ? item.question.trim().slice(0, MAX_QUESTION) : "";
+    const reponse = typeof item.reponse === "string" ? item.reponse.trim().slice(0, MAX_MESSAGE) : "";
+    if (!question || !reponse) return { ok: false, erreur: "Chaque question de la FAQ doit avoir une réponse." };
+    items.push({ question, reponse });
+  }
+  return { ok: true, items };
+}
+
 /**
  * `@cloudflare/workers-types` (version installée) type `FormData.get()` en
  * `string | null`, sans `File` — décalage connu entre les définitions et le
@@ -921,7 +996,18 @@ async function handleCommandeVerifier(request: Request, env: Env): Promise<Respo
 
   const resultat = await verifierCodeActivation(env.DB, commandeEtsy, email);
   if (!resultat.valide) return json({ valide: false, erreur: resultat.erreur }, 404);
-  if (!resultat.modification) return json({ valide: true, modification: false });
+  if (!resultat.modification) {
+    // Première création : le tunnel n'a encore aucune donnée à pré-remplir,
+    // mais le programme et la FAQ partent avec un contenu proposé plutôt
+    // qu'une page vide (cf. PROGRAMME_PAR_DEFAUT / FAQ_PAR_DEFAUT) — le
+    // couple les modifie ou les vide ensuite comme n'importe quel champ.
+    return json({
+      valide: true,
+      modification: false,
+      programme_defaut: PROGRAMME_PAR_DEFAUT,
+      faq_defaut: FAQ_PAR_DEFAUT,
+    });
+  }
 
   // Mode correction : on renvoie ce qui existe déjà pour que le tunnel
   // pré-remplisse le formulaire plutôt que de faire tout retaper — sans quoi
@@ -930,6 +1016,11 @@ async function handleCommandeVerifier(request: Request, env: Env): Promise<Respo
   // lui envoie, il ne fusionne pas avec l'existant).
   const mariage = await getMariageParId(env.DB, resultat.mariageId);
   if (!mariage) return json({ valide: false, erreur: "Le site associé à cette commande est introuvable." }, 404);
+
+  const [programme, faq] = await Promise.all([
+    listerProgramme(env.DB, mariage.id),
+    listerFaq(env.DB, mariage.id),
+  ]);
 
   return json({
     valide: true,
@@ -941,14 +1032,18 @@ async function handleCommandeVerifier(request: Request, env: Env): Promise<Respo
       date_limite_rsvp: mariage.date_limite_rsvp,
       ceremonie_nom: mariage.ceremonie_nom,
       ceremonie_adresse: mariage.ceremonie_adresse,
+      heure_ceremonie: mariage.heure_ceremonie,
       cocktail_nom: mariage.cocktail_nom,
       cocktail_adresse: mariage.cocktail_adresse,
+      heure_cocktail: mariage.heure_cocktail,
       reponse_generique_oui: mariage.reponse_generique_oui,
       reponse_generique_non: mariage.reponse_generique_non,
       messager: mariage.messager,
       remarque_acheteur: mariage.remarque_acheteur,
       photo_couple_url: photoUrl(env, mariage.photo_couple_key),
       photo_lieu_url: photoUrl(env, mariage.cocktail_photo_key),
+      programme: programme.map((p) => ({ heure: p.heure, titre: p.titre, lieu: p.lieu })),
+      faq: faq.map((f) => ({ question: f.question, reponse: f.reponse })),
     },
   });
 }
@@ -1019,6 +1114,17 @@ async function handleCommandeCreer(request: Request, env: Env): Promise<Response
   // pas est un piège silencieux déjà rencontré deux fois (cf. CLAUDE.md §4).
   if (!MESSAGERS_VALIDES.has(messager)) return json({ erreur: "Animation invalide." }, 400);
 
+  const heureCeremonie = texteOuNul("heure_ceremonie");
+  const heureCocktail = texteOuNul("heure_cocktail");
+  const HEURE_RE = /^\d{2}:\d{2}$/;
+  if (heureCeremonie && !HEURE_RE.test(heureCeremonie)) return json({ erreur: "Heure de cérémonie invalide." }, 400);
+  if (heureCocktail && !HEURE_RE.test(heureCocktail)) return json({ erreur: "Heure de cocktail invalide." }, 400);
+
+  const programme = parseProgramme(texte("programme"));
+  if (!programme.ok) return json({ erreur: programme.erreur }, 400);
+  const faq = parseFaq(texte("faq"));
+  if (!faq.ok) return json({ erreur: faq.erreur }, 400);
+
   const brut = formDataFile(form, "photo_couple");
   const photoCouple = brut && brut.size > 0 ? brut : null;
   // Obligatoire seulement à la création : cf. le commentaire de la fonction.
@@ -1048,8 +1154,10 @@ async function handleCommandeCreer(request: Request, env: Env): Promise<Response
     date_limite_rsvp: dateLimiteRsvp,
     ceremonie_nom: texteOuNul("ceremonie_nom"),
     ceremonie_adresse: texteOuNul("ceremonie_adresse"),
+    heure_ceremonie: heureCeremonie,
     cocktail_nom: texteOuNul("cocktail_nom"),
     cocktail_adresse: texteOuNul("cocktail_adresse"),
+    heure_cocktail: heureCocktail,
     reponse_generique_oui: reponseOui,
     reponse_generique_non: reponseNon,
     theme: "botanique", // seul thème construit à ce jour (CLAUDE.md §8) — jamais pris du formulaire
@@ -1065,6 +1173,10 @@ async function handleCommandeCreer(request: Request, env: Env): Promise<Response
 
   const cree = await creerOuMettreAJourMariageSelfService(env.DB, (verif as { id: string }).id, email, nouveau);
   if (!cree.ok) return json({ erreur: cree.erreur }, 409);
+
+  // Toujours l'état complet envoyé par le formulaire, jamais un diff — même
+  // principe que le reste du tunnel (cf. remplacerProgramme/remplacerFaq).
+  await Promise.all([remplacerProgramme(env.DB, cree.id, programme.items), remplacerFaq(env.DB, cree.id, faq.items)]);
 
   if (photoCouple) {
     const cleCouple = `mariage/${cree.slug}/couple-${genToken(6)}.jpg`;

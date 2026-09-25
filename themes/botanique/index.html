@@ -914,28 +914,7 @@ nav {
   <h2 class="section-title fade-in-up">Déroulement de la journée</h2>
   <div class="divider"><span class="divider-icon">✦</span></div>
 
-  <div class="timeline">
-    <div class="timeline-item">
-      <div class="timeline-left"><p class="timeline-time">15h00</p></div>
-      <div class="timeline-dot"></div>
-      <div class="timeline-right"><p class="timeline-event">Cérémonie civile<br><small style="opacity:.6" id="lieu-ceremonie"></small></p></div>
-    </div>
-    <div class="timeline-item">
-      <div class="timeline-left"><p class="timeline-event">Cocktail de bienvenue<br><small style="opacity:.6" id="lieu-cocktail"></small></p></div>
-      <div class="timeline-dot"></div>
-      <div class="timeline-right"><p class="timeline-time">17h30</p></div>
-    </div>
-    <div class="timeline-item">
-      <div class="timeline-left"><p class="timeline-time">20h00</p></div>
-      <div class="timeline-dot"></div>
-      <div class="timeline-right"><p class="timeline-event">Dîner<br><small style="opacity:.6">Grande Salle</small></p></div>
-    </div>
-    <div class="timeline-item">
-      <div class="timeline-left"><p class="timeline-event">Soirée dansante<br><small style="opacity:.6">Jusqu'au bout de la nuit</small></p></div>
-      <div class="timeline-dot"></div>
-      <div class="timeline-right"><p class="timeline-time">22h30</p></div>
-    </div>
-  </div>
+  <div class="timeline" id="timeline"></div>
 </section>
 
 <!-- LIEU -->
@@ -1039,184 +1018,7 @@ nav {
     <h2 class="section-title fade-in-up">Tout ce que vous souhaitez savoir</h2>
     <div class="divider"><span class="divider-icon">✦</span></div>
 
-    <div class="faq-list">
-<div class="faq-item">
-        <button class="faq-question" onclick="toggleFaq(this)">
-          <span class="faq-question-text">Comment se rendre sur le lieu de la cérémonie ?</span>
-          <span class="faq-icon">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/>
-            </svg>
-          </span>
-        </button>
-        <div class="faq-answer">
-          <div class="faq-answer-inner">
-          Vous trouverez l'adresse complète dans la section « Le programme » ci-dessus. N'hésitez pas à nous contacter si vous n'avez pas de solution de transport.
-          </div>
-        </div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-question" onclick="toggleFaq(this)">
-          <span class="faq-question-text">Comment se rendre sur le lieu de la réception ?</span>
-          <span class="faq-icon">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/>
-            </svg>
-          </span>
-        </button>
-        <div class="faq-answer">
-          <div class="faq-answer-inner">
-            Vous trouverez l'adresse dans la section « Le lieu » ci-dessus. N'hésitez pas à nous contacter si vous avez besoin d'un covoiturage.
-          </div>
-        </div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-question" onclick="toggleFaq(this)">
-          <span class="faq-question-text">Y a-t-il des hébergements à proximité ?</span>
-          <span class="faq-icon">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/>
-            </svg>
-          </span>
-        </button>
-        <div class="faq-answer">
-          <div class="faq-answer-inner">
-            Plusieurs hôtels et chambres d'hôtes se trouvent à proximité. Nous vous recommandons de réserver rapidement, notamment si vous venez de loin. Une liste de recommandations vous sera partagée avec votre invitation.
-          </div>
-        </div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-question" onclick="toggleFaq(this)">
-          <span class="faq-question-text">Y a-t-il un dress code pour la journée ?</span>
-          <span class="faq-icon">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/>
-            </svg>
-          </span>
-        </button>
-        <div class="faq-answer">
-          <div class="faq-answer-inner">
-            La tenue de soirée est souhaitée. Nous vous invitons à vous habiller élégamment pour cette belle occasion. Merci d'éviter le blanc et ses nuances, qui sont réservés à la mariée.
-          </div>
-        </div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-question" onclick="toggleFaq(this)">
-          <span class="faq-question-text">Les enfants sont-ils les bienvenus ?</span>
-          <span class="faq-icon">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/>
-            </svg>
-          </span>
-        </button>
-        <div class="faq-answer">
-          <div class="faq-answer-inner">
-            Les enfants sont les bienvenus avec grande joie. Si vous venez accompagnés de vos petits, merci de l'indiquer dans votre RSVP afin que nous puissions nous organiser au mieux et prévoir des dispositions adaptées pour leur confort.
-          </div>
-        </div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-question" onclick="toggleFaq(this)">
-          <span class="faq-question-text">La cérémonie se déroule-t-elle en intérieur ou en extérieur ?</span>
-          <span class="faq-icon">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/>
-            </svg>
-          </span>
-        </button>
-        <div class="faq-answer">
-          <div class="faq-answer-inner">
-            Cela dépend du moment de la journée et de la météo — n'hésitez pas à nous demander si vous avez un doute avant de choisir votre tenue.
-          </div>
-        </div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-question" onclick="toggleFaq(this)">
-          <span class="faq-question-text">Avez-vous une liste de mariage ou une cagnotte ?</span>
-          <span class="faq-icon">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/>
-            </svg>
-          </span>
-        </button>
-        <div class="faq-answer">
-          <div class="faq-answer-inner">
-            Votre présence à nos côtés est le plus beau des cadeaux. Si vous souhaitez tout de même nous gâter, une cagnotte sera disponible le jour du mariage. Merci de tout cœur pour votre générosité.
-          </div>
-        </div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-question" onclick="toggleFaq(this)">
-          <span class="faq-question-text">Puis-je modifier mon RSVP après l'avoir envoyé ?</span>
-          <span class="faq-icon">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/>
-            </svg>
-          </span>
-        </button>
-        <div class="faq-answer">
-          <div class="faq-answer-inner">
-            Si votre situation venait à changer après l'envoi de votre réponse, n'hésitez pas à nous contacter directement par email ou par téléphone. Nous ferons notre possible pour prendre en compte votre nouvelle situation jusqu'au 20 janvier 2027. Au-delà de cette date, les effectifs sont transmis définitivement au domaine et nous ne pourrons malheureusement plus ajouter de convive.
-          </div>
-        </div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-question" onclick="toggleFaq(this)">
-          <span class="faq-question-text">Peut-on prendre des photos et les partager ?</span>
-          <span class="faq-icon">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/>
-            </svg>
-          </span>
-        </button>
-        <div class="faq-answer">
-          <div class="faq-answer-inner">
-            Oui, avec grand plaisir ! Nous serons ravis que vous immortalisiez ce moment à votre façon. Un photographe professionnel sera présent tout au long de la journée, et n'hésitez pas à faire vos propres souvenirs et à nous les partager suite à la soirée !
-          </div>
-        </div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-question" onclick="toggleFaq(this)">
-          <span class="faq-question-text">Y a-t-il une navette prévue entre les différents lieux ?</span>
-          <span class="faq-icon">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/>
-            </svg>
-          </span>
-        </button>
-        <div class="faq-answer">
-          <div class="faq-answer-inner">
-            Si besoin, une navette sera organisée entre les différents lieux pour ceux qui ne sont pas véhiculés. Les détails pratiques (horaires, points de départ) vous seront communiqués dans les semaines précédant la cérémonie, n'hésitez pas à vous signaler si vous n'avez pas de voiture.
-          </div>
-        </div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-question" onclick="toggleFaq(this)">
-          <span class="faq-question-text">Qui contacter en cas de question ?</span>
-          <span class="faq-icon">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/>
-            </svg>
-          </span>
-        </button>
-        <div class="faq-answer">
-          <div class="faq-answer-inner">
-            Pour toute question, vous pouvez nous contacter directement par email à l'adresse que vous avez reçue avec votre invitation. Nous ferons de notre mieux pour vous répondre dans les plus brefs délais. N'hésitez pas !
-          </div>
-        </div>
-      </div>
-
-    </div>
+    <div class="faq-list" id="faq-list"></div>
   </div>
 </div>
 
@@ -1388,6 +1190,84 @@ function formatDate(iso) {
   return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/**
+ * Cérémonie et cocktail restent des champs du mariage (ils alimentent aussi
+ * la section "Le lieu"), programme_items couvre le reste de la journée
+ * (cf. schema/010_programme_faq.sql) — cette fonction les assemble en une
+ * seule liste ordonnée pour le rendu.
+ */
+function construireTimeline(m) {
+  const items = [];
+  if (m.ceremonie_nom || m.ceremonie_adresse || m.heure_ceremonie) {
+    items.push({
+      heure: m.heure_ceremonie,
+      titre: 'Cérémonie',
+      lieu: [m.ceremonie_nom, m.ceremonie_adresse].filter(Boolean).join(', ') || null,
+    });
+  }
+  if (m.cocktail_nom || m.heure_cocktail) {
+    items.push({ heure: m.heure_cocktail, titre: 'Cocktail', lieu: m.cocktail_nom || null });
+  }
+  for (const item of m.programme || []) items.push(item);
+  return items;
+}
+
+/**
+ * La maquette alterne heure/événement de part et d'autre de la frise (cf.
+ * .timeline-left / .timeline-right) — une pure question de rythme visuel,
+ * indépendante du contenu. Reproduite ici par la parité de l'index plutôt
+ * que figée dans le HTML, pour que ça tienne quel que soit le nombre
+ * d'étapes que le couple a gardées ou ajoutées.
+ */
+function remplirTimeline(m) {
+  const items = construireTimeline(m);
+  const section = document.getElementById('timeline').closest('section');
+  if (!items.length) { section.style.display = 'none'; return; }
+
+  document.getElementById('timeline').innerHTML = items.map((item, i) => {
+    const heureHtml = item.heure ? `<p class="timeline-time">${esc(item.heure.replace(':', 'h'))}</p>` : '';
+    const eventHtml = `<p class="timeline-event">${esc(item.titre)}${item.lieu ? `<br><small style="opacity:.6">${esc(item.lieu)}</small>` : ''}</p>`;
+    const [gauche, droite] = i % 2 === 0 ? [heureHtml, eventHtml] : [eventHtml, heureHtml];
+    return `<div class="timeline-item">
+      <div class="timeline-left">${gauche}</div>
+      <div class="timeline-dot"></div>
+      <div class="timeline-right">${droite}</div>
+    </div>`;
+  }).join('');
+
+  // Les éléments créés après le chargement de la page ratent l'observation
+  // initiale (cf. plus bas, "SCROLL ANIMATIONS") : sans ce rattrapage, ils
+  // resteraient invisibles, l'animation d'apparition ne se déclenchant qu'au
+  // premier passage de l'observateur.
+  document.querySelectorAll('#timeline .timeline-item').forEach((el) => observer.observe(el));
+}
+
+function remplirFaq(faq) {
+  const section = document.getElementById('infos');
+  if (!faq.length) { section.style.display = 'none'; return; }
+
+  document.getElementById('faq-list').innerHTML = faq.map((item) => `
+    <div class="faq-item">
+      <button class="faq-question" onclick="toggleFaq(this)">
+        <span class="faq-question-text">${esc(item.question)}</span>
+        <span class="faq-icon">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="6" y1="1" x2="6" y2="11"/><line x1="1" y1="6" x2="11" y2="6"/>
+          </svg>
+        </span>
+      </button>
+      <div class="faq-answer">
+        <div class="faq-answer-inner">${esc(item.reponse)}</div>
+      </div>
+    </div>
+  `).join('');
+
+  document.querySelectorAll('#faq-list .faq-item').forEach((el) => observer.observe(el));
+}
+
 /**
  * Complète la mention d'information avec les prénoms du couple et la date
  * d'effacement (CLAUDE.md §5). Les textes par défaut du HTML disent déjà
@@ -1544,11 +1424,8 @@ function remplirFaireArt(data, { modeApercu = false } = {}) {
     document.getElementById('bloc-photo-couple').style.display = 'none';
   }
 
-  const lieuCeremonie = document.getElementById('lieu-ceremonie');
-  lieuCeremonie.textContent = [m.ceremonie_nom, m.ceremonie_adresse].filter(Boolean).join(', ');
-
-  const lieuCocktail = document.getElementById('lieu-cocktail');
-  lieuCocktail.textContent = m.cocktail_nom || '';
+  remplirTimeline(m);
+  remplirFaq(m.faq || []);
 
   document.getElementById('venue-nom').textContent = m.cocktail_nom || '';
   if (m.cocktail_adresse) {
