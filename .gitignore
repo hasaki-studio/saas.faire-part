@@ -11,3 +11,7 @@ dist/
 # peut toujours être ajouté avec `git add -f`.
 prive/
 *.csv
+
+# Sortie du skill /brag : vidéo générée, projet HyperFrames, node_modules.
+# Ce sont des artefacts one-off — la vidéo est livrée à l'auteur, pas au dépôt.
+brag-output/
