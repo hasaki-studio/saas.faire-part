@@ -71,6 +71,7 @@ schema/006_og_image.sql
 schema/007_contact_rgpd.sql
 schema/008_codes_activation.sql
 schema/009_activation_manuelle.sql
+schema/010_programme_faq.sql
 ```
 
 **Jamais `schema/dev-seed.sql` sur la base distante** : il écraserait un mariage
