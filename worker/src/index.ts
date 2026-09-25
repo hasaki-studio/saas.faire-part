@@ -22,6 +22,7 @@ import {
   listerConvives,
   listerGroupes,
   listerMariagesPourAdmin,
+  marquerMariageActive,
   mariagesAPurger,
   purgerConvives,
   resolveMariageByHost,
@@ -857,6 +858,21 @@ async function handleAdminCreerCode(request: Request, env: Env): Promise<Respons
   return json({ enregistre: true });
 }
 
+/**
+ * Marque un mariage Fiche B comme activé : le sous-domaine a été ajouté à la
+ * main côté Cloudflare (cf. docs/commande.md) et `<slug>.SHARED_DOMAIN`
+ * répond vraiment. Ne crée ni ne modifie rien d'autre — c'est un aiguillage
+ * pour la carte admin, pas une validation du contenu du mariage.
+ */
+async function handleAdminActiverMariage(request: Request, env: Env, id: string): Promise<Response> {
+  const email = await emailAdmin(request, env);
+  if (!email) return json({ erreur: "Non authentifié" }, 403);
+
+  const resultat = await marquerMariageActive(env.DB, id);
+  if (!resultat.ok) return json({ erreur: resultat.erreur }, 404);
+  return json({ ok: true });
+}
+
 // ── Tunnel self-service (Fiche B Etsy) ────────────────────────────
 //
 // Pas de Cloudflare Access ici : au moment où l'acheteur arrive, il n'a pas
@@ -930,6 +946,7 @@ async function handleCommandeVerifier(request: Request, env: Env): Promise<Respo
       reponse_generique_oui: mariage.reponse_generique_oui,
       reponse_generique_non: mariage.reponse_generique_non,
       messager: mariage.messager,
+      remarque_acheteur: mariage.remarque_acheteur,
       photo_couple_url: photoUrl(env, mariage.photo_couple_key),
       photo_lieu_url: photoUrl(env, mariage.cocktail_photo_key),
     },
@@ -1037,6 +1054,7 @@ async function handleCommandeCreer(request: Request, env: Env): Promise<Response
     reponse_generique_non: reponseNon,
     theme: "botanique", // seul thème construit à ce jour (CLAUDE.md §8) — jamais pris du formulaire
     messager,
+    remarque_acheteur: texteOuNul("remarque")?.slice(0, MAX_MESSAGE) ?? null,
   };
 
   // Capturées avant l'écriture : en modification, c'est ce qui permet de
@@ -1070,6 +1088,10 @@ async function handleCommandeCreer(request: Request, env: Env): Promise<Response
   return json({
     enregistre: true,
     modification: cree.modification,
+    // Le sous-domaine n'est réellement joignable qu'une fois le pas manuel
+    // d'activation fait côté Cloudflare (cf. docs/commande.md) — `ancien`
+    // reflète l'état d'avant cette écriture, qui ne touche jamais active_le.
+    actif: Boolean(ancien?.active_le),
     site_url: `https://${domaine}`,
     tableau_url: `https://${env.DASHBOARD_HOSTNAME}`,
   });
@@ -1166,6 +1188,10 @@ export default {
       }
       if (url.pathname === "/api/admin/codes" && request.method === "POST") {
         return handleAdminCreerCode(request, env);
+      }
+      const activerMariage = url.pathname.match(/^\/api\/admin\/mariages\/([^/]+)\/activer$/);
+      if (activerMariage && request.method === "POST") {
+        return handleAdminActiverMariage(request, env, decodeURIComponent(activerMariage[1]!));
       }
     }
 

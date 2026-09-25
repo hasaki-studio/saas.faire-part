@@ -347,6 +347,11 @@
         </div>
       </div>
 
+      <div class="champ">
+        <label for="c-remarque">Une remarque avant l'activation ? <span class="note" style="display:inline">(facultatif)</span></label>
+        <textarea id="c-remarque" maxlength="1500" placeholder="Un souhait sur le format du faire-part, le nom du site, autre chose à nous signaler ?"></textarea>
+      </div>
+
       <button class="bouton-principal" type="submit" id="btn-creer" style="margin-top:12px">Terminer</button>
       <p class="note" id="fenetre-modification" style="margin-top:10px; text-align:center" hidden>
         Vous pouvez revenir corriger ces informations avec le même numéro de
@@ -354,32 +359,25 @@
     </form>
   </section>
 
-  <!-- Étape 3 : terminé -->
+  <!-- Étape 3 : terminé. Le site n'est pas encore joignable à cet instant —
+       son activation est un pas manuel côté Cloudflare (cf. docs/commande.md) —
+       donc rien ici n'est présenté comme un lien à cliquer tout de suite. -->
   <section class="carte" id="etape-3" hidden>
-    <h1 id="etape-3-titre">Votre faire-part est prêt !</h1>
-    <p class="aide">Notez ces deux liens avant de quitter cette page — vous ne les
-      reverrez qu'ici.</p>
+    <h1 id="etape-3-titre">Votre faire-part est en préparation !</h1>
+    <p class="aide" id="etape-3-aide">Votre site sera activé sous peu (comptez quelques heures).
+      Vous recevrez un email avec le lien de votre site et l'accès à votre tableau de bord.</p>
 
     <div class="lien-final">
-      <span class="lbl">Le lien à partager avec vos invités</span>
+      <span class="lbl">Aperçu du nom de votre site</span>
       <div class="ligne">
         <input type="text" id="lien-site" readonly>
         <button type="button" class="bouton-secondaire" data-copier="lien-site">Copier</button>
       </div>
     </div>
-    <div class="lien-final">
-      <span class="lbl">Votre tableau de bord (suivi des réponses)</span>
-      <div class="ligne">
-        <input type="text" id="lien-tableau" readonly>
-        <button type="button" class="bouton-secondaire" data-copier="lien-tableau">Copier</button>
-      </div>
-    </div>
 
-    <div class="rappel-acces">
-      <strong>Avant de pouvoir ouvrir votre tableau de bord</strong>, votre accès
-      doit être activé de notre côté — comptez quelques heures. Vous recevrez
-      un mail dès que c'est fait. En attendant, votre site est déjà en ligne et
-      peut être partagé à vos invités.
+    <div class="rappel-acces" id="rappel-remarque" hidden>
+      Votre remarque a bien été transmise — on revient vers vous avant
+      l'activation si besoin.
     </div>
   </section>
 </main>
@@ -475,6 +473,7 @@ function preRemplir(m) {
   $('c-cocktail-adresse').value = m.cocktail_adresse || '';
   $('c-oui').value = m.reponse_generique_oui;
   $('c-non').value = m.reponse_generique_non;
+  $('c-remarque').value = m.remarque_acheteur || '';
 
   if (m.photo_couple_url) {
     $('apercu-couple').innerHTML = `<img src="${esc(m.photo_couple_url)}" alt="">`;
@@ -597,6 +596,8 @@ $('form-creer').addEventListener('submit', async (e) => {
   form.set('ceremonie_adresse', $('c-ceremonie-adresse').value.trim());
   form.set('cocktail_nom', $('c-cocktail-nom').value.trim());
   form.set('cocktail_adresse', $('c-cocktail-adresse').value.trim());
+  const remarque = $('c-remarque').value.trim();
+  form.set('remarque', remarque);
   if (BLOB_COUPLE) form.set('photo_couple', BLOB_COUPLE, 'couple.jpg');
   if (BLOB_LIEU) form.set('photo_lieu', BLOB_LIEU, 'lieu.jpg');
 
@@ -607,9 +608,12 @@ $('form-creer').addEventListener('submit', async (e) => {
 
     $('etape-3-titre').textContent = data.modification
       ? 'Vos modifications sont enregistrées !'
-      : 'Votre faire-part est prêt !';
+      : 'Votre faire-part est en préparation !';
+    $('etape-3-aide').textContent = data.actif
+      ? 'Votre site est déjà en ligne — vos changements y sont visibles immédiatement.'
+      : "Votre site sera activé sous peu (comptez quelques heures). Vous recevrez un email avec le lien de votre site et l'accès à votre tableau de bord.";
     $('lien-site').value = data.site_url;
-    $('lien-tableau').value = data.tableau_url;
+    $('rappel-remarque').hidden = !remarque;
     afficherEtape(3);
   } catch (err) {
     afficherErreur(err.message);

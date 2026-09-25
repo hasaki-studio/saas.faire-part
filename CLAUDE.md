@@ -447,6 +447,21 @@ prix supérieur à la médiane pour filtrer les acheteurs pressés).
   automatique (déjà en place, §5). Automatisation Etsy : Etsy Open API en
   cible, saisie manuelle du n° de commande en démarrage — on migre quand le
   volume le justifie.
+
+  **Révisé le 25 septembre 2026** : le tunnel lui-même est construit, mais
+  « aucune intervention manuelle par vente » ne tient pas encore — Cloudflare
+  Pages ne sait pas servir un sous-domaine joker (`*.SHARED_DOMAIN`) et le
+  certificat gratuit ne couvre pas un joker à ce niveau de profondeur
+  (discussion d'architecture non résolue à ce jour, cf. `docs/commande.md`).
+  En attendant une vraie solution (ACM payant ~10 €/mois, ou délégation de
+  zone à 0 € mais plus lourde à mettre en place), chaque site créé par le
+  tunnel a besoin d'un sous-domaine ajouté à la main côté Cloudflare avant
+  d'être joignable — troisième pas manuel, en plus des deux déjà connus
+  (code d'activation, policy Access). L'écran final du tunnel ne promet donc
+  plus un site instantanément en ligne : un aperçu du nom du site, un message
+  d'attente (« comptez quelques heures »), et un champ pour signaler une
+  remarque avant activation. Choix assumé pour un premier fonctionnement
+  pendant qu'on mesure la traction Etsy, pas une solution définitive.
 - Deuxième thème : construit quand un client le demande et le paie, pas avant.
 
 ---

@@ -19,6 +19,10 @@ export interface Mariage {
   reponse_generique_non: string;
   contact_rgpd: string | null;
   supprimer_le: string;
+  // Fiche B uniquement (cf. schema/009_activation_manuelle.sql) : NULL pour
+  // tout mariage créé autrement (Fiche A, jeu d'essai).
+  active_le: string | null;
+  remarque_acheteur: string | null;
 }
 
 export type Presence = "oui" | "non";
@@ -547,10 +551,27 @@ export async function creerCodeActivation(
   return { ok: true };
 }
 
-export async function listerCodesActivation(db: D1Database): Promise<CodeActivation[]> {
+// Vue admin d'un code : les infos du mariage qu'il a créé, quand il en a créé
+// un, pour que la carte "Codes d'activation" affiche directement qui c'est,
+// sa remarque éventuelle, et s'il reste à activer — sans aller les chercher
+// mariage par mariage.
+export interface CodeActivationAdmin extends CodeActivation {
+  prenom_1: string | null;
+  prenom_2: string | null;
+  slug: string | null;
+  remarque_acheteur: string | null;
+  active_le: string | null;
+}
+
+export async function listerCodesActivation(db: D1Database): Promise<CodeActivationAdmin[]> {
   const { results } = await db
-    .prepare("SELECT * FROM codes_activation ORDER BY cree_le DESC")
-    .all<CodeActivation>();
+    .prepare(
+      `SELECT ca.*, m.prenom_1, m.prenom_2, m.slug, m.remarque_acheteur, m.active_le
+       FROM codes_activation ca
+       LEFT JOIN mariages m ON m.id = ca.mariage_id
+       ORDER BY ca.cree_le DESC`,
+    )
+    .all<CodeActivationAdmin>();
   return results;
 }
 
@@ -641,6 +662,7 @@ export interface NouveauMariage {
   reponse_generique_non: string;
   theme: string;
   messager: string;
+  remarque_acheteur: string | null;
 }
 
 /**
@@ -710,8 +732,9 @@ export async function creerOuMettreAJourMariageSelfService(
            date_mariage = ?5, date_limite_rsvp = ?6,
            ceremonie_nom = ?7, ceremonie_adresse = ?8, cocktail_nom = ?9, cocktail_adresse = ?10,
            reponse_generique_oui = ?11, reponse_generique_non = ?12,
+           remarque_acheteur = ?13,
            supprimer_le = date(?5, '+90 days')
-         WHERE id = ?13`,
+         WHERE id = ?14`,
       )
       .bind(
         data.theme,
@@ -726,6 +749,7 @@ export async function creerOuMettreAJourMariageSelfService(
         data.cocktail_adresse,
         data.reponse_generique_oui,
         data.reponse_generique_non,
+        data.remarque_acheteur,
         mariage.id,
       )
       .run();
@@ -742,8 +766,9 @@ export async function creerOuMettreAJourMariageSelfService(
       `INSERT INTO mariages (
          id, slug, theme, messager, prenom_1, prenom_2, date_mariage, date_limite_rsvp,
          ceremonie_nom, ceremonie_adresse, cocktail_nom, cocktail_adresse,
-         reponse_generique_oui, reponse_generique_non, email_proprietaire, supprimer_le
-       ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, date(?7, '+90 days'))`,
+         reponse_generique_oui, reponse_generique_non, remarque_acheteur,
+         email_proprietaire, supprimer_le
+       ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, date(?7, '+90 days'))`,
     )
     .bind(
       id,
@@ -760,6 +785,7 @@ export async function creerOuMettreAJourMariageSelfService(
       data.cocktail_adresse,
       data.reponse_generique_oui,
       data.reponse_generique_non,
+      data.remarque_acheteur,
       email.toLowerCase(),
     )
     .run();
@@ -782,4 +808,22 @@ export async function creerOuMettreAJourMariageSelfService(
   }
 
   return { ok: true, id, slug, modification: false };
+}
+
+/**
+ * Marque comme fait le pas manuel "sous-domaine ajouté côté Cloudflare"
+ * (cf. docs/commande.md) : c'est ce qui rend `<slug>.SHARED_DOMAIN`
+ * réellement joignable, tant que le joker DNS/TLS n'existe pas. Idempotent —
+ * cliquer deux fois n'est pas une erreur, `COALESCE` garde la première date.
+ */
+export async function marquerMariageActive(
+  db: D1Database,
+  id: string,
+): Promise<{ ok: true } | { ok: false; erreur: string }> {
+  const { meta } = await db
+    .prepare("UPDATE mariages SET active_le = COALESCE(active_le, datetime('now')) WHERE id = ?1")
+    .bind(id)
+    .run();
+  if ((meta.changes ?? 0) === 0) return { ok: false, erreur: "Mariage introuvable." };
+  return { ok: true };
 }

@@ -162,11 +162,15 @@ c'est le signal d'automatiser (Etsy Open API + Brevo).
 
 ---
 
-## Fiche B · Faire-part digital instantané (self-service)
+## Fiche B · Faire-part digital self-service
 
 Le même faire-part que la Fiche A, mais **le client le fabrique lui-même** :
 il achète, télécharge un PDF avec un code d'activation, va sur notre site,
-saisit le code, remplit un formulaire, obtient son site en 5 minutes.
+saisit le code, remplit un formulaire en 5 minutes. Le site est ensuite
+**activé sous quelques heures** (revue rapide côté admin, cf. plus bas) — pas
+instantanément : le joker DNS/TLS qui permettrait de sauter cette revue n'est
+pas construit (cf. `docs/commande.md`). Premier fonctionnement volontairement
+prudent, le temps de savoir si la Fiche B trouve des acheteurs sur Etsy.
 
 **Prérequis technique** : le tunnel self-service (`commande/`, routes
 `/api/commande/*`) est construit et testé — reste le déploiement Cloudflare
@@ -176,21 +180,22 @@ l'admin.
 
 ### Titre Etsy
 
-> **Faire-part mariage digital instantané — créez votre site RSVP en 5 minutes — activation immédiate**
+> **Faire-part mariage digital personnalisable — créez votre site RSVP vous-même en 5 minutes**
 
-*128 caractères.*
+*130 caractères.*
 
 ### Sous-titre
 
-> Achetez, recevez un code, créez votre site web animé de mariage à votre nom en cinq minutes. RSVP intégré, tableau de bord des réponses.
+> Achetez, recevez un code, remplissez votre site web animé de mariage en cinq minutes. RSVP intégré, tableau de bord des réponses.
 
 ### Description longue
 
 ```
-✧ INSTANTANÉ, VRAIMENT
+✧ RAPIDE, SANS M'ATTENDRE
 
-Cinq minutes après votre achat, votre site est en ligne à votre nom.
-Vous saisissez vos infos, vous choisissez vos photos, c'est prêt.
+Vous remplissez vous-même vos infos et vos photos en cinq minutes — pas
+besoin d'attendre que je m'en occupe. Votre site est ensuite activé sous
+quelques heures.
 
 ✧ CE QUE VOUS RECEVEZ
 
@@ -208,14 +213,16 @@ Vous saisissez vos infos, vous choisissez vos photos, c'est prêt.
 2. Vous allez sur unouiunehistoire.fr/commande et vous saisissez le code.
 3. Vous remplissez le formulaire : prénoms, date, lieu, 1 à 3 photos,
    un mot d'accueil facultatif.
-4. Vous cliquez « Terminer ». Votre site est prêt.
+4. Vous cliquez « Terminer ». Votre site est activé sous quelques heures —
+   vous recevez un email dès qu'il l'est.
 5. Vous le partagez à vos invités.
 
 ✧ DIFFÉRENCE AVEC LA FICHE « SUR COMMANDE »
 
 L'autre annonce de la boutique (« Faire-part mariage digital personnalisé,
 livraison sous 24 h ») est le même produit final, mais je vous le prépare
-à votre place. Ici, c'est vous qui remplissez, en 5 minutes.
+à votre place. Ici, c'est vous qui remplissez, en 5 minutes — l'activation
+elle-même reste plus rapide que la livraison sous 24-48 h de l'autre fiche.
 
 ✧ CE QUI EST INCLUS
 
@@ -267,7 +274,7 @@ Identiques à la Fiche A, sauf :
 - Commissions Etsy identiques : ~5 € de retenue → **net ~24 €**.
 - Au-dessus de la médiane concurrentielle (15-25 €), en dessous du seuil
   psychologique 30 €. Ce prix se défend par le fait que le client obtient un
-  **site live** et pas juste un PDF.
+  **vrai site avec RSVP et tableau de bord**, pas juste un PDF.
 
 ### Livraison
 
@@ -279,21 +286,25 @@ Identiques à la Fiche A, sauf :
 
 ### Workflow post-vente
 
-Le tunnel self-service fait tout côté acheteur — mais **deux pas manuels
-restent nécessaires** tant que le lot 3 (Etsy API) et l'automatisation Access
-n'existent pas. Détail complet, raisons et enchaînement exact dans
-`docs/commande.md`, section « Ce qui n'est PAS automatisé ». En résumé :
+Le tunnel self-service fait tout côté acheteur — mais **trois pas manuels
+restent nécessaires** tant que le lot 3 (Etsy API), l'automatisation Access,
+et le joker DNS/TLS du sous-domaine partagé n'existent pas. Détail complet,
+raisons et enchaînement exact dans `docs/commande.md`, section « Ce qui n'est
+PAS automatisé ». En résumé :
 
 1. Enregistrer la commande dans `codes_activation` dès la notif Etsy
    (`POST /api/admin/codes`) — sans cette ligne, l'acheteur qui suit son PDF
    tombe sur « Numéro de commande introuvable ».
-2. Ajouter son email à la policy Allow de l'application Access du tableau de
-   bord une fois qu'il a terminé le tunnel — sans quoi il ne peut jamais s'y
-   connecter, même si son site est déjà en ligne.
+2. Une fois qu'il a terminé le tunnel (visible dans `admin/index.html`,
+   statut « à activer »), lire sa remarque éventuelle, ajouter son
+   sous-domaine exact côté Cloudflare, puis le marquer « activé ».
+3. Ajouter son email à la policy Allow de l'application Access du tableau de
+   bord — sans quoi il ne peut jamais s'y connecter, même une fois son site
+   activé.
 
-Le site lui-même est bien instantané dès l'étape 1 faite ; c'est uniquement
-l'accès au tableau de bord qui suit avec un délai (« comptez quelques
-heures », affiché sur l'écran de fin du tunnel).
+Ni le site ni le tableau de bord ne sont donc instantanés aujourd'hui : les
+deux suivent chacun un délai de l'ordre de « quelques heures », affiché sur
+l'écran de fin du tunnel.
 
 ---
 
