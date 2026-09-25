@@ -229,6 +229,20 @@
   }
 
   .chargement { text-align: center; color: var(--aide); font-size: 0.85rem; padding: 20px 0; }
+
+  /* Rendu réel du thème + du messager choisi, encastré — jamais un export à
+     télécharger ni un onglet séparé : régénéré à chaque clic, donc jamais de
+     souci de cache même en cas d'allers-retours via "Modifier mes informations". */
+  #apercu-cadre {
+    margin-top: 14px;
+    border: 1px solid var(--cream-dark);
+  }
+  #apercu-iframe {
+    display: block;
+    width: 100%;
+    height: 70vh;
+    border: 0;
+  }
 </style>
 </head>
 <body>
@@ -348,8 +362,17 @@
       </div>
 
       <div class="champ">
+        <label>Aperçu de votre faire-part</label>
+        <button type="button" class="bouton-secondaire" id="btn-voir-apercu">Voir l'aperçu</button>
+        <p class="note" id="apercu-etat" style="margin-top:8px"></p>
+        <div id="apercu-cadre" hidden>
+          <iframe id="apercu-iframe" title="Aperçu de votre faire-part"></iframe>
+        </div>
+      </div>
+
+      <div class="champ">
         <label for="c-remarque">Une remarque avant l'activation ? <span class="note" style="display:inline">(facultatif)</span></label>
-        <textarea id="c-remarque" maxlength="1500" placeholder="Un souhait sur le format du faire-part, le nom du site, autre chose à nous signaler ?"></textarea>
+        <textarea id="c-remarque" maxlength="1500" placeholder="Un dysfonctionnement dans le rendu ci-dessus, autre chose à nous signaler ?"></textarea>
       </div>
 
       <button class="bouton-principal" type="submit" id="btn-creer" style="margin-top:12px">Terminer</button>
@@ -582,6 +605,78 @@ function brancherChampPhoto(kind, cible) {
 }
 brancherChampPhoto('couple', CIBLE_COUPLE);
 brancherChampPhoto('lieu', CIBLE_LIEU);
+
+
+/* ---------- Étape 2 : aperçu encastré ----------
+   Le vrai thème (themes/botanique) chargé dans une iframe, sur le domaine où
+   il est réellement déployé — jamais une copie dans commande/, pour ne
+   jamais avoir deux versions du même rendu à maintenir. Les photos voyagent
+   en tant qu'objets Blob via postMessage (le clonage structuré les copie
+   même entre origines différentes) : aucune n'a encore été envoyée à R2 à ce
+   stade (CLAUDE.md §4).
+
+   Même principe que estHoteCommande/estHoteAdmin côté Worker : localhost n'a
+   pas de sous-domaine partagé, donc pas de préfixe "commande." à retirer —
+   proxy-local.js sert toujours le thème invité sur le port 8080. */
+const APERCU_ORIGIN = location.hostname === 'localhost'
+  ? `${location.protocol}//localhost:8080`
+  : `https://${location.hostname.replace(/^commande\./, '')}`;
+
+let apercuEcouteur = null;
+
+$('btn-voir-apercu').addEventListener('click', () => {
+  const prenom1 = $('c-prenom-1').value.trim();
+  const prenom2 = $('c-prenom-2').value.trim();
+  const dateMariage = $('c-date-mariage').value;
+  const dateRsvp = $('c-date-rsvp').value;
+  const etat = $('apercu-etat');
+
+  if (!prenom1 || !prenom2 || !dateMariage) {
+    etat.textContent = 'Remplissez au moins les deux prénoms et la date du mariage avant de voir l’aperçu.';
+    return;
+  }
+
+  const cadre = $('apercu-cadre');
+  const iframe = $('apercu-iframe');
+  etat.textContent = 'Chargement de l’aperçu…';
+  cadre.hidden = false;
+
+  // Un seul écouteur actif à la fois : un deuxième clic avant que le premier
+  // ait fini remplace proprement l'ancien plutôt que d'en empiler deux.
+  if (apercuEcouteur) window.removeEventListener('message', apercuEcouteur);
+  let recu = false;
+  apercuEcouteur = (event) => {
+    if (event.origin !== APERCU_ORIGIN || event.data?.type !== 'apercu-pret') return;
+    recu = true;
+    iframe.contentWindow.postMessage({
+      type: 'apercu-donnees',
+      mariage: {
+        prenom_1: prenom1,
+        prenom_2: prenom2,
+        date_mariage: dateMariage,
+        date_limite_rsvp: dateRsvp,
+        ceremonie_nom: $('c-ceremonie-nom').value.trim(),
+        ceremonie_adresse: $('c-ceremonie-adresse').value.trim(),
+        cocktail_nom: $('c-cocktail-nom').value.trim(),
+        cocktail_adresse: $('c-cocktail-adresse').value.trim(),
+        messager: $('c-animation').value,
+        contact_rgpd: null,
+        photo_couple: BLOB_COUPLE,
+        cocktail_photo: BLOB_LIEU,
+      },
+    }, APERCU_ORIGIN);
+    etat.textContent = '';
+  };
+  window.addEventListener('message', apercuEcouteur);
+  setTimeout(() => {
+    if (!recu) etat.textContent = 'L’aperçu n’a pas répondu — réessayez dans un instant.';
+  }, 6000);
+
+  // Un nouveau chargement d'iframe à chaque clic, jamais la même réutilisée :
+  // état toujours propre, aucun risque de cache ni de messager rejoué sur un
+  // DOM déjà peuplé (cf. CSS #apercu-cadre).
+  iframe.src = `${APERCU_ORIGIN}/?apercu=1&_=${Date.now()}`;
+});
 
 
 /* ---------- Étape 2 : soumission ---------- */

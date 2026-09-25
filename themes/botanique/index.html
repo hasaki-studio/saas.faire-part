@@ -1502,6 +1502,22 @@ async function chargerFaireArt() {
     return; // pas de réseau : la page reste utilisable avec son contenu par défaut
   }
 
+  remplirFaireArt(data);
+}
+
+/**
+ * Remplit la page à partir d'un objet {reconnu, mariage, invite?} — que ce
+ * soit la vraie réponse de l'API (un invité qui ouvre son lien) ou des
+ * données injectées par postMessage pour l'aperçu du tunnel self-service
+ * (cf. initApercu()). Les deux chemins doivent produire exactement le même
+ * rendu : c'est ce qui rend l'aperçu fidèle à ce qu'un invité verra vraiment.
+ *
+ * `modeApercu` coupe le rendu juste après le mariage et le messager : il n'y
+ * a pas d'invité à afficher dans un aperçu (pas de nom, pas de présence), et
+ * la note "lien non reconnu" n'a pas de sens pour un couple qui prévisualise
+ * son propre faire-part avant même de l'avoir publié.
+ */
+function remplirFaireArt(data, { modeApercu = false } = {}) {
   RECONNU = data.reconnu;
   const m = data.mariage;
 
@@ -1544,6 +1560,8 @@ async function chargerFaireArt() {
     // Pas de messager choisi pour ce mariage : le faire-part s'affiche directement.
     document.getElementById('messager-attente')?.remove();
   }
+
+  if (modeApercu) return;
 
   if (!data.reconnu) {
     const note = document.getElementById('lien-non-reconnu');
@@ -1639,7 +1657,45 @@ async function submitRSVP() {
   }
 }
 
-chargerFaireArt();
+/**
+ * Mode aperçu : embarqué dans une iframe par commande/index.html (le tunnel
+ * self-service), sans token ni réseau — les données viennent d'un postMessage
+ * du parent, avec les photos comme vrais objets Blob (redimensionnées dans le
+ * navigateur, pas encore envoyées à R2 : cf. CLAUDE.md §4). Un handshake
+ * "apercu-pret" avant d'écouter évite de rater un envoi si le parent postait
+ * plus vite que cette page ne s'exécute.
+ *
+ * Jamais actif sur un vrai lien d'invité : ?apercu=1 n'apparaît sur aucun
+ * lien envoyé, et même arrivé là par erreur, cette branche ne lit ni
+ * n'écrit aucune donnée réelle — elle ne fait qu'attendre un message qui,
+ * hors du tunnel, ne viendra jamais.
+ */
+function estApercu() {
+  return new URLSearchParams(location.search).get('apercu') === '1';
+}
+
+function initApercu() {
+  // Le voile "messager-attente" reste en place jusqu'à ce que remplirFaireArt()
+  // le retire (via demarrerMessager, ou directement si aucun messager n'est
+  // choisi) — exactement le même chemin que pour un vrai lien d'invité, pour
+  // ne jamais flasher le contenu par défaut du HTML avant l'arrivée des
+  // vraies données.
+  window.addEventListener('message', (event) => {
+    if (event.data?.type !== 'apercu-donnees') return;
+    const m = { ...event.data.mariage };
+    if (m.photo_couple instanceof Blob) m.photo_couple_url = URL.createObjectURL(m.photo_couple);
+    if (m.cocktail_photo instanceof Blob) m.cocktail_photo_url = URL.createObjectURL(m.cocktail_photo);
+    remplirFaireArt({ reconnu: true, mariage: m }, { modeApercu: true });
+  });
+
+  window.parent.postMessage({ type: 'apercu-pret' }, '*');
+}
+
+if (estApercu()) {
+  initApercu();
+} else {
+  chargerFaireArt();
+}
 </script>
 </body>
 </html>
