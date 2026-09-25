@@ -22,9 +22,13 @@ Trois étapes côté acheteur :
    obligatoires (§4), une animation, une photo du couple (obligatoire) et une
    photo du lieu (facultative), redimensionnées dans le navigateur avant
    l'envoi — même pipeline que le tableau de bord (§4 : jamais l'original).
-   Un champ libre et facultatif, « une remarque avant l'activation », permet
-   de signaler un souhait (format du faire-part, nom du site…) — stocké dans
-   `mariages.remarque_acheteur`, lu par l'admin avant d'activer.
+   Un bouton « Voir l'aperçu » affiche le vrai thème, avec le messager choisi,
+   nourri par ce qui vient d'être saisi (cf. « L'aperçu encastré » plus bas) —
+   avant de demander une remarque, pas après : on ne demande pas un avis sur
+   un rendu que personne n'a encore vu. Le champ « une remarque avant
+   l'activation », facultatif, sert désormais surtout à signaler un vrai
+   dysfonctionnement dans ce rendu (le reste, l'aperçu le montre déjà) —
+   stocké dans `mariages.remarque_acheteur`, lu par l'admin avant d'activer.
 3. **Terminé** — `POST /api/commande/creer` crée la ligne `mariages`, écrit
    les photos dans R2, consomme le code, et renvoie un aperçu du nom du site
    (pas encore actif) — jamais un lien à cliquer tout de suite, jamais l'accès
@@ -89,6 +93,38 @@ le mariage déjà créé.
   message d'erreur, sur `verifier` comme sur `creer`. Il n'y a pas de
   prolongation ni d'exception manuelle — la ligne `mariages` reste éditable
   ensuite depuis le tableau de bord, comme pour n'importe quel client.
+
+## L'aperçu encastré
+
+Avant de cliquer « Terminer », l'acheteur peut voir le vrai rendu — thème et
+messager compris — sans qu'aucun mariage n'existe encore en base et sans
+dépendre du sous-domaine (bloqué tant que le joker DNS/TLS n'est pas réglé,
+cf. plus bas). Ni export à télécharger, ni onglet séparé : une iframe
+chargée depuis l'hôte où le thème est réellement déployé (`SHARED_DOMAIN`),
+avec `?apercu=1`.
+
+- **`themes/botanique/index.html` sert les deux publics avec le même code.**
+  `remplirFaireArt(data, { modeApercu })` est le seul point qui écrit dans le
+  DOM, que les données viennent de `GET /api/faire-part/<token>` (un invité)
+  ou d'un `postMessage` (l'aperçu) — l'un ne peut pas dériver de l'autre sans
+  que ça se voie. `modeApercu: true` coupe juste après le mariage et le
+  messager : pas d'invité à afficher, pas de note « lien non reconnu ».
+- **Les photos voyagent en objets `Blob`**, pas en URL : à ce stade, aucune
+  n'a encore été envoyée à R2 (CLAUDE.md §4). Le clonage structuré de
+  `postMessage` copie un `Blob` même entre origines différentes
+  (`commande.*` → `SHARED_DOMAIN`) ; l'iframe fait ensuite
+  `URL.createObjectURL()` sur sa propre origine.
+- **Une poignée de main avant l'envoi** : l'iframe poste `{type:
+  'apercu-pret'}` dès qu'elle est prête à recevoir ; `commande/index.html`
+  attend ce message avant de poster les données. Sans ça, un envoi trop
+  précoce se perdrait pendant que la page charge encore.
+- **Un nouveau chargement d'iframe à chaque clic sur « Voir l'aperçu »**,
+  jamais la même réutilisée : aucun état à nettoyer entre deux essais, donc
+  aucun souci de cache même après plusieurs allers-retours par le bouton
+  « Modifier mes informations » (fenêtre de 48 h ci-dessus).
+- **Sur `localhost`**, `SHARED_DOMAIN` n'existe pas : `proxy-local.js` sert
+  toujours le thème invité sur le port 8080, et le JS du tunnel s'y adapte
+  directement (`APERCU_ORIGIN`) — aucune configuration à changer pour tester.
 
 ## Ce qui n'est PAS automatisé (limite connue, à lire avant de publier la Fiche B)
 
