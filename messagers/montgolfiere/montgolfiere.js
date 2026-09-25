@@ -34,10 +34,12 @@
     return ballon;
   }
 
-  window.jouerMessager = function (container, onTermine) {
+  window.jouerMessager = function (container, onTermine, options) {
     // Rejoué une fois par session : un invité qui revient sur son lien pendant
     // la même visite n'a pas besoin de se retaper l'animation à chaque fois.
-    const dejaJoue = sessionStorage.getItem('messager-joue') === 'montgolfiere';
+    // `forcer` (aperçu du tunnel self-service) ignore cette mémoire : cf. le
+    // commentaire de demarrerMessager() dans themes/botanique/index.html.
+    const dejaJoue = !(options && options.forcer) && sessionStorage.getItem('messager-joue') === 'montgolfiere';
 
     const overlay = document.createElement('div');
     overlay.className = 'messager-overlay';

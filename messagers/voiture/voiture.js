@@ -28,8 +28,10 @@
     return voiture;
   }
 
-  window.jouerMessager = function (container, onTermine) {
-    const dejaJoue = sessionStorage.getItem('messager-joue') === 'voiture';
+  window.jouerMessager = function (container, onTermine, options) {
+    // `forcer` (aperçu du tunnel self-service) ignore la mémoire de session :
+    // cf. le commentaire de demarrerMessager() dans themes/botanique/index.html.
+    const dejaJoue = !(options && options.forcer) && sessionStorage.getItem('messager-joue') === 'voiture';
 
     const overlay = document.createElement('div');
     overlay.className = 'messager-overlay';
