@@ -1566,8 +1566,15 @@ function initApercu() {
   window.addEventListener('message', (event) => {
     if (event.data?.type !== 'apercu-donnees') return;
     const m = { ...event.data.mariage };
+    // photo_couple/cocktail_photo est soit un Blob (nouvelle photo choisie
+    // dans le tunnel, pas encore envoyée à R2), soit déjà une URL texte (photo
+    // existante en modification, cf. PHOTO_COUPLE_URL_EXISTANTE côté tunnel) —
+    // sans ce deuxième cas, une photo déjà en ligne n'apparaît jamais tant
+    // qu'on n'en choisit pas une nouvelle.
     if (m.photo_couple instanceof Blob) m.photo_couple_url = URL.createObjectURL(m.photo_couple);
+    else if (typeof m.photo_couple === 'string') m.photo_couple_url = m.photo_couple;
     if (m.cocktail_photo instanceof Blob) m.cocktail_photo_url = URL.createObjectURL(m.cocktail_photo);
+    else if (typeof m.cocktail_photo === 'string') m.cocktail_photo_url = m.cocktail_photo;
     remplirFaireArt({ reconnu: true, mariage: m }, { modeApercu: true });
   });
 
