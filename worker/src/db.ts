@@ -866,58 +866,52 @@ export interface FaqItem {
 }
 
 // Contenu proposé à la création : un couple qui ne touche à rien garde un
-// programme et une FAQ raisonnables plutôt qu'une page vide. Rédigé pour
-// rester vrai quel que soit le mariage — aucun lieu, aucune date, aucun
-// service (photographe, cagnotte...) n'est promis comme un fait acquis.
+// programme et une FAQ raisonnables plutôt qu'une page vide.
 export const PROGRAMME_PAR_DEFAUT: Array<{ heure: string | null; titre: string; lieu: string | null }> = [
-  { heure: "20:00", titre: "Dîner", lieu: null },
-  { heure: "22:30", titre: "Soirée dansante", lieu: null },
+  { heure: "22:30", titre: "Dîner", lieu: "Grande salle" },
+  { heure: "00:00", titre: "Soirée dansante", lieu: null },
 ];
 
 export const FAQ_PAR_DEFAUT: Array<{ question: string; reponse: string }> = [
   {
-    question: "Comment se rendre sur le lieu de la cérémonie ?",
-    reponse: "Vous trouverez l'adresse complète dans la section « Le programme » ci-dessus. N'hésitez pas à nous contacter si vous n'avez pas de solution de transport.",
-  },
-  {
-    question: "Comment se rendre sur le lieu de la réception ?",
-    reponse: "Vous trouverez l'adresse dans la section « Le lieu » ci-dessus. N'hésitez pas à nous contacter si vous avez besoin d'un covoiturage.",
+    question: "Comment se rendre au lieu du mariage ?",
+    reponse: "En train, la gare la plus proche est celle de Pau. Vous pouvez nous contacter si vous n'avez pas de solution de transport de la gare jusqu'au lieu de la cérémonie.",
   },
   {
     question: "Y a-t-il des hébergements à proximité ?",
-    reponse: "Plusieurs hôtels et chambres d'hôtes se trouvent à proximité. Nous vous recommandons de réserver rapidement, notamment si vous venez de loin.",
-  },
-  {
-    question: "Y a-t-il un dress code pour la journée ?",
-    reponse: "La tenue de soirée est souhaitée. Merci d'éviter le blanc et ses nuances, réservés à la mariée.",
-  },
-  {
-    question: "Les enfants sont-ils les bienvenus ?",
-    reponse: "Les enfants sont les bienvenus avec grande joie. Merci de l'indiquer dans votre RSVP afin que nous puissions nous organiser au mieux.",
-  },
-  {
-    question: "La cérémonie se déroule-t-elle en intérieur ou en extérieur ?",
-    reponse: "Cela dépend du moment de la journée et de la météo — n'hésitez pas à nous demander si vous avez un doute avant de choisir votre tenue.",
-  },
-  {
-    question: "Avez-vous une liste de mariage ou une cagnotte ?",
-    reponse: "Votre présence à nos côtés est le plus beau des cadeaux. Si vous souhaitez tout de même nous gâter, une cagnotte pourra être disponible le jour du mariage.",
-  },
-  {
-    question: "Puis-je modifier ma réponse après l'avoir envoyée ?",
-    reponse: "Si votre situation change après l'envoi de votre réponse, contactez-nous directement — nous ferons notre possible pour la prendre en compte tant que la liste définitive n'a pas été transmise au traiteur.",
-  },
-  {
-    question: "Peut-on prendre des photos et les partager ?",
-    reponse: "Oui, avec grand plaisir ! N'hésitez pas à faire vos propres souvenirs et à nous les partager suite à la soirée.",
+    reponse: "Plusieurs hôtels et chambres d'hôtes se trouvent à quelques minutes du domaine. Nous vous recommandons de réserver rapidement, notamment si vous venez de loin.",
   },
   {
     question: "Y a-t-il une navette prévue entre les différents lieux ?",
-    reponse: "Si besoin, une navette sera organisée entre les différents lieux pour ceux qui ne sont pas véhiculés. Les détails pratiques vous seront communiqués avant la cérémonie.",
+    reponse: "Une navette sera organisée entre la Mairie de Pau et le domaine pour ceux qui ne sont pas véhiculés. Les détails pratiques (horaires, points de départ) vous seront communiqués dans les semaines précédant la cérémonie, n'hésitez pas à vous signaler si vous n'avez pas de voiture.",
+  },
+  {
+    question: "Y a-t-il un dress code pour la journée ?",
+    reponse: "La tenue de soirée est souhaitée. Nous vous invitons à vous habiller élégamment pour cette belle occasion. Merci d'éviter le blanc et ses nuances, qui sont réservés à la mariée.",
+  },
+  {
+    question: "Les enfants sont-ils les bienvenus ?",
+    reponse: "Les enfants sont les bienvenus avec grande joie. Si vous venez accompagnés de vos petits, merci de l'indiquer dans votre RSVP afin que nous puissions nous organiser au mieux et prévoir des dispositions adaptées pour leur confort.",
+  },
+  {
+    question: "La cérémonie se déroule-t-elle en intérieur ou en extérieur ?",
+    reponse: "La cérémonie civile aura lieu à l'intérieur. Le cocktail se tiendra dans les jardins du domaine (en extérieur, sous réserve de beau temps). Le dîner et la soirée dansante se dérouleront à l'intérieur, dans la Grande Salle.",
+  },
+  {
+    question: "Avez-vous une liste de mariage ou une cagnotte ?",
+    reponse: "Votre présence à nos côtés est le plus beau des cadeaux. Si vous souhaitez tout de même nous gâter, une cagnotte sera disponible le jour du mariage. Merci de tout cœur pour votre générosité.",
+  },
+  {
+    question: "Puis-je modifier mon RSVP après l'avoir envoyé ?",
+    reponse: "Si votre situation venait à changer après l'envoi de votre réponse, n'hésitez pas à nous contacter directement par email ou par téléphone. Nous ferons notre possible pour prendre en compte votre nouvelle situation jusqu'au 15 avril 2027. Au-delà de cette date, les effectifs sont transmis définitivement au château et nous ne pourrons malheureusement plus ajouter de convive.",
+  },
+  {
+    question: "Peut-on prendre des photos et les partager ?",
+    reponse: "Oui, avec grand plaisir ! Nous serons ravis que vous immortalisiez ce moment à votre façon. Un photographe professionnel sera présent tout au long de la journée, et n'hésitez pas à faire vos propres souvenirs et à nous les partager suite à la soirée !",
   },
   {
     question: "Qui contacter en cas de question ?",
-    reponse: "Vous pouvez nous contacter directement par email à l'adresse que vous avez reçue avec votre invitation.",
+    reponse: "Pour toute question, vous pouvez nous contacter directement par email ou par téléphone. Nous ferons de notre mieux pour vous répondre dans les plus brefs délais. N'hésitez pas !",
   },
 ];
 

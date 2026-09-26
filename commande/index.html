@@ -347,11 +347,11 @@
       <div class="deux-colonnes">
         <div class="champ">
           <label for="c-ceremonie-nom">Lieu de la cérémonie <span class="note" style="display:inline">(facultatif)</span></label>
-          <input type="text" id="c-ceremonie-nom" maxlength="200">
+          <input type="text" id="c-ceremonie-nom" maxlength="200" value="Mairie de Pau">
         </div>
         <div class="champ">
           <label for="c-heure-ceremonie">Heure <span class="note" style="display:inline">(facultatif)</span></label>
-          <input type="time" id="c-heure-ceremonie">
+          <input type="time" id="c-heure-ceremonie" value="14:00">
         </div>
       </div>
       <div class="champ">
@@ -362,11 +362,11 @@
       <div class="deux-colonnes">
         <div class="champ">
           <label for="c-cocktail-nom">Lieu de la réception <span class="note" style="display:inline">(facultatif)</span></label>
-          <input type="text" id="c-cocktail-nom" maxlength="200">
+          <input type="text" id="c-cocktail-nom" maxlength="200" value="Domaine du Verger">
         </div>
         <div class="champ">
           <label for="c-heure-cocktail">Heure <span class="note" style="display:inline">(facultatif)</span></label>
-          <input type="time" id="c-heure-cocktail">
+          <input type="time" id="c-heure-cocktail" value="17:00">
         </div>
       </div>
       <div class="champ">
@@ -481,6 +481,12 @@ let EMAIL = '';
 // 48 h (cf. worker/src/db.ts, FENETRE_MODIFICATION_HEURES) : le formulaire se
 // pré-remplit et la photo du couple n'est plus obligatoire.
 let MODIFICATION = false;
+// URLs des photos déjà envoyées à R2 en modification, tant qu'aucun nouveau
+// fichier n'est choisi : sans elles, l'aperçu (qui ne connaît que des Blob
+// fraîchement sélectionnés, cf. BLOB_COUPLE/BLOB_LIEU) n'a rien à montrer
+// pour une photo qui pourtant existe déjà.
+let PHOTO_COUPLE_URL_EXISTANTE = null;
+let PHOTO_LIEU_URL_EXISTANTE = null;
 
 function afficherEtape(n) {
   ['etape-1', 'etape-2', 'etape-3', 'etape-4'].forEach((id, i) => {
@@ -584,10 +590,12 @@ function preRemplir(m) {
   if (m.photo_couple_url) {
     $('apercu-couple').innerHTML = `<img src="${esc(m.photo_couple_url)}" alt="">`;
     $('btn-choisir-couple').textContent = 'Remplacer';
+    PHOTO_COUPLE_URL_EXISTANTE = m.photo_couple_url;
   }
   if (m.photo_lieu_url) {
     $('apercu-lieu').innerHTML = `<img src="${esc(m.photo_lieu_url)}" alt="">`;
     $('btn-choisir-lieu').textContent = 'Remplacer';
+    PHOTO_LIEU_URL_EXISTANTE = m.photo_lieu_url;
   }
 }
 
@@ -814,8 +822,12 @@ $('btn-voir-apercu').addEventListener('click', () => {
         heure_cocktail: $('c-heure-cocktail').value || null,
         messager: $('c-animation').value,
         contact_rgpd: null,
-        photo_couple: BLOB_COUPLE,
-        cocktail_photo: BLOB_LIEU,
+        // Un Blob fraîchement choisi prime toujours ; sinon, en modification,
+        // l'URL R2 déjà existante (cf. PHOTO_COUPLE_URL_EXISTANTE plus haut) —
+        // sans ce repli, l'aperçu n'a aucun moyen de savoir qu'une photo est
+        // déjà là et l'affiche comme absente.
+        photo_couple: BLOB_COUPLE || PHOTO_COUPLE_URL_EXISTANTE,
+        cocktail_photo: BLOB_LIEU || PHOTO_LIEU_URL_EXISTANTE,
         programme: listeProgramme(),
         faq: listeFaq(),
       },
