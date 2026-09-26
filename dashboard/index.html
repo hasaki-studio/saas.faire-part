@@ -430,6 +430,9 @@
   .photo-mariage .infos p {
     font-size: 0.82rem; color: var(--aide); margin: 0 0 12px; line-height: 1.55;
   }
+  .photo-mariage .infos p.dimension {
+    font-size: 0.72rem; margin-top: -6px;
+  }
   .photo-mariage .actions {
     display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
     font-size: 0.78rem;
@@ -552,6 +555,7 @@
             <h3>Photo du couple</h3>
             <p>Portrait, s'affiche au-dessus de vos prénoms. Choisissez une
               photo où vos visages sont plutôt hauts dans l'image.</p>
+            <p class="dimension">Envoyée à 640 × 840 px.</p>
             <div class="actions">
               <input type="file" accept="image/*">
               <button class="small" type="button" data-choisir>Choisir</button>
@@ -567,6 +571,7 @@
             <h3>Photo du lieu</h3>
             <p>Format panoramique, dans la section infos pratiques. Une vue du
               domaine, de la salle, ou du jardin — de préférence sans monde.</p>
+            <p class="dimension">Envoyée à 1120 × 520 px.</p>
             <div class="actions">
               <input type="file" accept="image/*">
               <button class="small" type="button" data-choisir>Choisir</button>
@@ -583,6 +588,7 @@
             <p>L'image qui apparaît quand vous partagez le lien sur WhatsApp,
               Messenger ou Instagram. Format 16:9. Sans elle, votre photo du
               couple est utilisée par défaut, mal cadrée.</p>
+            <p class="dimension">Envoyée à 1200 × 630 px, moins de 600 Ko.</p>
             <div class="actions">
               <input type="file" accept="image/*">
               <button class="small" type="button" data-choisir>Choisir</button>
