@@ -8,10 +8,10 @@ export interface Mariage {
   prenom_2: string;
   date_mariage: string;
   date_limite_rsvp: string;
-  ceremonie_nom: string | null;
-  ceremonie_adresse: string | null;
-  cocktail_nom: string | null;
-  cocktail_adresse: string | null;
+  // Photo de la section "Le lieu" : indépendante de programme_items, gérée à
+  // part depuis le tableau de bord — cérémonie/cocktail n'ont plus de colonne
+  // dédiée depuis schema/011_programme_unifie.sql, ce sont des lignes de
+  // programme comme les autres (cf. PROGRAMME_PAR_DEFAUT).
   cocktail_photo_key: string | null;
   photo_couple_key: string | null;
   og_image_key: string | null;
@@ -23,10 +23,6 @@ export interface Mariage {
   // tout mariage créé autrement (Fiche A, jeu d'essai).
   active_le: string | null;
   remarque_acheteur: string | null;
-  // cf. schema/010_programme_faq.sql : juste l'heure, le nom/l'adresse sont
-  // déjà ceremonie_nom/ceremonie_adresse et cocktail_nom/cocktail_adresse.
-  heure_ceremonie: string | null;
-  heure_cocktail: string | null;
 }
 
 export type Presence = "oui" | "non";
@@ -658,12 +654,6 @@ export interface NouveauMariage {
   prenom_2: string;
   date_mariage: string;
   date_limite_rsvp: string;
-  ceremonie_nom: string | null;
-  ceremonie_adresse: string | null;
-  heure_ceremonie: string | null;
-  cocktail_nom: string | null;
-  cocktail_adresse: string | null;
-  heure_cocktail: string | null;
   reponse_generique_oui: string;
   reponse_generique_non: string;
   theme: string;
@@ -736,12 +726,10 @@ export async function creerOuMettreAJourMariageSelfService(
         `UPDATE mariages SET
            theme = ?1, messager = ?2, prenom_1 = ?3, prenom_2 = ?4,
            date_mariage = ?5, date_limite_rsvp = ?6,
-           ceremonie_nom = ?7, ceremonie_adresse = ?8, heure_ceremonie = ?9,
-           cocktail_nom = ?10, cocktail_adresse = ?11, heure_cocktail = ?12,
-           reponse_generique_oui = ?13, reponse_generique_non = ?14,
-           remarque_acheteur = ?15,
+           reponse_generique_oui = ?7, reponse_generique_non = ?8,
+           remarque_acheteur = ?9,
            supprimer_le = date(?5, '+90 days')
-         WHERE id = ?16`,
+         WHERE id = ?10`,
       )
       .bind(
         data.theme,
@@ -750,12 +738,6 @@ export async function creerOuMettreAJourMariageSelfService(
         data.prenom_2,
         data.date_mariage,
         data.date_limite_rsvp,
-        data.ceremonie_nom,
-        data.ceremonie_adresse,
-        data.heure_ceremonie,
-        data.cocktail_nom,
-        data.cocktail_adresse,
-        data.heure_cocktail,
         data.reponse_generique_oui,
         data.reponse_generique_non,
         data.remarque_acheteur,
@@ -774,11 +756,9 @@ export async function creerOuMettreAJourMariageSelfService(
     .prepare(
       `INSERT INTO mariages (
          id, slug, theme, messager, prenom_1, prenom_2, date_mariage, date_limite_rsvp,
-         ceremonie_nom, ceremonie_adresse, heure_ceremonie,
-         cocktail_nom, cocktail_adresse, heure_cocktail,
          reponse_generique_oui, reponse_generique_non, remarque_acheteur,
          email_proprietaire, supprimer_le
-       ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, date(?7, '+90 days'))`,
+       ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, date(?7, '+90 days'))`,
     )
     .bind(
       id,
@@ -789,12 +769,6 @@ export async function creerOuMettreAJourMariageSelfService(
       data.prenom_2,
       data.date_mariage,
       data.date_limite_rsvp,
-      data.ceremonie_nom,
-      data.ceremonie_adresse,
-      data.heure_ceremonie,
-      data.cocktail_nom,
-      data.cocktail_adresse,
-      data.heure_cocktail,
       data.reponse_generique_oui,
       data.reponse_generique_non,
       data.remarque_acheteur,
@@ -840,13 +814,14 @@ export async function marquerMariageActive(
   return { ok: true };
 }
 
-// ── Programme de la journée et FAQ (cf. schema/010_programme_faq.sql) ──────
+// ── Programme de la journée et FAQ (cf. schema/010_programme_faq.sql et
+// schema/011_programme_unifie.sql) ──────────────────────────────────────
 //
-// Cérémonie et cocktail n'y figurent pas : ce sont des champs du mariage
-// (heure_ceremonie/heure_cocktail + ceremonie_nom/cocktail_nom), utilisés
-// aussi par la section "Le lieu" du thème. Ces deux listes couvrent tout le
-// reste — dîner, soirée, ou n'importe quelle étape propre à un mariage — et
-// la FAQ dans son ensemble.
+// Cérémonie et cocktail sont des lignes de programme comme les autres —
+// titre, heure, lieu en texte libre — plus de colonnes dédiées sur
+// `mariages`. La section "Le lieu" du thème n'affiche plus qu'une photo
+// (cocktail_photo_key, gérée à part depuis le tableau de bord) : le nom et
+// l'adresse du lieu se lisent maintenant dans la frise, avec le reste.
 
 export interface ProgrammeItem {
   id: string;
@@ -866,8 +841,13 @@ export interface FaqItem {
 }
 
 // Contenu proposé à la création : un couple qui ne touche à rien garde un
-// programme et une FAQ raisonnables plutôt qu'une page vide.
+// programme et une FAQ raisonnables plutôt qu'une page vide. Cérémonie et
+// cocktail sont ici comme n'importe quelle étape — le couple les renomme,
+// les déplace ou les retire exactement comme le reste (cf. commentaire plus
+// haut, schema/011_programme_unifie.sql).
 export const PROGRAMME_PAR_DEFAUT: Array<{ heure: string | null; titre: string; lieu: string | null }> = [
+  { heure: "14:00", titre: "Cérémonie", lieu: "Mairie de Pau" },
+  { heure: "17:00", titre: "Cocktail", lieu: "Domaine du Verger" },
   { heure: "22:30", titre: "Dîner", lieu: "Grande salle" },
   { heure: "00:00", titre: "Soirée dansante", lieu: null },
 ];

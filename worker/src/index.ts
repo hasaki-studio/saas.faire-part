@@ -102,12 +102,9 @@ async function contenuPublic(env: Env, mariage: Mariage) {
     prenom_2: mariage.prenom_2,
     date_mariage: mariage.date_mariage,
     date_limite_rsvp: mariage.date_limite_rsvp,
-    ceremonie_nom: mariage.ceremonie_nom,
-    ceremonie_adresse: mariage.ceremonie_adresse,
-    heure_ceremonie: mariage.heure_ceremonie,
-    cocktail_nom: mariage.cocktail_nom,
-    cocktail_adresse: mariage.cocktail_adresse,
-    heure_cocktail: mariage.heure_cocktail,
+    // Cérémonie et cocktail sont dans `programme` comme le reste de la
+    // journée (schema/011_programme_unifie.sql) ; seule la photo du lieu
+    // reste une colonne à part, pour la section "Le lieu" du thème.
     cocktail_photo_url: photoUrl(env, mariage.cocktail_photo_key),
     photo_couple_url: photoUrl(env, mariage.photo_couple_key),
     // Mention d'information du formulaire RSVP (CLAUDE.md §5) : le responsable
@@ -1030,12 +1027,6 @@ async function handleCommandeVerifier(request: Request, env: Env): Promise<Respo
       prenom_2: mariage.prenom_2,
       date_mariage: mariage.date_mariage,
       date_limite_rsvp: mariage.date_limite_rsvp,
-      ceremonie_nom: mariage.ceremonie_nom,
-      ceremonie_adresse: mariage.ceremonie_adresse,
-      heure_ceremonie: mariage.heure_ceremonie,
-      cocktail_nom: mariage.cocktail_nom,
-      cocktail_adresse: mariage.cocktail_adresse,
-      heure_cocktail: mariage.heure_cocktail,
       reponse_generique_oui: mariage.reponse_generique_oui,
       reponse_generique_non: mariage.reponse_generique_non,
       messager: mariage.messager,
@@ -1114,12 +1105,6 @@ async function handleCommandeCreer(request: Request, env: Env): Promise<Response
   // pas est un piège silencieux déjà rencontré deux fois (cf. CLAUDE.md §4).
   if (!MESSAGERS_VALIDES.has(messager)) return json({ erreur: "Animation invalide." }, 400);
 
-  const heureCeremonie = texteOuNul("heure_ceremonie");
-  const heureCocktail = texteOuNul("heure_cocktail");
-  const HEURE_RE = /^\d{2}:\d{2}$/;
-  if (heureCeremonie && !HEURE_RE.test(heureCeremonie)) return json({ erreur: "Heure de cérémonie invalide." }, 400);
-  if (heureCocktail && !HEURE_RE.test(heureCocktail)) return json({ erreur: "Heure de cocktail invalide." }, 400);
-
   const programme = parseProgramme(texte("programme"));
   if (!programme.ok) return json({ erreur: programme.erreur }, 400);
   const faq = parseFaq(texte("faq"));
@@ -1152,12 +1137,6 @@ async function handleCommandeCreer(request: Request, env: Env): Promise<Response
     prenom_2: prenom2,
     date_mariage: dateMariage,
     date_limite_rsvp: dateLimiteRsvp,
-    ceremonie_nom: texteOuNul("ceremonie_nom"),
-    ceremonie_adresse: texteOuNul("ceremonie_adresse"),
-    heure_ceremonie: heureCeremonie,
-    cocktail_nom: texteOuNul("cocktail_nom"),
-    cocktail_adresse: texteOuNul("cocktail_adresse"),
-    heure_cocktail: heureCocktail,
     reponse_generique_oui: reponseOui,
     reponse_generique_non: reponseNon,
     theme: "botanique", // seul thème construit à ce jour (CLAUDE.md §8) — jamais pris du formulaire

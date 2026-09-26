@@ -344,36 +344,6 @@
         </select>
       </div>
 
-      <div class="deux-colonnes">
-        <div class="champ">
-          <label for="c-ceremonie-nom">Lieu de la cérémonie <span class="note" style="display:inline">(facultatif)</span></label>
-          <input type="text" id="c-ceremonie-nom" maxlength="200" value="Mairie de Pau">
-        </div>
-        <div class="champ">
-          <label for="c-heure-ceremonie">Heure <span class="note" style="display:inline">(facultatif)</span></label>
-          <input type="time" id="c-heure-ceremonie" value="14:00">
-        </div>
-      </div>
-      <div class="champ">
-        <label for="c-ceremonie-adresse">Adresse de la cérémonie <span class="note" style="display:inline">(facultatif)</span></label>
-        <input type="text" id="c-ceremonie-adresse" maxlength="300">
-      </div>
-
-      <div class="deux-colonnes">
-        <div class="champ">
-          <label for="c-cocktail-nom">Lieu de la réception <span class="note" style="display:inline">(facultatif)</span></label>
-          <input type="text" id="c-cocktail-nom" maxlength="200" value="Domaine du Verger">
-        </div>
-        <div class="champ">
-          <label for="c-heure-cocktail">Heure <span class="note" style="display:inline">(facultatif)</span></label>
-          <input type="time" id="c-heure-cocktail" value="17:00">
-        </div>
-      </div>
-      <div class="champ">
-        <label for="c-cocktail-adresse">Adresse de la réception <span class="note" style="display:inline">(facultatif)</span></label>
-        <input type="text" id="c-cocktail-adresse" maxlength="300">
-      </div>
-
       <div class="champ">
         <label for="c-oui">Message si un invité répond « oui »</label>
         <textarea id="c-oui" maxlength="1500" placeholder="Merci, on a hâte de vous voir !"></textarea>
@@ -386,7 +356,7 @@
       <hr class="separation">
 
       <div class="champ">
-        <label>Programme de la journée <span class="note" style="display:inline">(après la cérémonie et le cocktail — facultatif)</span></label>
+        <label>Programme de la journée <span class="note" style="display:inline">(déjà pré-rempli, à adapter ou compléter)</span></label>
         <div id="programme-liste"></div>
         <button type="button" class="bouton-secondaire" id="btn-ajouter-programme">+ Ajouter une étape</button>
       </div>
@@ -573,12 +543,6 @@ function preRemplir(m) {
   $('c-date-mariage').value = m.date_mariage;
   $('c-date-rsvp').value = m.date_limite_rsvp;
   $('c-animation').value = m.messager;
-  $('c-ceremonie-nom').value = m.ceremonie_nom || '';
-  $('c-ceremonie-adresse').value = m.ceremonie_adresse || '';
-  $('c-heure-ceremonie').value = m.heure_ceremonie || '';
-  $('c-cocktail-nom').value = m.cocktail_nom || '';
-  $('c-cocktail-adresse').value = m.cocktail_adresse || '';
-  $('c-heure-cocktail').value = m.heure_cocktail || '';
   $('c-oui').value = m.reponse_generique_oui;
   $('c-non').value = m.reponse_generique_non;
 
@@ -814,12 +778,6 @@ $('btn-voir-apercu').addEventListener('click', () => {
         prenom_2: prenom2,
         date_mariage: dateMariage,
         date_limite_rsvp: dateRsvp,
-        ceremonie_nom: $('c-ceremonie-nom').value.trim(),
-        ceremonie_adresse: $('c-ceremonie-adresse').value.trim(),
-        heure_ceremonie: $('c-heure-ceremonie').value || null,
-        cocktail_nom: $('c-cocktail-nom').value.trim(),
-        cocktail_adresse: $('c-cocktail-adresse').value.trim(),
-        heure_cocktail: $('c-heure-cocktail').value || null,
         messager: $('c-animation').value,
         contact_rgpd: null,
         // Un Blob fraîchement choisi prime toujours ; sinon, en modification,
@@ -889,12 +847,6 @@ async function soumettre(estRemarque) {
   form.set('reponse_generique_oui', $('c-oui').value.trim());
   form.set('reponse_generique_non', $('c-non').value.trim());
   form.set('messager', $('c-animation').value);
-  form.set('ceremonie_nom', $('c-ceremonie-nom').value.trim());
-  form.set('ceremonie_adresse', $('c-ceremonie-adresse').value.trim());
-  form.set('heure_ceremonie', $('c-heure-ceremonie').value || '');
-  form.set('cocktail_nom', $('c-cocktail-nom').value.trim());
-  form.set('cocktail_adresse', $('c-cocktail-adresse').value.trim());
-  form.set('heure_cocktail', $('c-heure-cocktail').value || '');
   form.set('programme', JSON.stringify(listeProgramme()));
   form.set('faq', JSON.stringify(listeFaq()));
   form.set('remarque', remarque);

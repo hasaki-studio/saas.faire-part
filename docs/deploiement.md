@@ -72,6 +72,7 @@ schema/007_contact_rgpd.sql
 schema/008_codes_activation.sql
 schema/009_activation_manuelle.sql
 schema/010_programme_faq.sql
+schema/011_programme_unifie.sql
 ```
 
 **Jamais `schema/dev-seed.sql` sur la base distante** : il écraserait un mariage
@@ -90,9 +91,9 @@ réel. C'est un jeu d'essai local, rien d'autre.
 
 ## Ordre conseillé pour mettre le tunnel self-service en ligne
 
-1. Les migrations 007 à 009 (ci-dessus) — `codes_activation` et les colonnes
-   `active_le` / `remarque_acheteur` de `mariages` doivent exister avant le
-   premier appel à `/api/commande/*`.
+1. Les migrations 007 à 011 (ci-dessus) — `codes_activation`, les colonnes
+   `active_le` / `remarque_acheteur` de `mariages`, et `programme_items` /
+   `faq_items` doivent exister avant le premier appel à `/api/commande/*`.
 2. Le jeton et les secrets (§1 et §2), puis un **Run workflow** pour que le
    Worker connaisse les routes `/api/commande/*`.
 3. Les 5 étapes Cloudflare de `docs/commande.md` (DNS, projet Pages

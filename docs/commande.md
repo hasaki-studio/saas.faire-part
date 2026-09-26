@@ -94,9 +94,9 @@ le mariage déjà créé.
   appelés à plusieurs minutes d'écart.
 - **Le formulaire est pré-rempli** avec les données existantes du mariage
   (`GET` implicite via la réponse de `verifier`) : comme `UPDATE` écrit
-  exactement ce qu'on lui donne, un champ facultatif non retouché
-  (`ceremonie_nom`, par exemple) doit repartir avec sa valeur actuelle, jamais
-  avec un champ vide.
+  exactement ce qu'on lui donne, un champ facultatif non retouché (l'adresse
+  de la cérémonie dans sa ligne de programme, par exemple) doit repartir avec
+  sa valeur actuelle, jamais avec un champ vide.
 - **Les photos sont optionnelles en modification, obligatoires à la
   création.** Ne pas redéposer la photo du couple ne l'efface pas — la
   colonne n'est simplement pas touchée. Si une nouvelle photo est envoyée,
@@ -147,12 +147,20 @@ le thème affichait des horaires inventés et une FAQ écrite pour un couple
 précis, jamais branchés sur de vraies données, pour aucun mariage — catalogue
 ou sur-mesure.
 
-- **Cérémonie et cocktail ne sont pas des lignes de liste.** Ce sont des
-  champs du mariage (`ceremonie_nom`/`ceremonie_adresse`/`heure_ceremonie`,
-  pareil pour le cocktail) : ils alimentent aussi la section « Le lieu » du
-  thème, changer leur forme aurait cassé cette section pour rien.
-- **Le reste de la journée est une vraie liste** (`programme_items`) : un
-  couple ne suit pas tous le même déroulé, une liste s'ajoute et se retire,
+- **Cérémonie et cocktail sont des lignes de `programme_items` comme le
+  reste de la journée** (revu le 26 septembre 2026, `schema/011_programme_
+  unifie.sql`). La première version les gardait à part (`ceremonie_nom` /
+  `ceremonie_adresse` / `heure_ceremonie`, pareil pour le cocktail) parce
+  qu'ils alimentaient aussi la section « Le lieu » du thème — mais avoir deux
+  systèmes d'édition différents pour la même frise rendait le formulaire du
+  tunnel incohérent (une info « facultative » séparée du programme, alors
+  qu'elle en fait partie), et un champ facultatif pré-rempli par erreur a
+  suffi à faire apparaître un cocktail fantôme sur un mariage qui n'en avait
+  pas. La section « Le lieu » n'affiche plus qu'une photo (`cocktail_photo_
+  key`, gérée à part depuis le tableau de bord) : le nom et l'adresse du lieu
+  se lisent maintenant dans la frise, avec le reste.
+- **Toute la journée est une vraie liste** (`programme_items`) : un couple ne
+  suit pas tous le même déroulé, une liste s'ajoute et se retire,
   contrairement à des colonnes fixes. Même principe pour la FAQ
   (`faq_items`) — les questions par défaut couvrent la plupart des mariages,
   mais un couple doit pouvoir en retirer une qui ne s'applique pas ou en

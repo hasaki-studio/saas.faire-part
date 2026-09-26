@@ -15,8 +15,12 @@
 --   npx wrangler d1 execute DB --local --file=../schema/003_email_proprietaire.sql
 --   npx wrangler d1 execute DB --local --file=../schema/004_origine_convive.sql
 --   npx wrangler d1 execute DB --local --file=../schema/005_groupes.sql
+--   npx wrangler d1 execute DB --local --file=../schema/010_programme_faq.sql
+--   npx wrangler d1 execute DB --local --file=../schema/011_programme_unifie.sql
 --   npx wrangler d1 execute DB --local --file=../schema/dev-seed.sql
 
+DELETE FROM programme_items WHERE mariage_id = 'mdev';
+DELETE FROM faq_items WHERE mariage_id = 'mdev';
 DELETE FROM convives WHERE mariage_id = 'mdev';
 DELETE FROM reponses_groupe WHERE mariage_id = 'mdev';
 DELETE FROM mariages WHERE id = 'mdev';
@@ -26,7 +30,6 @@ DELETE FROM mariages WHERE id = 'mdev';
 INSERT INTO mariages (
   id, slug, domaine_personnalise, theme, messager,
   prenom_1, prenom_2, date_mariage, date_limite_rsvp,
-  ceremonie_nom, ceremonie_adresse, cocktail_nom, cocktail_adresse,
   reponse_generique_oui, reponse_generique_non,
   email_proprietaire, supprimer_le
 ) VALUES (
@@ -35,12 +38,19 @@ INSERT INTO mariages (
   -- port. Sans ça, le faire-part local répond « Domaine non configuré ».
   'mdev', 'test', 'localhost', 'botanique', 'voiture',
   'Justine', 'Raphael', '2027-07-17', '2027-01-20',
-  'Mairie de Pau', 'Place Royale, 64000 Pau', 'Domaine des Vergers', NULL,
   'Quelle joie de vous compter parmi nous !',
   'Vous nous manquerez, mais on pense fort à vous.',
   -- doit correspondre à DEV_EMAIL dans worker/wrangler.toml
   'couple@exemple.fr', '2027-10-15'
 );
+
+-- Cérémonie et cocktail sont des lignes de programme comme les autres
+-- depuis schema/011_programme_unifie.sql.
+INSERT INTO programme_items (id, mariage_id, heure, titre, lieu, ordre) VALUES
+  ('pi1', 'mdev', '14:00', 'Cérémonie', 'Mairie de Pau, Place Royale, 64000 Pau', 0),
+  ('pi2', 'mdev', '17:00', 'Cocktail', 'Domaine des Vergers', 1),
+  ('pi3', 'mdev', '20:30', 'Dîner', 'Grande salle', 2),
+  ('pi4', 'mdev', '23:00', 'Soirée dansante', NULL, 3);
 
 -- Réponse écrite pour un groupe ; « Collègues » reste volontairement sans
 -- réponse, pour voir l'étiquette « message à écrire » dans le tableau de bord.
