@@ -795,11 +795,8 @@ nav {
 
     .timeline-item {
       grid-template-columns: 24px 1fr;
-      grid-template-areas:
-        "dot top"
-        "dot bottom";
+      grid-template-areas: "dot content";
       column-gap: 16px;
-      row-gap: 6px;
       padding: 18px 0;
     }
 
@@ -808,13 +805,9 @@ nav {
       margin: 6px auto 0;
     }
 
-    .timeline-left {
-      grid-area: top;
-      text-align: left;
-    }
-
+    .timeline-left,
     .timeline-right {
-      grid-area: bottom;
+      grid-area: content;
       text-align: left;
     }
 
@@ -1216,11 +1209,14 @@ function construireTimeline(m) {
 }
 
 /**
- * La maquette alterne heure/événement de part et d'autre de la frise (cf.
- * .timeline-left / .timeline-right) — une pure question de rythme visuel,
- * indépendante du contenu. Reproduite ici par la parité de l'index plutôt
- * que figée dans le HTML, pour que ça tienne quel que soit le nombre
- * d'étapes que le couple a gardées ou ajoutées.
+ * Chaque étape est un seul bloc auto-contenu (titre, puis heure si connue,
+ * puis lieu si connu — toujours dans cet ordre) plutôt que heure et
+ * événement éclatés dans les deux colonnes de la frise : l'alternance
+ * gauche/droite ne fait plus que déplacer le bloc entier d'un côté ou
+ * l'autre, une pure question de rythme visuel sur desktop, jamais l'ordre
+ * de son contenu. Sur mobile, .timeline-left et .timeline-right partagent
+ * la même zone de grille (cf. CSS) : un seul des deux camps est rempli par
+ * étape, l'autre reste vide sans laisser de trou.
  */
 function remplirTimeline(m) {
   const items = construireTimeline(m);
@@ -1228,9 +1224,10 @@ function remplirTimeline(m) {
   if (!items.length) { section.style.display = 'none'; return; }
 
   document.getElementById('timeline').innerHTML = items.map((item, i) => {
-    const heureHtml = item.heure ? `<p class="timeline-time">${esc(item.heure.replace(':', 'h'))}</p>` : '';
-    const eventHtml = `<p class="timeline-event">${esc(item.titre)}${item.lieu ? `<br><small style="opacity:.6">${esc(item.lieu)}</small>` : ''}</p>`;
-    const [gauche, droite] = i % 2 === 0 ? [heureHtml, eventHtml] : [eventHtml, heureHtml];
+    const bloc = `<p class="timeline-event">${esc(item.titre)}</p>`
+      + (item.heure ? `<p class="timeline-time">${esc(item.heure.replace(':', 'h'))}</p>` : '')
+      + (item.lieu ? `<p style="margin-top:4px;font-size:0.85em;opacity:.6">${esc(item.lieu)}</p>` : '');
+    const [gauche, droite] = i % 2 === 0 ? ['', bloc] : [bloc, ''];
     return `<div class="timeline-item">
       <div class="timeline-left">${gauche}</div>
       <div class="timeline-dot"></div>
